@@ -1,0 +1,16 @@
+# Normalize text to LF in the repository and working tree, regardless of core.autocrlf.
+# CI runs on Linux and log fixtures are parsed byte by byte on both sides (C++ and Python).
+* text=auto eol=lf
+
+# Windows-only scripts keep CRLF
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# Binary artifacts
+*.bin binary
+*.elf binary
+*.png binary
+*.jpg binary
+*.gif binary
+*.sr  binary
