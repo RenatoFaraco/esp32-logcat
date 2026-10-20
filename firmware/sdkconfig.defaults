@@ -1,0 +1,13 @@
+# Project-chosen ESP-IDF options. The full sdkconfig.<env> is generated and not versioned.
+
+# Flash size of the target board (confirm on arrival)
+CONFIG_ESPTOOLPY_FLASHSIZE_4MB=y
+
+# Custom partition table (logs + coredump). PlatformIO flashes it from board_build.partitions;
+# this keeps ESP-IDF's own view (size checks, parttool) consistent with it.
+CONFIG_PARTITION_TABLE_CUSTOM=y
+CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions.csv"
+
+# Firmware rules (CLAUDE.md): no C++ exceptions, no RTTI
+# CONFIG_COMPILER_CXX_EXCEPTIONS is not set
+# CONFIG_COMPILER_CXX_RTTI is not set
