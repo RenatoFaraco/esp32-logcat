@@ -35,6 +35,25 @@ jobs:
       - name: Build target (esp32c3)
         run: pio run -e esp32c3
 
+  github-config:
+    # Invalid issue forms are silently hidden by GitHub, so validate them here.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install
+        run: pip install check-jsonschema==0.38.2
+
+      - name: Validate issue forms, issue config and workflows
+        run: |
+          check-jsonschema --builtin-schema vendor.github-issue-forms .github/ISSUE_TEMPLATE/[0-9]*.yml
+          check-jsonschema --builtin-schema vendor.github-issue-config .github/ISSUE_TEMPLATE/config.yml
+          check-jsonschema --builtin-schema vendor.github-workflows .github/workflows/*.yml
+
   host:
     runs-on: ubuntu-latest
     defaults:
