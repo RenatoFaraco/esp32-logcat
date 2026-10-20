@@ -11,14 +11,14 @@ Cada marco termina com: testes passando no CI, commit/tag e este arquivo atualiz
 ## Fase 1 — antes do hardware (até ~11/nov)
 
 ### M0 · Fundação 🖥️
-- [ ] Repositório: `README.md` (esqueleto), `LICENSE` (MIT), `.gitignore` (PlatformIO + Python)
-- [ ] `firmware/platformio.ini` com `env:esp32c3` (framework espidf) e `env:native`
-- [ ] `firmware/partitions.csv` (PRD §5)
-- [ ] Firmware "hello" que compila para o C3 (sem gravar)
-- [ ] `host/pyproject.toml`, `.venv`, pacote `esp_logcat` com CLI vazia
-- [ ] `.clang-format`, `ruff` configurados
-- [ ] CI (`.github/workflows/ci.yml`): `pio test -e native`, `pio run -e esp32c3`, `pytest`, `ruff`
-- [ ] ADRs 001–004
+- [x] Repositório: `README.md` (esqueleto), `LICENSE` (MIT), `.gitignore` (PlatformIO + Python)
+- [x] `firmware/platformio.ini` com `env:esp32c3` (framework espidf) e `env:native`
+- [x] `firmware/partitions.csv` (PRD §5)
+- [x] Firmware "hello" que compila para o C3 (sem gravar)
+- [x] `host/pyproject.toml`, `.venv`, pacote `esp_logcat` com CLI vazia
+- [x] `.clang-format`, `ruff` configurados
+- [x] CI (`.github/workflows/ci.yml`): `pio test -e native`, `pio run -e esp32c3`, `pytest`, `ruff`
+- [x] ADRs 001–005
 - **Pronto quando:** CI verde num push.
 
 ### M1 · Núcleo 🖥️
