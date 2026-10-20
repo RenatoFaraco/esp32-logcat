@@ -43,7 +43,30 @@ docs/       PRD, architecture, roadmap, conventions and ADRs (Portuguese)
 
 ## Building and testing
 
-_Coming in M0._
+Requirements: [PlatformIO Core](https://platformio.org/install/cli) 6.1+, Python 3.12, and a host
+C++ compiler for `env:native` (GCC with C++17 support).
+
+> **Windows:** install the host GCC in a path without spaces (e.g. MSYS2 UCRT64 at `C:\msys64`).
+> MinGW's linker splits paths on spaces and fails if GCC lives under `C:\Users\First Last\...`.
+
+Firmware:
+
+```sh
+cd firmware
+pio test -e native     # core unit tests on the PC
+pio run -e esp32c3     # build for the target
+```
+
+Host tool:
+
+```sh
+cd host
+python -m venv .venv
+.venv/Scripts/activate        # Linux/macOS: source .venv/bin/activate
+pip install -e ".[dev]"
+pytest
+ruff check . && ruff format --check .
+```
 
 ## License
 
