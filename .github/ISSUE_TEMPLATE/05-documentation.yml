@@ -1,0 +1,23 @@
+name: Documentation
+description: Missing, wrong or unclear docs (README, PRD, architecture, ADRs, code comments).
+labels: ["documentation"]
+body:
+  - type: input
+    id: location
+    attributes:
+      label: Where?
+      placeholder: docs/ARCHITECTURE.md §3, README "Building and testing"
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What is wrong or missing?
+    validations:
+      required: true
+
+  - type: textarea
+    id: suggestion
+    attributes:
+      label: Suggested change

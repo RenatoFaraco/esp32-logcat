@@ -1,0 +1,90 @@
+name: Crash / unexpected reset
+description: The device panicked, hit a watchdog, browned out or rebooted unexpectedly.
+labels: ["bug", "fw"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Crash reports are only useful with the **reset reason** and a **decoded backtrace**.
+        PlatformIO decodes it with `monitor_filters = esp32_exception_decoder` (already enabled
+        in `platformio.ini`). If the device logged `I LASTWORDS:` lines on the next boot, include them.
+
+  - type: dropdown
+    id: reset_reason
+    attributes:
+      label: Reset reason
+      description: "As printed in `I LOGCAT: boot=... reason=...` or by the bootloader (`rst:0x..`)."
+      options:
+        - PANIC (exception / abort)
+        - TASK_WDT
+        - INT_WDT
+        - BROWNOUT
+        - SW (esp_restart)
+        - POWERON
+        - Unknown / other
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: What was the device doing?
+      description: Load, log rate, commands sent, peripherals active, time since boot.
+    validations:
+      required: true
+
+  - type: textarea
+    id: backtrace
+    attributes:
+      label: Decoded backtrace / Guru Meditation output
+      render: text
+    validations:
+      required: true
+
+  - type: textarea
+    id: lastwords
+    attributes:
+      label: LASTWORDS and logs around the crash
+      description: Output of the next boot, including `I LASTWORDS:` lines and the boot record.
+      render: text
+
+  - type: dropdown
+    id: reproducible
+    attributes:
+      label: Reproducible?
+      options:
+        - Yes, every time (steps below)
+        - Sometimes
+        - Seen once in the field
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+
+  - type: input
+    id: version
+    attributes:
+      label: Firmware version or commit
+    validations:
+      required: true
+
+  - type: textarea
+    id: hardware
+    attributes:
+      label: Hardware and power
+      value: |
+        - Board / chip revision:
+        - Power source (USB port / external supply / battery):
+        - Anything connected to the GPIOs:
+      render: markdown
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checklist
+      options:
+        - label: The output contains no secrets (Wi-Fi credentials, keys, tokens).
+          required: true

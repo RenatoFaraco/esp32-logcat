@@ -1,0 +1,97 @@
+name: Bug report
+description: Something does not work as documented (firmware, core, host tool or CI).
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting! If the device **crashed or rebooted** (panic, watchdog, brownout),
+        use the **Crash / unexpected reset** form instead — it asks for the backtrace.
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component
+      options:
+        - Core library (firmware/lib/logcat_core)
+        - Firmware / ESP-IDF adapters
+        - Host tool (esp-logcat)
+        - Build / CI
+        - Not sure
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: A clear description of the bug.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Flash firmware at commit ...
+        2. Run `esp-logcat stream "*:W"`
+        3. ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+
+  - type: dropdown
+    id: frequency
+    attributes:
+      label: How often does it happen?
+      options:
+        - Always
+        - Intermittently
+        - Happened once
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: esp32-logcat version or commit
+      placeholder: v0.1.0 / a1b2c3d
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Fill what applies.
+      value: |
+        - Board / chip:
+        - Flash size:
+        - PlatformIO platform / ESP-IDF version:
+        - Host OS:
+        - Python version:
+      render: markdown
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: Device output (`esp-logcat stream` or `log dump`) and/or host traceback.
+      render: text
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checklist
+      options:
+        - label: I searched existing issues and this is not a duplicate.
+          required: true
+        - label: The logs above contain no secrets (Wi-Fi credentials, keys, tokens).
+          required: true

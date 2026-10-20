@@ -1,0 +1,50 @@
+name: "Task: core module (C++)"
+description: Planned work on the platform-independent core (firmware/lib/logcat_core).
+title: "core: "
+labels: ["core"]
+body:
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: What the module is responsible for, in one or two sentences.
+    validations:
+      required: true
+
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope
+      description: Types, functions and behavior included. A sketch of the interface helps.
+      placeholder: |
+        - `class RingBuffer<T, N>`: push / size / iterate oldest→newest / clear
+        - ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: tests
+    attributes:
+      label: Tests (Unity, env:native)
+      description: Behaviors to cover, including edge cases.
+      placeholder: |
+        - [ ] test_ring_buffer_overwrites_oldest_when_full
+        - [ ] ...
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: constraints
+    attributes:
+      label: Core constraints (CLAUDE.md / ADR-003 / ADR-005)
+      options:
+        - label: No includes of `esp_*`, `freertos/*`, `driver/*` or LittleFS
+        - label: No dynamic allocation on the logging path after init
+        - label: C++17, no exceptions, no RTTI
+        - label: If the line format changes, host parser and tests change in the same commit
+
+  - type: input
+    id: refs
+    attributes:
+      label: References
+      placeholder: PRD F4 · ARCHITECTURE §2.1

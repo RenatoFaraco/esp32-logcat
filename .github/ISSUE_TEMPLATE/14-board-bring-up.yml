@@ -1,0 +1,48 @@
+name: "Board bring-up / support report"
+description: Bring up a new board, or report that esp32-logcat works (or not) on a board.
+title: "fw: bring-up "
+labels: ["fw", "needs-hardware"]
+body:
+  - type: input
+    id: board
+    attributes:
+      label: Board
+      placeholder: Generic ESP32-C3 dual USB-C / Seeed XIAO ESP32C3 / ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: identification
+    attributes:
+      label: Identification
+      description: Output of `esptool.py chip_id` and `esptool.py flash_id`.
+      render: text
+    validations:
+      required: true
+
+  - type: textarea
+    id: ports
+    attributes:
+      label: USB ports and console
+      value: |
+        - USB-Serial-JTAG (native) on:
+        - USB-UART bridge chip / UART0 on:
+        - COM ports seen on the PC:
+      render: markdown
+
+  - type: checkboxes
+    id: results
+    attributes:
+      label: Results
+      options:
+        - label: Firmware builds with the board's flash size and mode
+        - label: Flashes and boots
+        - label: Logs visible on the native USB port
+        - label: Logs visible on the UART bridge port
+        - label: LittleFS partition mounts
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: Notes / changes needed
+      description: Partition table, sdkconfig, platformio.ini board settings.

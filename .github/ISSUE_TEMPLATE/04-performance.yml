@@ -1,0 +1,51 @@
+name: Performance / resource regression
+description: Timing jitter, RAM, stack, flash usage or throughput got worse or exceeds the budget.
+labels: ["perf"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Budgets live in `docs/ARCHITECTURE.md` §8 (memory) and PRD §7 criterion 3 (timing).
+        Please include **numbers before and after**, and how they were measured.
+
+  - type: dropdown
+    id: resource
+    attributes:
+      label: Resource
+      options:
+        - Timing / jitter of other tasks
+        - Caller cost of logging
+        - RAM (heap / static)
+        - Stack (writer task or callers)
+        - Flash usage (app size or log partition)
+        - Throughput (lines/s, dropped lines)
+        - Host tool speed
+    validations:
+      required: true
+
+  - type: textarea
+    id: measurements
+    attributes:
+      label: Measurements
+      description: Baseline vs current, with commits.
+      placeholder: |
+        | Commit  | Metric               | Value  |
+        |---------|----------------------|--------|
+        | a1b2c3d | 1 kHz task jitter    | 12 µs  |
+        | d4e5f6a | 1 kHz task jitter    | 48 µs  |
+    validations:
+      required: true
+
+  - type: textarea
+    id: method
+    attributes:
+      label: How it was measured
+      description: Logic analyzer capture, `esp_timer`, `uxTaskGetStackHighWaterMark`, `pio run` size report…
+    validations:
+      required: true
+
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence
+      description: Screenshots, PulseView captures (.sr), size reports.

@@ -1,0 +1,34 @@
+name: Feature request
+description: Propose new behavior or an improvement.
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What are you trying to do, and why is it hard today?
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+
+  - type: checkboxes
+    id: impact
+    attributes:
+      label: Impact
+      description: Check what this change would touch.
+      options:
+        - label: Changes the log line format (PRD §3) — host parser and tests on both sides must change together
+        - label: Adds work on the logging path (caller cost, RAM or flash usage)
+        - label: Requires the hardware to implement or test
+        - label: Is in the PRD backlog (§4, v1.1+)

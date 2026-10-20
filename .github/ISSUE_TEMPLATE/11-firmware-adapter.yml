@@ -1,0 +1,51 @@
+name: "Task: firmware adapter / integration"
+description: Planned work on ESP-IDF / FreeRTOS / LittleFS adapters or the demo app (firmware/src).
+title: "fw: "
+labels: ["fw"]
+body:
+  - type: markdown
+    attributes:
+      value: Add the `needs-hardware` label if this can only be done or verified on the board.
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+    validations:
+      required: true
+
+  - type: input
+    id: port
+    attributes:
+      label: Core interface implemented (if any)
+      placeholder: Sink / Clock / FileSystem / BootInfo / none
+
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope
+      description: ESP-IDF APIs involved, task/ISR context, priorities, memory placement.
+    validations:
+      required: true
+
+  - type: textarea
+    id: concurrency
+    attributes:
+      label: Concurrency and failure modes
+      description: Which tasks touch it? Can it block? What if it logs from inside itself? What on error?
+
+  - type: textarea
+    id: done
+    attributes:
+      label: Done when
+      placeholder: |
+        - [ ] Verified on the board: ...
+        - [ ] RAM/stack within ARCHITECTURE §8 budget
+    validations:
+      required: true
+
+  - type: input
+    id: refs
+    attributes:
+      label: References
+      placeholder: PRD F1 · ARCHITECTURE §3
