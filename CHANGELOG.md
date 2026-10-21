@@ -17,6 +17,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The target build now compiles the core library.
 - ADR-006: log lines are printable ASCII only (`0x20`–`0x7E`), single-line, enforced by the
   formatter and checked by the parsers.
+- Core `format_line`: `LogRecord` to the PRD §3 line (max 170 bytes) in a fixed-size buffer,
+  no printf. Boot printed modulo 10000, seq modulo 1e6, non-ASCII and control bytes mapped to
+  `?`, empty tag `-`, truncated messages shown as 124 chars + `...`.
+- ADR-007: no per-line checksum in v1.
 
 ## [0.1.0] - 2026-10-21
 
