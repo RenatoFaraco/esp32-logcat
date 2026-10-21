@@ -1,0 +1,12 @@
+{
+  "env": {
+    "PYTHONIOENCODING": "utf-8"
+  },
+  "permissions": {
+    "allow": [
+      "Bash(/c/.platformio/penv/Scripts/pio.exe test -d firmware -e native *)",
+      "Bash(/c/.platformio/penv/Scripts/pio.exe run -d firmware -e esp32c3)",
+      "Bash(host/.venv/Scripts/python -m pytest -q host *)"
+    ]
+  }
+}

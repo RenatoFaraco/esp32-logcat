@@ -37,3 +37,6 @@ Thumbs.db
 desktop.ini
 *.swp
 .idea/
+
+# --- Claude Code: personal overrides stay local ---
+.claude/settings.local.json
