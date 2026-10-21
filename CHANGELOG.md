@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Core `LogRecord` (160 B, trivially copyable for the FreeRTOS queue) with bounded tag/message
+  copies and truncation flag; `LogLevel` numbered like ESP-IDF's levels, with letter
+  conversions for the line format.
+- Core `Sequencer`: per-boot `seq` wrapping at 1,000,000 (6-digit field) and a dropped-line
+  counter, safe for concurrent loggers.
+- The target build now compiles the core library.
+- ADR-006: log lines are printable ASCII only (`0x20`–`0x7E`), single-line, enforced by the
+  formatter and checked by the parsers.
+
 ## [0.1.0] - 2026-10-21
 
 Milestone **M0 · Foundation**: project scaffolding, build environments and CI.
