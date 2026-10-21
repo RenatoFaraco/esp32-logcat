@@ -2,8 +2,6 @@
 
 namespace logcat {
 
-Sequencer::Sequencer(uint32_t first_seq) : next_seq_(first_seq % kSeqModulo), dropped_(0) {}
-
 uint32_t Sequencer::next() {
     // compare_exchange instead of fetch_add: the wrap must happen exactly at kSeqModulo, not
     // when the 32-bit counter overflows (2^32 is not a multiple of 10^6).

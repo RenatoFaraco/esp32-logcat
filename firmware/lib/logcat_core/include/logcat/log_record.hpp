@@ -6,8 +6,10 @@
 
 namespace logcat {
 
-// Numbering matches ESP-IDF's esp_log_level_t (ERROR = 1 ... VERBOSE = 5), so the IDF adapter
-// converts with a static_cast. Lower value = more severe: "enabled" means level <= threshold.
+// Numbering follows ESP-IDF's esp_log_level_t (ERROR = 1 ... VERBOSE = 5) for familiarity.
+// The esp_log_set_vprintf hook only sees the formatted text, so the adapter gets the level
+// from its letter via level_from_char, never by casting an unchecked number.
+// Lower value = more severe: "enabled" means level <= threshold.
 enum class LogLevel : uint8_t {
     Error = 1,
     Warn = 2,
@@ -63,10 +65,16 @@ inline constexpr size_t kMsgCapacity = 128;
 // One log line on its way from the caller to the writer task.
 // Copied by value through the FreeRTOS queue (memcpy), so it must stay trivially copyable:
 // no constructors, destructors or owning members. `LogRecord record{}` zero-initializes it.
+//
+// Bytes after each '\0' and the struct padding are unspecified (zeroing them would cost every
+// caller a memset). Never memcmp or hash the raw struct; compare fields or the formatted line.
+//
+// tag and msg are stored as given. The formatter makes the line printable ASCII and single-line
+// (ADR-006), so control characters or newlines in a message cannot forge extra lines.
 struct LogRecord {
-    uint32_t boot;
-    uint32_t seq;
-    uint32_t uptime_ms;
+    uint32_t boot;       // full NVS boot counter; the line format prints 4 digits (see #5)
+    uint32_t seq;        // < kSeqModulo, see Sequencer
+    uint32_t uptime_ms;  // wraps after 2^32 ms (~49.7 days): not a global ordering key
     LogLevel level;
     bool truncated;  // msg was cut to fit kMsgCapacity
     char tag[kTagCapacity];

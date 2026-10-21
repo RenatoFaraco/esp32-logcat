@@ -15,9 +15,17 @@ inline constexpr uint32_t kSeqModulo = 1'000'000;
 // the host can see (ADR-004). Thread safety: next() and record_drop() may be called
 // concurrently from any task; take_dropped() is for the single writer task. Counters only
 // carry their own value, so relaxed atomics are enough.
+//
+// Ordering: each seq is unique, but lines are not guaranteed to reach the writer in seq order.
+// A task preempted between next() and the enqueue lets a later seq get written first, so the
+// host must treat a small step back (up to the queue depth) as reordering, not as a gap.
+// Call next() only after the level filter, otherwise filtered-out lines become false gaps.
 class Sequencer {
 public:
-    explicit Sequencer(uint32_t first_seq = 0);
+    // constexpr so a global instance is initialized at compile time: no static-init order
+    // issue and no guard variable when logging starts before app_main.
+    constexpr explicit Sequencer(uint32_t first_seq = 0)
+        : next_seq_(first_seq % kSeqModulo), dropped_(0) {}
 
     // Returns the seq for a new line and advances, wrapping at kSeqModulo.
     uint32_t next();
