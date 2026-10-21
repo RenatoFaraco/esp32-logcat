@@ -107,7 +107,8 @@ struct BootInfo   { virtual uint32_t boot_count() = 0;
 | Recursão: LittleFS ou driver USB logam dentro da `WriterTask` | Flag de reentrada: logs gerados pela própria `WriterTask` vão direto ao sink USB, sem fila |
 | Log em ISR | `ESP_LOGx` é proibido em ISR; usar `ESP_DRAM_LOGx` (não passa pelo hook) ou sinalizar uma tarefa |
 | Logs antes do hook | Logs do bootloader e do início do app saem pelo console padrão; o hook é instalado o mais cedo possível em `app_main` |
-| Mensagem maior que `msg[N]` | Trunca e marca `truncated` (sufixo `…` na linha) |
+| Mensagem maior que `msg[N]` | Trunca e marca `truncated`; a linha mostra até 124 chars + `...` (ADR-006) |
+| `\n` ou bytes não ASCII na mensagem | O formatter troca por `?`: uma mensagem nunca vira duas linhas (ADR-006) |
 | Desgaste da flash | Escrita em lote no flush; LittleFS faz *wear leveling* |
 | Corte de energia no meio da escrita | LittleFS é resiliente a falha de energia; perde-se no máximo a janela de flush |
 

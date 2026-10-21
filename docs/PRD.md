@@ -45,6 +45,23 @@ Um componente de logging reutilizável em todo produto (FSI-TECH e projetos pess
 - `seq`: sequência dentro do boot → detecta perda de linhas
 - Só ASCII imprimível (`0x20`–`0x7E`), uma linha por registro terminada em `\n` (ADR-006)
 
+Contrato exato (implementado em `logcat/line_formatter.hpp`, validado pelos parsers):
+
+| Campo | Regra |
+|-------|-------|
+| `boot` | `boot % 10000`, 4 dígitos com zeros à esquerda |
+| `seq` | `seq % 1000000`, 6 dígitos; volta a 0 e pode recuar um pouco (reordenação na fila) |
+| `uptime_ms` | 10 dígitos, `uint32_t` (volta a 0 após ~49,7 dias) |
+| `L` | `E` `W` `I` `D` `V`; nível inválido sai `?` e a linha é rejeitada pelo parser |
+| `TAG` | 1–15 chars; vazia → `-`; espaço e `:` → `_` |
+| separador | sempre `": "`, mesmo com mensagem vazia |
+| mensagem | 0–127 chars; bytes fora de `0x20`–`0x7E` → `?` |
+| truncada | até 124 chars + `...` |
+| tamanho máximo | 170 bytes com o `\n` |
+
+Sem checksum por linha na v1 (ADR-007). Ordem cronológica = posição no arquivo, não
+`boot`/`seq`/`uptime`.
+
 ### Ferramenta host (`esp-logcat`, Python 3.12, CLI)
 
 | ID | Requisito |

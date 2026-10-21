@@ -1,6 +1,8 @@
 #include <cinttypes>
+#include <cstdio>
 
 #include "esp_log.h"
+#include "logcat/line_formatter.hpp"
 #include "logcat/log_record.hpp"
 #include "logcat/sequencer.hpp"
 
@@ -15,6 +17,9 @@ extern "C" void app_main(void) {
     record.set_tag(TAG);
     record.set_message("esp32-logcat hello");
 
-    ESP_LOGI(TAG, "%s (seq=%" PRIu32 ", LogRecord=%u bytes)", record.msg, record.seq,
+    static char line[logcat::kLineBufferSize];
+    const size_t length = logcat::format_line(record, line);
+    ESP_LOGI(TAG, "formatted %u bytes, LogRecord=%u bytes", static_cast<unsigned>(length),
              static_cast<unsigned>(sizeof(record)));
+    fwrite(line, 1, length, stdout);
 }
