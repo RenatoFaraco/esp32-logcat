@@ -78,8 +78,9 @@ size_t format_line(const LogRecord& record, char (&out)[kLineBufferSize]) {
 
     // The bound is structural: at most 127 message chars whatever the flag holds. The marker
     // replaces the last 3 chars only when the message is full, which is the only way
-    // set_message() produces a truncated record; an inconsistent flag is ignored. So a line
-    // carries "..." at the end of a 127-char message if and only if it was truncated.
+    // set_message() produces a truncated record; an inconsistent flag is ignored. So every
+    // truncated line ends its 127-char message with "..."; the converse fails only for an
+    // original 127-char message that already ended in "..." (harmless: it reprints the same).
     size_t message_length = bounded_length(record.msg, kMsgCapacity - 1);
     const bool show_marker = read_flag(record.truncated) && message_length == kMsgCapacity - 1;
     if (show_marker) {

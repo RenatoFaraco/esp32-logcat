@@ -303,9 +303,101 @@ void test_rejects_bad_tags() {
     expect_status(ParseStatus::BadHeader, "0001:000001 0000000001 I APP:\n");
 }
 
-void test_rejects_message_over_127_chars() {
+// Longer than the formatter can emit: overlong whatever the tag length (a short tag keeps the
+// line under 170 bytes, a 15-char tag pushes it over).
+void test_rejects_message_over_127_chars_as_overlong() {
     line_with("0001:000001 0000000001 I ", "A", 128, 'm');
-    expect_status(ParseStatus::BadHeader, buffer);
+    expect_status(ParseStatus::Overlong, buffer);
+    line_with("0001:000001 0000000001 I ", "ABCDEFGHIJKLMNO", 128, 'm');
+    expect_status(ParseStatus::Overlong, buffer);
+}
+
+void test_minimal_valid_line_is_29_bytes() {
+    const char minimal[] = "0001:000001 0000000001 I A: \n";
+    TEST_ASSERT_EQUAL_size_t(29, std::strlen(minimal));
+    expect_status(ParseStatus::Ok, minimal);
+}
+
+void test_degenerate_inputs() {
+    expect_status(ParseStatus::BadHeader, "\n");
+    expect_status(ParseStatus::Garbage, "\r\n");
+    expect_status(ParseStatus::Torn, "\x7F", 1);
+    expect_status(ParseStatus::Torn, "\x7F\n");
+}
+
+// DEL means "closed by the store" only right before the final '\n'. Anywhere else the
+// formatter could never have written it: media corruption, counted as garbage.
+void test_del_inside_a_line_is_garbage() {
+    expect_status(ParseStatus::Garbage, nominal_with(40, '\x7F'));
+    expect_status(ParseStatus::Garbage, nominal_with(2, '\x7F'));
+}
+
+void test_garbage_in_header_and_tag() {
+    expect_status(ParseStatus::Garbage, nominal_with(2, '\xFF'), std::strlen(kNominal));
+    expect_status(ParseStatus::Garbage, nominal_with(27, '\x01'), std::strlen(kNominal));
+}
+
+// Callers split at '\n' with a 171-byte buffer (see line_parser.hpp); a bigger chunk without
+// '\n', such as an erased sector, is reported as overlong.
+void test_long_chunks_without_newline_are_overlong() {
+    static char chunk[4096];
+    std::memset(chunk, 'x', 200);
+    expect_status(ParseStatus::Overlong, chunk, 200);
+    std::memset(chunk, '\xFF', sizeof(chunk));
+    expect_status(ParseStatus::Overlong, chunk, sizeof(chunk));
+}
+
+// Documented ambiguity (PRD §3): an original 127-char message that already ends in "..." reads
+// back as truncated. Harmless: it reprints byte for byte.
+void test_127_char_message_ending_in_dots_reads_as_truncated() {
+    char text[logcat::kMsgCapacity];
+    std::memset(text, 'q', 124);
+    std::memcpy(text + 124, "...", 4);
+    LogRecord original{};
+    original.level = LogLevel::Info;
+    original.set_tag("APP");
+    original.set_message(text);
+    TEST_ASSERT_FALSE(original.truncated);
+
+    char line[logcat::kLineBufferSize];
+    const size_t length = logcat::format_line(original, line);
+    const LogRecord parsed = expect_status(ParseStatus::Ok, line, length);
+    TEST_ASSERT_TRUE(parsed.truncated);
+    char again[logcat::kLineBufferSize];
+    logcat::format_line(parsed, again);
+    TEST_ASSERT_EQUAL_STRING(line, again);
+}
+
+// Each prefix sits at the very end of an array, so reading one byte past `length` leaves the
+// object. Silent here; it pays off under a sanitizer build (-fsanitize=address).
+void test_lines_at_end_of_buffer_are_read_within_bounds() {
+    static char tail[512];
+    const size_t length = std::strlen(kNominal);
+    for (size_t k = 0; k <= length; ++k) {
+        char* start = tail + sizeof(tail) - k;
+        std::memcpy(start, kNominal, k);
+        LogRecord out{};
+        logcat::parse_line(start, k, out);
+    }
+}
+
+// A torn tail that the store failed to close, with the next record appended. Cut inside the
+// fixed header the separators misalign and the line is rejected; cut later, the result is a
+// syntactically valid line that no parser can detect. That is why the store must close torn
+// tails with DEL + '\n' before appending (#23).
+void test_glued_torn_tail_depends_on_store_invariant() {
+    const char next[] = "0043:000001 0000000012 I APP: x\n";
+    for (size_t cut = 1; cut < 25; ++cut) {
+        std::memcpy(buffer, kNominal, cut);
+        std::memcpy(buffer + cut, next, sizeof(next));
+        LogRecord out{};
+        const ParseStatus status = logcat::parse_line(buffer, std::strlen(buffer), out);
+        TEST_ASSERT_TRUE_MESSAGE(status != ParseStatus::Ok, "glued header accepted");
+    }
+    std::memcpy(buffer, kNominal, 40);
+    std::memcpy(buffer + 40, next, sizeof(next));
+    const LogRecord glued = expect_status(ParseStatus::Ok, buffer);
+    TEST_ASSERT_EQUAL_STRING("readi0043:000001 0000000012 I APP: x", glued.msg);
 }
 
 void test_to_string_names_every_status() {
@@ -372,6 +464,47 @@ void test_every_torn_prefix_is_rejected() {
     }
 }
 
+// The central property: corrupt 1-3 random bytes of valid lines (any value, the final '\n'
+// included). Whatever the parser still accepts must be exactly what the formatter would have
+// written for the parsed record, i.e. Ok never means "something outside the contract".
+void test_mutated_lines_are_rejected_or_reproduced() {
+    uint32_t state = 7;
+    int accepted = 0;
+    for (int iteration = 0; iteration < 5000; ++iteration) {
+        LogRecord record{};
+        record.boot = next_random(state) % logcat::kBootModulo;
+        record.seq = next_random(state) % logcat::kSeqModulo;
+        record.uptime_ms = next_random(state) * 263u;
+        record.level = static_cast<LogLevel>(1 + next_random(state) % 5);
+        const size_t tag_length = 1 + next_random(state) % 15;
+        for (size_t i = 0; i < tag_length; ++i)
+            record.tag[i] = 'A' + next_random(state) % 26;
+        record.tag[tag_length] = '\0';
+        const size_t msg_length = next_random(state) % 128;
+        for (size_t i = 0; i < msg_length; ++i)
+            record.msg[i] = ' ' + next_random(state) % 95;
+        record.msg[msg_length] = '\0';
+
+        char line[logcat::kLineBufferSize];
+        const size_t length = logcat::format_line(record, line);
+        const uint32_t mutations = 1 + next_random(state) % 3;
+        for (uint32_t m = 0; m < mutations; ++m) {
+            line[next_random(state) % length] = static_cast<char>(next_random(state));
+        }
+
+        LogRecord parsed{};
+        if (logcat::parse_line(line, length, parsed) == ParseStatus::Ok) {
+            ++accepted;
+            char again[logcat::kLineBufferSize];
+            const size_t again_length = logcat::format_line(parsed, again);
+            TEST_ASSERT_EQUAL_size_t(length, again_length);
+            TEST_ASSERT_EQUAL_MEMORY(line, again, length);
+        }
+    }
+    // Sanity: many mutations hit message text and stay valid, so the property was exercised.
+    TEST_ASSERT_GREATER_THAN(100, accepted);
+}
+
 int main() {
     UNITY_BEGIN();
     RUN_TEST(test_parses_nominal_line);
@@ -400,9 +533,18 @@ int main() {
     RUN_TEST(test_rejects_uptime_above_32_bits);
     RUN_TEST(test_rejects_invalid_level);
     RUN_TEST(test_rejects_bad_tags);
-    RUN_TEST(test_rejects_message_over_127_chars);
+    RUN_TEST(test_rejects_message_over_127_chars_as_overlong);
+    RUN_TEST(test_minimal_valid_line_is_29_bytes);
+    RUN_TEST(test_degenerate_inputs);
+    RUN_TEST(test_del_inside_a_line_is_garbage);
+    RUN_TEST(test_garbage_in_header_and_tag);
+    RUN_TEST(test_long_chunks_without_newline_are_overlong);
+    RUN_TEST(test_127_char_message_ending_in_dots_reads_as_truncated);
+    RUN_TEST(test_lines_at_end_of_buffer_are_read_within_bounds);
+    RUN_TEST(test_glued_torn_tail_depends_on_store_invariant);
     RUN_TEST(test_to_string_names_every_status);
     RUN_TEST(test_random_formatted_lines_round_trip);
     RUN_TEST(test_every_torn_prefix_is_rejected);
+    RUN_TEST(test_mutated_lines_are_rejected_or_reproduced);
     return UNITY_END();
 }

@@ -60,9 +60,11 @@ const char* to_string(ParseStatus status) {
 
 ParseStatus parse_line(const char* line, size_t length, LogRecord& out) {
     // The checks run in this order because the order decides the category.
-    // 1. DEL first: a 169-byte torn tail closed with DEL + '\n' is 171 bytes and must still
-    //    be reported as torn, not as overlong.
-    if (length > 0 && std::memchr(line, kTornSentinel, length) != nullptr) {
+    // 1. The store's sentinel first: a torn tail (at most 169 bytes) closed with DEL + '\n' is
+    //    up to 171 bytes and must be reported as torn, not as overlong. A DEL anywhere else is
+    //    media corruption and falls through to Garbage below.
+    if (length >= 2 && length <= kMaxLineLength + 1 && line[length - 2] == kTornSentinel &&
+        line[length - 1] == '\n') {
         return ParseStatus::Torn;
     }
     if (length > kMaxLineLength) {
@@ -118,23 +120,22 @@ ParseStatus parse_line(const char* line, size_t length, LogRecord& out) {
     const size_t message_start = colon + 2;
     const size_t message_length = body_end - message_start;
     if (message_length > kMsgCapacity - 1) {
-        return ParseStatus::BadHeader;
+        return ParseStatus::Overlong;  // longer than the formatter can emit, like length > 170
     }
 
-    LogRecord parsed{};
-    parsed.boot = static_cast<uint32_t>(boot);
-    parsed.seq = static_cast<uint32_t>(seq);
-    parsed.uptime_ms = static_cast<uint32_t>(uptime);
-    parsed.level = level;
-    std::memcpy(parsed.tag, line + kTagStart, tag_length);
-    parsed.tag[tag_length] = '\0';
-    std::memcpy(parsed.msg, line + message_start, message_length);
-    parsed.msg[message_length] = '\0';
-    parsed.truncated = message_length == kMsgCapacity - 1 &&
-                       std::memcmp(parsed.msg + message_length - kTruncationMarkerLength,
-                                   kTruncationMarker, kTruncationMarkerLength) == 0;
-
-    out = parsed;
+    // Every rejection returned above, so writing `out` directly keeps "only written on Ok"
+    // without a 160-byte temporary on the stack.
+    out.boot = static_cast<uint32_t>(boot);
+    out.seq = static_cast<uint32_t>(seq);
+    out.uptime_ms = static_cast<uint32_t>(uptime);
+    out.level = level;
+    std::memcpy(out.tag, line + kTagStart, tag_length);
+    out.tag[tag_length] = '\0';
+    std::memcpy(out.msg, line + message_start, message_length);
+    out.msg[message_length] = '\0';
+    out.truncated = message_length == kMsgCapacity - 1 &&
+                    std::memcmp(out.msg + message_length - kTruncationMarkerLength,
+                                kTruncationMarker, kTruncationMarkerLength) == 0;
     return ParseStatus::Ok;
 }
 
