@@ -43,6 +43,7 @@ Um componente de logging reutilizável em todo produto (FSI-TECH e projetos pess
 
 - `boot`: contador de boots → correlaciona logs entre resets
 - `seq`: sequência dentro do boot → detecta perda de linhas
+- Só ASCII imprimível (`0x20`–`0x7E`), uma linha por registro terminada em `\n` (ADR-006)
 
 ### Ferramenta host (`esp-logcat`, Python 3.12, CLI)
 
