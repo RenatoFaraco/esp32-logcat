@@ -24,7 +24,13 @@ esp32-logcat/
 ├── README.md
 ├── LICENSE                   MIT
 ├── .gitignore
-├── .github/workflows/ci.yml  testes native + pytest
+├── .claude/
+│   ├── agents/               subagentes do projeto (ver "Subagentes")
+│   └── settings.json         permissões dos comandos de teste
+├── .github/
+│   ├── workflows/ci.yml      testes native + pytest + validação dos templates
+│   └── ISSUE_TEMPLATE/       formulários de issue
+├── scripts/                  github_bootstrap.py (labels, milestones, issues)
 ├── docs/
 │   ├── PRD.md
 │   └── decisions/            ADRs curtos (uma decisão por arquivo)
@@ -60,3 +66,15 @@ esp32-logcat/
    - `pytest` (em `host/`, com `.venv` ativo)
 4. Commit pequeno por passo que funciona, mensagem convencional (`feat:`, `fix:`, `test:`…).
 5. Nunca commitar segredos (Wi-Fi, chaves) — usar arquivo local ignorado pelo Git.
+
+## Subagentes (`.claude/agents/`)
+| Agente | Quando delegar | Pode |
+|--------|----------------|------|
+| `test-runner` | Depois de mudar `firmware/` ou `host/`; antes de commitar | Rodar native + pytest (alvo só se `src/`/build mudou) |
+| `firmware-reviewer` | Depois de escrever/alterar C++ em `firmware/`, antes do PR | Só ler |
+| `persistence-auditor` | Mudou formato da linha, parser, buffer, flash, NVS, RTC ou partições | Só ler |
+| `milestone-checker` | Antes de fechar marco ou abrir PR de release | Só ler |
+
+Revisores e auditores não editam: os achados voltam para a conversa principal, que decide
+e corrige. Mudou uma regra do projeto (CLAUDE.md, CONVENTIONS, PRD)? Revise os prompts dos
+agentes no mesmo PR.
