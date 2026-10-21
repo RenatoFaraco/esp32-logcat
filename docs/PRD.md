@@ -56,8 +56,9 @@ Contrato exato (implementado em `logcat/line_formatter.hpp`, validado pelos pars
 | `TAG` | 1–15 chars; vazia → `-`; espaço e `:` → `_` |
 | separador | sempre `": "`, mesmo com mensagem vazia |
 | mensagem | 0–127 chars; bytes fora de `0x20`–`0x7E` → `?` |
-| truncada | até 124 chars + `...` |
+| truncada | os 124 primeiros chars + `...` (só quando a mensagem tem 127 chars; mensagem de 127 chars terminada em `...` ⇔ truncada, salvo a rara mensagem original idêntica) |
 | tamanho máximo | 170 bytes com o `\n` |
+| linha rasgada | ao reabrir um arquivo cuja última linha não termina em `\n`, o store (#23) acrescenta `DEL` (`0x7F`) + `\n`; o byte proibido faz o parser classificá-la como rasgada, nunca como registro |
 
 Sem checksum por linha na v1 (ADR-007). Ordem cronológica = posição no arquivo, não
 `boot`/`seq`/`uptime`.

@@ -1,8 +1,21 @@
 #include "logcat/line_formatter.hpp"
 
+#include <cstring>
+
 namespace logcat {
 
 namespace {
+
+static_assert(sizeof(bool) == 1, "read_flag copies a single byte");
+
+// Reads a bool through its byte. A record restored from RTC memory may hold a value other than
+// 0/1, and loading such a bool is undefined behavior: the compiler may then evaluate two uses
+// of the same flag differently.
+bool read_flag(const bool& flag) {
+    unsigned char raw = 0;
+    std::memcpy(&raw, &flag, 1);
+    return raw != 0;
+}
 
 // Writes value as exactly `width` zero-padded decimal digits. Hand-rolled instead of snprintf:
 // the widths are fixed, it needs no stack-hungry printf machinery and runs in constant time.
@@ -63,13 +76,19 @@ size_t format_line(const LogRecord& record, char (&out)[kLineBufferSize]) {
     *cursor++ = ':';
     *cursor++ = ' ';
 
-    const size_t message_limit =
-        record.truncated ? kMsgCapacity - 1 - kTruncationMarkerLength : kMsgCapacity - 1;
-    const size_t message_length = bounded_length(record.msg, message_limit);
+    // The bound is structural: at most 127 message chars whatever the flag holds. The marker
+    // replaces the last 3 chars only when the message is full, which is the only way
+    // set_message() produces a truncated record; an inconsistent flag is ignored. So a line
+    // carries "..." at the end of a 127-char message if and only if it was truncated.
+    size_t message_length = bounded_length(record.msg, kMsgCapacity - 1);
+    const bool show_marker = read_flag(record.truncated) && message_length == kMsgCapacity - 1;
+    if (show_marker) {
+        message_length -= kTruncationMarkerLength;
+    }
     for (size_t i = 0; i < message_length; ++i) {
         *cursor++ = sanitize_message_char(record.msg[i]);
     }
-    if (record.truncated) {
+    if (show_marker) {
         for (size_t i = 0; i < kTruncationMarkerLength; ++i) {
             *cursor++ = kTruncationMarker[i];
         }

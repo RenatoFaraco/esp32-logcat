@@ -20,7 +20,7 @@ inline constexpr size_t kSeqDigits = 6;
 inline constexpr size_t kUptimeDigits = 10;  // uint32_t max is 4294967295
 static_assert(kSeqModulo == 1'000'000, "seq field width must match kSeqModulo");
 
-// A truncated message shows at most 124 chars followed by this marker (never over 127).
+// A truncated (full, 127-char) message shows its first 124 chars followed by this marker.
 inline constexpr char kTruncationMarker[] = "...";
 inline constexpr size_t kTruncationMarkerLength = sizeof(kTruncationMarker) - 1;
 

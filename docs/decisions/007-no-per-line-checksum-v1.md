@@ -21,6 +21,16 @@ O que já existe sem checksum por linha:
 O formato da v1 não tem checksum por linha. O risco residual é corrupção pontual dentro de
 uma linha completa, que passa despercebida.
 
+O que o formato **ainda pega** sem checksum: bit 7 ligado, bytes que viram controle,
+separadores alterados, dígito que deixa de ser dígito, letra de nível fora de `EWIDV`.
+
+O que **passa** (registrado pela auditoria da #5):
+- Letras e dígitos de tag/mensagem que continuam imprimíveis; bits 0–3 de dígitos.
+- Nível: `E` (0x45) ↔ `D` (0x44) e `W` (0x57) ↔ `V` (0x56) diferem em 1 bit — um ERROR
+  pode ser relido como DEBUG sem rastro.
+- `\n` (0x0A) ↔ `*` (0x2A) diferem no bit 5: duas linhas podem virar uma (com mensagem
+  estranha) ou uma linha pode ser partida em duas, e o pedaço inicial parecer válido.
+
 ## Consequências
 - Linha curta e legível em qualquer terminal; parser e formatter mais simples.
 - Corrupção dentro de uma linha válida não é detectada.
