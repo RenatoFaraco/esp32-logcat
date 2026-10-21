@@ -1,0 +1,46 @@
+name: "Task: host tool feature"
+description: Planned work on the esp-logcat Python tool (host/).
+title: "host: "
+labels: ["host"]
+body:
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+    validations:
+      required: true
+
+  - type: textarea
+    id: usage
+    attributes:
+      label: Usage example
+      description: Command line and expected output.
+      placeholder: |
+        $ esp-logcat replay session.log "*:W" "PRESSURE:D"
+        0042:000137 0000123456 W PRESSURE: reading out of range (4.71 V)
+      render: text
+    validations:
+      required: true
+
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope
+      description: Modules touched (parser, filters, render, transport, cli…). Keep logic in pure functions.
+    validations:
+      required: true
+
+  - type: textarea
+    id: tests
+    attributes:
+      label: Tests (pytest)
+      placeholder: |
+        - [ ] ...
+    validations:
+      required: true
+
+  - type: input
+    id: refs
+    attributes:
+      label: References
+      placeholder: PRD H2 · ARCHITECTURE §7
