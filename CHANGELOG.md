@@ -21,6 +21,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   no printf. Boot printed modulo 10000, seq modulo 1e6, non-ASCII and control bytes mapped to
   `?`, empty tag `-`, truncated messages shown as 124 chars + `...`.
 - ADR-007: no per-line checksum in v1.
+- Core `parse_line`: strict parser for the PRD §3 line, returning a categorized status
+  (`ok`, `torn`, `garbage`, `bad_header`, `bad_level`, `overlong`). Torn lines (no final `\n`
+  or closed with DEL) are never taken as records; `format_line(parse_line(L)) == L` for every
+  valid line.
 
 ## [0.1.0] - 2026-10-21
 
