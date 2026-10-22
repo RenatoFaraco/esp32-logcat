@@ -2,6 +2,7 @@
 
 #include "esp_log.h"
 #include "logcat/line_formatter.hpp"
+#include "logcat/line_parser.hpp"
 #include "logcat/log_record.hpp"
 #include "logcat/sequencer.hpp"
 
@@ -21,4 +22,8 @@ extern "C" void app_main(void) {
     ESP_LOGI(TAG, "formatted %u bytes, LogRecord=%u bytes", static_cast<unsigned>(length),
              static_cast<unsigned>(sizeof(record)));
     fwrite(line, 1, length, stdout);
+
+    logcat::LogRecord parsed{};
+    const logcat::ParseStatus status = logcat::parse_line(line, length, parsed);
+    ESP_LOGI(TAG, "parsed back: %s (tag=%s)", logcat::to_string(status), parsed.tag);
 }
