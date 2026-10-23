@@ -25,6 +25,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (`ok`, `torn`, `garbage`, `bad_header`, `bad_level`, `overlong`). Torn lines (no final `\n`
   or closed with DEL) are never taken as records; `format_line(parse_line(L)) == L` for every
   valid line.
+- Core `RingBuffer<T, N>`: header-only circular buffer keeping the last N items, with no
+  constructor (usable in RTC_NOINIT memory), `is_consistent()` for memory that survived a
+  reset, and every access bounded even when its indices are garbage.
 
 ## [0.1.0] - 2026-10-21
 
