@@ -4,6 +4,7 @@
 #include "logcat/line_formatter.hpp"
 #include "logcat/line_parser.hpp"
 #include "logcat/log_record.hpp"
+#include "logcat/ring_buffer.hpp"
 #include "logcat/sequencer.hpp"
 
 static constexpr const char* TAG = "APP";
@@ -26,4 +27,9 @@ extern "C" void app_main(void) {
     logcat::LogRecord parsed{};
     const logcat::ParseStatus status = logcat::parse_line(line, length, parsed);
     ESP_LOGI(TAG, "parsed back: %s (tag=%s)", logcat::to_string(status), parsed.tag);
+
+    static logcat::RingBuffer<logcat::LogRecord, 4> recent;  // zeroed by the loader: empty
+    recent.push(parsed);
+    ESP_LOGI(TAG, "ring buffer: %u/%u, consistent=%d", static_cast<unsigned>(recent.size()),
+             static_cast<unsigned>(recent.capacity()), recent.is_consistent());
 }
