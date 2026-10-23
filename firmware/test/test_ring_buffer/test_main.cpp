@@ -45,13 +45,23 @@ void push_range(IntBuffer& buffer, uint32_t first, uint32_t last) {
     }
 }
 
-// head_ and count_ are the last 8 bytes of the object (layout checked in
-// test_traits_and_exact_size). Writing them directly simulates garbage in RTC memory.
+// The counter is the last 4 bytes of the object (offsetof checked at compile time in push()).
+// Reading or writing it directly observes the state or simulates garbage in RTC memory.
 template <typename Buffer>
-void force_state(Buffer& buffer, uint32_t head, uint32_t count) {
-    unsigned char* bytes = reinterpret_cast<unsigned char*>(&buffer);
-    std::memcpy(bytes + sizeof(Buffer) - 8, &head, 4);
-    std::memcpy(bytes + sizeof(Buffer) - 4, &count, 4);
+uint32_t read_counter(const Buffer& buffer) {
+    uint32_t counter = 0;
+    std::memcpy(&counter, reinterpret_cast<const unsigned char*>(&buffer) + sizeof(Buffer) - 4, 4);
+    return counter;
+}
+
+template <typename Buffer>
+void force_counter(Buffer& buffer, uint32_t counter) {
+    std::memcpy(reinterpret_cast<unsigned char*>(&buffer) + sizeof(Buffer) - 4, &counter, 4);
+}
+
+// Overwrites the raw bytes of slot `slot`, like a push interrupted in the middle of the copy.
+void tear_slot(IntBuffer& buffer, size_t slot, uint32_t value) {
+    std::memcpy(reinterpret_cast<unsigned char*>(&buffer) + slot * sizeof(uint32_t), &value, 4);
 }
 
 // Every access on a corrupted buffer must stay inside the item array.
@@ -155,9 +165,59 @@ void test_traits_and_exact_size() {
     using LogTail = RingBuffer<LogRecord, 64>;
     static_assert(std::is_trivially_default_constructible_v<LogTail>, "no code runs at boot");
     static_assert(std::is_trivially_copyable_v<LogTail>, "survives as raw bytes");
-    // Same size on the PC (64-bit) and on the ESP32-C3 (32-bit): uint32_t indices.
-    TEST_ASSERT_EQUAL_size_t(64 * 160 + 8, sizeof(LogTail));
-    TEST_ASSERT_EQUAL_size_t(5 * 4 + 8, sizeof(IntBuffer));
+    // Aligned so the counter is written with one atomic 32-bit store.
+    static_assert(alignof(LogTail) >= 4, "counter store must be a single aligned word");
+    // Same size on the PC (64-bit) and on the ESP32-C3 (32-bit): uint32_t counter.
+    TEST_ASSERT_EQUAL_size_t(64 * 160 + 4, sizeof(LogTail));
+    TEST_ASSERT_EQUAL_size_t(5 * 4 + 4, sizeof(IntBuffer));
+}
+
+// The whole state is one counter in [0, 2N): it counts up to 2N - 1 and folds back to N.
+void test_counter_folds_into_two_laps() {
+    IntBuffer buffer{};
+    const uint32_t expected[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 5, 6, 7, 8, 9, 5};
+    for (uint32_t value : expected) {
+        buffer.push(value);
+        TEST_ASSERT_EQUAL_UINT32(value, read_counter(buffer));
+    }
+    buffer.clear();
+    TEST_ASSERT_EQUAL_UINT32(0, read_counter(buffer));
+}
+
+// Counter in the full range with head at slot 2: oldest-to-newest walks the slots 2,3,4,0,1.
+void test_full_state_walks_from_head() {
+    IntBuffer buffer{};
+    for (uint32_t slot = 0; slot < 5; ++slot) {
+        tear_slot(buffer, slot, 100 + slot);
+    }
+    force_counter(buffer, 5 + 2);
+    TEST_ASSERT_TRUE(buffer.is_consistent());
+    assert_contents(buffer, {102, 103, 104, 100, 101});
+}
+
+// Reset in the middle of a push while filling: the item was being copied into the slot after
+// the last one, but the counter was not published yet. Nothing visible changes.
+void test_interrupted_push_while_filling_is_invisible() {
+    for (uint32_t filled = 0; filled < 5; ++filled) {
+        IntBuffer buffer{};
+        push_range(buffer, 1, filled);
+        tear_slot(buffer, filled, 0xDEADBEEF);
+        TEST_ASSERT_TRUE(buffer.is_consistent());
+        std::vector<uint32_t> expected;
+        for (uint32_t value = 1; value <= filled; ++value)
+            expected.push_back(value);
+        assert_contents(buffer, expected);
+    }
+}
+
+// Reset in the middle of a push when full: the slot being overwritten is the oldest item,
+// still visible and half new. The buffer cannot tell; the RTC adapter's CRC must (#31).
+void test_interrupted_push_when_full_shows_torn_oldest() {
+    IntBuffer buffer{};
+    push_range(buffer, 1, 7);
+    tear_slot(buffer, 2, 0xDEADBEEF);  // slot of the next push = oldest item (3)
+    TEST_ASSERT_TRUE(buffer.is_consistent());
+    TEST_ASSERT_EQUAL_HEX32(0xDEADBEEF, *buffer.at(0));
 }
 
 void test_log_records_keep_order() {
@@ -194,22 +254,18 @@ void test_erased_or_random_state_is_detected_and_contained() {
     assert_contained(buffer);
 }
 
-void test_each_invariant_violation_is_detected() {
-    struct State {
-        uint32_t head;
-        uint32_t count;
-    };
-    const State bad[] = {
-        {5, 0},                    // head out of range
-        {2, 3},                    // not full but head != count
-        {0, 6},                    // count over capacity
-        {0xFFFFFFFF, 0xFFFFFFFF},  // erased flash pattern
-        {3, 0x80000000},           // huge count
-    };
-    for (const State& state : bad) {
+void test_counter_outside_two_laps_is_inconsistent_and_contained() {
+    const uint32_t bad[] = {10, 11, 0x80000000, 0xFFFFFFFE, 0xFFFFFFFF};
+    for (uint32_t counter : bad) {
         IntBuffer buffer{};
-        force_state(buffer, state.head, state.count);
+        force_counter(buffer, counter);
         TEST_ASSERT_FALSE(buffer.is_consistent());
+        assert_contained(buffer);
+    }
+    for (uint32_t counter = 0; counter < 10; ++counter) {
+        IntBuffer buffer{};
+        force_counter(buffer, counter);
+        TEST_ASSERT_TRUE(buffer.is_consistent());
         assert_contained(buffer);
     }
 }
@@ -227,6 +283,8 @@ void test_push_on_corrupted_state_stays_inside() {
     for (uint32_t value = 0; value < 12; ++value) {
         guarded.buffer.push(value);
         assert_contained(guarded.buffer);
+        // A garbage counter is never "healed" into a valid state by push(): only clear() does.
+        TEST_ASSERT_FALSE(guarded.buffer.is_consistent());
     }
     for (uint32_t word : guarded.canary)
         TEST_ASSERT_EQUAL_HEX32(0xA5A5A5A5, word);
@@ -275,10 +333,14 @@ int main() {
     RUN_TEST(test_clear_empties_buffer);
     RUN_TEST(test_capacity_is_constexpr);
     RUN_TEST(test_traits_and_exact_size);
+    RUN_TEST(test_counter_folds_into_two_laps);
+    RUN_TEST(test_full_state_walks_from_head);
+    RUN_TEST(test_interrupted_push_while_filling_is_invisible);
+    RUN_TEST(test_interrupted_push_when_full_shows_torn_oldest);
     RUN_TEST(test_log_records_keep_order);
     RUN_TEST(test_bytes_copied_without_constructor_survive);
     RUN_TEST(test_erased_or_random_state_is_detected_and_contained);
-    RUN_TEST(test_each_invariant_violation_is_detected);
+    RUN_TEST(test_counter_outside_two_laps_is_inconsistent_and_contained);
     RUN_TEST(test_push_on_corrupted_state_stays_inside);
     RUN_TEST(test_random_operations_match_reference_model);
     return UNITY_END();

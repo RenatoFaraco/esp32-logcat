@@ -67,7 +67,9 @@ inline constexpr size_t kMsgCapacity = 128;
 // no constructors, destructors or owning members. `LogRecord record{}` zero-initializes it.
 //
 // Bytes after each '\0' and the struct padding are unspecified (zeroing them would cost every
-// caller a memset). Never memcmp or hash the raw struct; compare fields or the formatted line.
+// caller a memset). Never memcmp two records or hash a record before storing it; compare fields
+// or the formatted line. A CRC computed and later verified over the *same stored bytes* (the
+// RTC region in M6) is fine: those bytes do not change between the two computations.
 //
 // tag and msg are stored as given. The formatter makes the line printable ASCII and single-line
 // (ADR-006), so control characters or newlines in a message cannot forge extra lines.
