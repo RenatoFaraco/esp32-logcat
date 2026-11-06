@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Board bring-up on real hardware: ESP32-C3 rev v0.4 with 4 MB embedded flash, CH340K bridge
+  on UART0 and native USB-Serial-JTAG, both receiving the console. The first line produced by
+  the core formatter on the device matches the PRD §3 format. Findings in `docs/hardware.md`.
+- `scripts/serial_capture.py`: resets the board through the native USB and captures the boot on
+  both ports (includes the Windows `usbser.sys` workaround for RTS).
+- `SECURITY.md` with supported versions, private vulnerability reporting and known limitations.
+
 - Core `LogRecord` (160 B, trivially copyable for the FreeRTOS queue) with bounded tag/message
   copies and truncation flag; `LogLevel` numbered like ESP-IDF's levels, with letter
   conversions for the line format.
