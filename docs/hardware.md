@@ -80,7 +80,19 @@ Na ponte, `RTS` controla o EN (reset) e `DTR` o GPIO9 (modo de gravação). Abri
 essas linhas ativas segura o chip em reset ou o joga no modo de download. Ferramentas devem
 abrir com `DTR` e `RTS` soltos.
 
-**5. Memória RTC usada pelo heap**
+**5. Reset pelo EN pode derrubar a USB nativa de vez (com hub)**
+
+Gravar ou resetar pela ponte CH340K reinicia o chip pelo pino EN, o que derruba a USB nativa
+de forma brusca. Com a placa no hub, o Windows às vezes falha ao reconectar: aparece
+"Dispositivo USB Desconhecido (Falha na Solicitação de Descritor de Dispositivo)"
+(`VID_0000&PID_0002`) e a COM da porta nativa some — um novo reset não resolve; só
+desconectar e reconectar o cabo (visto em 06/nov). Para evitar:
+- monitorando a porta nativa, grave **pela porta nativa** (o reset via USB-Serial-JTAG não
+  derruba o link); ou monitore pela CH340K, que não cai no reset;
+- prefira a porta nativa ligada direto no PC, sem hub.
+A porta pode voltar com outro número de COM.
+
+**6. Memória RTC usada pelo heap**
 
 O boot mostra `RTCRAM` (~7 KiB em `0x50000024`) entregue ao heap. O buffer de último suspiro
 (M6, `RTC_NOINIT`) ocupa parte dessa memória e o heap cede o espaço: orçamento de ~2 KB (#31).
