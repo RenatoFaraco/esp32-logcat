@@ -12,6 +12,8 @@ arquivos, **não** roda git e **não** tenta corrigir nada.
 1. Testes do núcleo:
    `/c/.platformio/penv/Scripts/pio.exe test -d firmware -e native`
    Para um único teste: acrescente `-f test_<nome>`.
+   Não rode `native_asan`/`native_tsan`: o MinGW do Windows não tem o runtime dos sanitizers
+   (o link falha); eles rodam só no CI. Se pedirem, explique isso em vez de tentar.
 2. Testes do host:
    `host/.venv/Scripts/python -m pytest -q host`
 3. Build do alvo — **só** se o pedido mandar, ou se o pedido disser que mudaram
