@@ -54,7 +54,7 @@ conhece adaptador.
 | `LineFormatter` | `LogRecord` → linha de texto no formato do PRD §3 |
 | `LineParser` | Linha → `LogRecord` (usado no firmware para ler a flash e espelhado no host) |
 | `RingBuffer<T, N>` | Buffer circular estático, sobrescreve o mais antigo. Sem construtor (pode viver em `RTC_NOINIT`), `is_consistent()` para validar memória que sobreviveu a reset; **não** é thread-safe |
-| `TagLevelFilter` | Nível por tag + nível padrão, tabela estática (ex.: 16 tags) |
+| `TagLevelFilter` | Nível por tag + nível padrão, tabela estática de 16 tags; `None` silencia. Um escritor (console), leitores sem lock em todo log; só load/store atômicos |
 | `RotatingStore` | Lógica de rotação: arquivo corrente, limite por arquivo e total, descarte do mais antigo — sobre a interface `FileSystem` |
 | `CommandParser` | Linha de comando do console → `Command` (enum + argumentos) |
 | `Sequencer` | Contador `seq` por boot e contador de linhas descartadas |

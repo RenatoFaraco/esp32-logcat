@@ -46,6 +46,14 @@ void test_level_from_char_rejects_unknown() {
 }
 
 // A zero-initialized or corrupted record must not print a valid-looking level letter.
+// None is a filter threshold (silence), never the level of a line: it has no letter.
+void test_none_has_no_line_letter() {
+    TEST_ASSERT_EQUAL_UINT8(0, static_cast<uint8_t>(LogLevel::None));
+    TEST_ASSERT_EQUAL_CHAR('?', logcat::level_to_char(LogLevel::None));
+    LogLevel parsed = LogLevel::Info;
+    TEST_ASSERT_FALSE(logcat::level_from_char('N', parsed));
+}
+
 void test_level_to_char_out_of_range_is_question_mark() {
     TEST_ASSERT_EQUAL_CHAR('?', logcat::level_to_char(static_cast<LogLevel>(0)));
     TEST_ASSERT_EQUAL_CHAR('?', logcat::level_to_char(static_cast<LogLevel>(99)));
@@ -137,6 +145,7 @@ int main() {
     RUN_TEST(test_level_to_char_maps_every_level);
     RUN_TEST(test_level_from_char_round_trips);
     RUN_TEST(test_level_from_char_rejects_unknown);
+    RUN_TEST(test_none_has_no_line_letter);
     RUN_TEST(test_level_to_char_out_of_range_is_question_mark);
     RUN_TEST(test_set_tag_copies_short_tag);
     RUN_TEST(test_set_tag_truncates_to_15_chars);

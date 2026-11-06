@@ -6,8 +6,12 @@
 #include "logcat/log_record.hpp"
 #include "logcat/ring_buffer.hpp"
 #include "logcat/sequencer.hpp"
+#include "logcat/tag_level_filter.hpp"
 
 static constexpr const char* TAG = "APP";
+
+// Constant-initialized (constexpr constructor): usable before app_main.
+static logcat::TagLevelFilter tag_filter(logcat::LogLevel::Info);
 
 extern "C" void app_main(void) {
     // Placeholder until M2: uses the core so the target build compiles it (ADR-005).
@@ -28,8 +32,13 @@ extern "C" void app_main(void) {
     const logcat::ParseStatus status = logcat::parse_line(line, length, parsed);
     ESP_LOGI(TAG, "parsed back: %s (tag=%s)", logcat::to_string(status), parsed.tag);
 
+    if (!tag_filter.set("NOISY", logcat::LogLevel::None)) {
+        ESP_LOGW(TAG, "tag filter table full");
+    }
     static logcat::RingBuffer<logcat::LogRecord, 4> recent;  // zeroed by the loader: empty
-    recent.push(parsed);
+    if (tag_filter.enabled(parsed.tag, parsed.level)) {
+        recent.push(parsed);
+    }
     ESP_LOGI(TAG, "ring buffer: %u/%u, consistent=%d", static_cast<unsigned>(recent.size()),
              static_cast<unsigned>(recent.capacity()), recent.is_consistent());
 }
