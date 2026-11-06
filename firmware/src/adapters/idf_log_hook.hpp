@@ -22,8 +22,13 @@ struct CaptureStats {
 // PROVISIONAL (#10): the line is written synchronously, in the caller's context, through the
 // previous vprintf. The non-blocking queue (#11) and the writer task (#12) replace this.
 //
-// Install it as early as possible in app_main; logs printed before keep the ESP-IDF format.
+// Install it once, as early as possible in app_main; logs printed before keep the ESP-IDF
+// format, and so do lines ESP-IDF prints through the ROM (ISR, scheduler stopped, cache off).
 // `sequencer` and `filter` must outlive the hook (use globals: both have constexpr constructors).
+//
+// Reentrant: called from any task, several at once (only stack, atomics and lock-free core
+// objects). Cost for the caller: ~0.5 KB of extra stack (the buffer, the LogRecord and the
+// frame) on top of ESP-IDF's own logging path, plus the capture cycles reported below.
 void install_idf_log_hook(Sequencer& sequencer, TagLevelFilter& filter);
 
 CaptureStats idf_log_hook_stats();

@@ -1,8 +1,10 @@
 #include <unity.h>
 
+#include <cstdio>
 #include <cstring>
 
 #include "logcat/idf_text.hpp"
+#include "logcat/line_formatter.hpp"
 #include "logcat/log_record.hpp"
 
 using logcat::IdfText;
@@ -93,9 +95,9 @@ void test_rejects_text_that_is_not_a_log_line() {
         "I () T: m\n",             // no digits
         "I (12a) T: m\n",          // non-digit timestamp
         "I (1)T: m\n",             // missing space after ')'
-        "I (1) T:m\n",             // missing space after ':'
         "I (1) : m\n",             // empty tag
-        "I (1) no colon\n",        // no ": "
+        "I (1) no colon\n",        // no ':' at all
+        "I (1) T\nX: m\n",         // newline inside the tag
         "I (12345678901) T: m\n",  // timestamp over 10 digits
         "\x1b[0;31m",              // only an ANSI code
     };
@@ -105,21 +107,125 @@ void test_rejects_text_that_is_not_a_log_line() {
     }
 }
 
-// The text is not NUL-terminated in general: nothing past `length` may be read.
+// The Wi-Fi blob logs "wifi:" with no space after the colon. The tag ends at the first ':'.
+void test_wifi_blob_lines_without_space_after_colon() {
+    IdfText out{};
+    TEST_ASSERT_TRUE(parse("I (588) wifi:wifi driver task: 3fca2a1c, prio:23\n", out));
+    assert_span("wifi", out.tag, out.tag_length);
+    assert_span("wifi driver task: 3fca2a1c, prio:23", out.message, out.message_length);
+    TEST_ASSERT_TRUE(parse("I (2018) wifi:new:<6,0>, old:<1,0>\n", out));
+    assert_span("wifi", out.tag, out.tag_length);
+    assert_span("new:<6,0>, old:<1,0>", out.message, out.message_length);
+}
+
+// The text is not NUL-terminated in general: nothing past `length` may be read. Each prefix
+// sits at the very end of an array (an over-read is caught by ASan in CI).
 void test_reads_only_within_length() {
     static char tail[64];
-    const char line[] = "I (3) APP: msg\n";
-    const size_t length = sizeof(line) - 1;
-    for (size_t k = 0; k <= length; ++k) {
-        char* start = tail + sizeof(tail) - k;
-        std::memcpy(start, line, k);
+    const char* lines[] = {"I (3) APP: msg\n", "\x1b[0;32mI (3) APP: msg\x1b[0m\n"};
+    for (const char* line : lines) {
+        const size_t length = std::strlen(line);
+        for (size_t k = 0; k <= length; ++k) {
+            char* start = tail + sizeof(tail) - k;
+            std::memcpy(start, line, k);
+            IdfText out{};
+            logcat::parse_idf_text(start, k, out);
+        }
         IdfText out{};
-        logcat::parse_idf_text(start, k, out);
+        char* start = tail + sizeof(tail) - length;
+        TEST_ASSERT_TRUE(logcat::parse_idf_text(start, length, out));
+        assert_span("msg", out.message, out.message_length);
     }
-    IdfText out{};
-    char* start = tail + sizeof(tail) - length;
-    TEST_ASSERT_TRUE(logcat::parse_idf_text(start, length, out));
-    assert_span("msg", out.message, out.message_length);
+}
+
+// ---------------------------------------------------------------- capture_idf_line
+// The hook's buffer handling, testable on the PC: `printed` is what vsnprintf returned.
+
+namespace {
+
+struct Guarded {
+    char buffer[logcat::kCaptureBufferSize];
+    char canary[8];
+};
+
+int fill(Guarded& guarded, const char* text) {
+    std::memset(guarded.canary, 0x5A, sizeof(guarded.canary));
+    return std::snprintf(guarded.buffer, sizeof(guarded.buffer), "%s", text);
+}
+
+void assert_canary(const Guarded& guarded) {
+    for (char c : guarded.canary)
+        TEST_ASSERT_EQUAL_HEX8(0x5A, static_cast<unsigned char>(c));
+}
+
+}  // namespace
+
+void test_capture_terminates_tag_and_message_in_place() {
+    Guarded g;
+    const int printed = fill(g, "W (12) PRESSURE: out of range\n");
+    logcat::CapturedLine out{};
+    TEST_ASSERT_TRUE(logcat::capture_idf_line(g.buffer, sizeof(g.buffer), printed, out));
+    TEST_ASSERT_EQUAL_CHAR('W', logcat::level_to_char(out.level));
+    TEST_ASSERT_EQUAL_STRING("PRESSURE", out.tag);
+    TEST_ASSERT_EQUAL_STRING("out of range", out.message);
+    TEST_ASSERT_FALSE(out.cut);
+    assert_canary(g);
+}
+
+void test_capture_rejects_vsnprintf_error() {
+    Guarded g;
+    fill(g, "I (1) T: m\n");
+    logcat::CapturedLine out{};
+    TEST_ASSERT_FALSE(logcat::capture_idf_line(g.buffer, sizeof(g.buffer), -1, out));
+}
+
+// A line written in several vprintf calls (header first, then continuations) has no '\n'
+// although nothing was cut: it is not a complete line and must be passed through.
+void test_capture_rejects_complete_text_without_newline() {
+    Guarded g;
+    const int printed = fill(g, "I (1) T: values:");
+    logcat::CapturedLine out{};
+    TEST_ASSERT_FALSE(logcat::capture_idf_line(g.buffer, sizeof(g.buffer), printed, out));
+}
+
+void test_capture_exactly_full_is_not_cut() {
+    Guarded g;
+    char text[logcat::kCaptureBufferSize];
+    const char head[] = "I (1) T: ";
+    std::memcpy(text, head, sizeof(head) - 1);
+    std::memset(text + sizeof(head) - 1, 'a', sizeof(text) - sizeof(head));
+    text[sizeof(text) - 2] = '\n';
+    text[sizeof(text) - 1] = '\0';
+    const int printed = fill(g, text);
+    TEST_ASSERT_EQUAL_INT(static_cast<int>(sizeof(text) - 1), printed);
+    logcat::CapturedLine out{};
+    TEST_ASSERT_TRUE(logcat::capture_idf_line(g.buffer, sizeof(g.buffer), printed, out));
+    TEST_ASSERT_FALSE(out.cut);
+    assert_canary(g);
+}
+
+void test_capture_marks_cut_when_vsnprintf_truncated() {
+    const int over[] = {static_cast<int>(logcat::kCaptureBufferSize), 500};
+    for (int printed_claim : over) {
+        Guarded g;
+        char text[600];
+        std::memset(text, 'b', sizeof(text) - 1);
+        std::memcpy(text, "E (1) T: ", 9);
+        text[sizeof(text) - 1] = '\0';
+        fill(g, text);  // snprintf cuts and terminates within the buffer
+        logcat::CapturedLine out{};
+        TEST_ASSERT_TRUE(logcat::capture_idf_line(g.buffer, sizeof(g.buffer), printed_claim, out));
+        TEST_ASSERT_TRUE(out.cut);
+        TEST_ASSERT_EQUAL_STRING("T", out.tag);
+        assert_canary(g);
+    }
+}
+
+void test_capture_rejects_non_log_text() {
+    Guarded g;
+    const int printed = fill(g, "plain printf output\n");
+    logcat::CapturedLine out{};
+    TEST_ASSERT_FALSE(logcat::capture_idf_line(g.buffer, sizeof(g.buffer), printed, out));
 }
 
 int main() {
@@ -132,6 +238,13 @@ int main() {
     RUN_TEST(test_truncated_text_without_newline);
     RUN_TEST(test_ansi_color_prefix_and_reset_are_skipped);
     RUN_TEST(test_rejects_text_that_is_not_a_log_line);
+    RUN_TEST(test_wifi_blob_lines_without_space_after_colon);
     RUN_TEST(test_reads_only_within_length);
+    RUN_TEST(test_capture_terminates_tag_and_message_in_place);
+    RUN_TEST(test_capture_rejects_vsnprintf_error);
+    RUN_TEST(test_capture_rejects_complete_text_without_newline);
+    RUN_TEST(test_capture_exactly_full_is_not_cut);
+    RUN_TEST(test_capture_marks_cut_when_vsnprintf_truncated);
+    RUN_TEST(test_capture_rejects_non_log_text);
     return UNITY_END();
 }

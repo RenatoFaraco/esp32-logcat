@@ -54,19 +54,22 @@ bool parse_idf_text(const char* text, size_t length, IdfText& out) {
     }
     pos += 2;
 
-    // "TAG: " — the tag ends at the first ": ".
+    // "TAG:" then an optional space — the tag ends at the first ':'.
     const size_t tag_start = pos;
-    while (pos + 1 < length && !(text[pos] == ':' && text[pos + 1] == ' ')) {
+    while (pos < length && text[pos] != ':') {
         if (text[pos] == '\n') {
             return false;
         }
         ++pos;
     }
-    if (pos + 1 >= length || pos == tag_start) {
+    if (pos >= length || pos == tag_start) {
         return false;
     }
     const size_t tag_length = pos - tag_start;
-    pos += 2;
+    ++pos;
+    if (pos < length && text[pos] == ' ') {
+        ++pos;
+    }
 
     // Message: the rest, without the final '\n' and a trailing ANSI reset.
     size_t end = length;
@@ -90,6 +93,33 @@ bool parse_idf_text(const char* text, size_t length, IdfText& out) {
     out.tag_length = tag_length;
     out.message = text + pos;
     out.message_length = end - pos;
+    return true;
+}
+
+bool capture_idf_line(char* buffer, size_t capacity, int printed, CapturedLine& out) {
+    if (printed < 0 || capacity == 0) {
+        return false;
+    }
+    const bool cut = static_cast<size_t>(printed) >= capacity;
+    const size_t length = cut ? capacity - 1 : static_cast<size_t>(printed);
+    if (!cut && (length == 0 || buffer[length - 1] != '\n')) {
+        return false;  // complete but unterminated: part of a line written in several calls
+    }
+    IdfText text{};
+    if (!parse_idf_text(buffer, length, text)) {
+        return false;
+    }
+    // Offsets, then terminate in place. The tag is followed by ':' and the message by '\n', an
+    // ANSI reset, or buffer[length] (already '\0' from vsnprintf); all indices are < capacity.
+    const size_t tag_offset = static_cast<size_t>(text.tag - buffer);
+    const size_t message_offset = static_cast<size_t>(text.message - buffer);
+    buffer[tag_offset + text.tag_length] = '\0';
+    buffer[message_offset + text.message_length] = '\0';
+
+    out.level = text.level;
+    out.tag = buffer + tag_offset;
+    out.message = buffer + message_offset;
+    out.cut = cut;
     return true;
 }
 
