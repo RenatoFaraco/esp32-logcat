@@ -14,3 +14,6 @@
 *.jpg binary
 *.gif binary
 *.sr  binary
+
+# Device captures: keep the exact bytes (the ESP-IDF console sends CRLF)
+host/tests/fixtures/*.log binary
