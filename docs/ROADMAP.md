@@ -1,16 +1,16 @@
 # Roadmap — esp32-logcat
 
-> Escopo e critérios de aceite → `PRD.md` · Componentes → `ARCHITECTURE.md`
+> Escopo e critérios de aceite → `PRD.md` · Componentes → `ARCHITECTURE.md` · Placa → `hardware.md`
 > 🖥️ = roda sem hardware (PC/`native`) · 🔌 = precisa da placa
-> Hardware previsto para ~11/nov/2026.
+> Hardware chegou em 06/nov/2026 (previsão era ~11/nov).
 
 Cada marco termina com: testes passando no CI, commit/tag e este arquivo atualizado.
 
 ---
 
-## Fase 1 — antes do hardware (até ~11/nov)
+## Fase 1 — antes do hardware (encerrada em 06/nov)
 
-### M0 · Fundação 🖥️
+### M0 · Fundação 🖥️ — `v0.1.0`
 - [x] Repositório: `README.md` (esqueleto), `LICENSE` (MIT), `.gitignore` (PlatformIO + Python)
 - [x] `firmware/platformio.ini` com `env:esp32c3` (framework espidf) e `env:native`
 - [x] `firmware/partitions.csv` (PRD §5)
@@ -28,9 +28,37 @@ Cada marco termina com: testes passando no CI, commit/tag e este arquivo atualiz
 - [x] `TagLevelFilter`
 - [x] Testes Unity para tudo, incluindo casos de borda (truncamento, tag longa, buffer cheio)
 - [ ] CI com sanitizers (ASan/UBSan/TSan) no núcleo (#42)
-- **Pronto quando:** cobertura dos módulos do núcleo e CI verde.
+- **Pronto quando:** cobertura dos módulos do núcleo e CI verde → **release `v0.2.0`**.
 
-### M3 · Ferramenta host 🖥️  *(antecipado — não depende do M2)*
+---
+
+## Fase 2 — com hardware (desde 06/nov)
+
+**Ordem de trabalho combinada** (firmware primeiro: a placa é a maior incerteza; o host entra
+quando o firmware passa a precisar dele):
+
+1. Chegada das placas (#9)
+2. Fechar o M1: sanitizers (#42) e release `v0.2.0`
+3. M2 · parte 1 — captura e saída USB (#10, #11, #12)
+4. M3 · ferramenta host (#16–#21)
+5. M2 · parte 2 — `stream`, app de demo e medição de jitter (#15, #13, #14)
+6. M4 (a e b), M5 (a e b), M6, M7 (stretch)
+
+Os blocos 🖥️ (M3, M4a, M5a) podem ser adiantados sempre que o trabalho com a placa travar.
+
+### Chegada das placas 🔌 (#9)
+- [x] Identificar a ponte UART e o chip da ponte (CH340K na UART0)
+- [x] Identificar a porta USB-Serial-JTAG nativa (`VID_303A&PID_1001`)
+- [x] Confirmar tamanho da flash (`esptool.py flash_id`): 4 MB embutida, XMC
+- [x] Gravar o "hello" e ver saída na ponte UART
+- [x] Ver saída na porta nativa (mesma saída nas duas portas)
+
+### M2 · Captura e escrita 🔌 — parte 1
+- [ ] `IdfLogHook`, `FreeRtosLogQueue`, `WriterTask`, `UsbJtagSink`, `EspClock`
+- [ ] Proteção contra recursão e contador de descartes
+- [ ] Interação com o filtro por tag do próprio IDF (`esp_log_level_set`) — ver #10
+
+### M3 · Ferramenta host 🖥️
 - [ ] `parser.py` (4 tipos de linha, ARCHITECTURE §6)
 - [ ] `filters.py` com sintaxe `TAG:L`
 - [ ] `render.py` com cores
@@ -38,35 +66,24 @@ Cada marco termina com: testes passando no CI, commit/tag e este arquivo atualiz
 - [ ] Testes de compatibilidade: as mesmas linhas de exemplo validadas pelo parser C++ e pelo Python
 - **Pronto quando:** `replay` de um log de exemplo filtra e colore corretamente.
 
+### M2 · Captura e escrita 🔌 — parte 2
+- [ ] `esp-logcat stream` funcionando com a placa
+- [ ] App de demo com tarefa crítica de 1 kHz alternando um GPIO
+- [ ] **Medição:** jitter com analisador lógico (PulseView) + `esp_timer` interno; definir o X do critério 3
+
 ### M4a · Persistência — lógica 🖥️
 - [ ] Interface `FileSystem` + implementação fake em memória para testes
 - [ ] `RotatingStore`: rotação, limite por arquivo, limite total, descarte
 - **Pronto quando:** testes de rotação cobrindo encher, girar e descartar.
 
+### M4b · Persistência — integração 🔌
+- [ ] `LittleFsFileSystem`, `NvsBootInfo`
+- [ ] Linha de boot com contador, motivo do reset e versão (reset pelo pino EN aparece como `POWERON` no C3 — ver `hardware.md`)
+- [ ] Política de flush (periódico + ERROR + comando)
+
 ### M5a · Console — lógica 🖥️
 - [ ] `CommandParser` para todos os comandos do PRD (F9)
 - [ ] Testes de comandos válidos, inválidos e com argumentos errados
-
----
-
-## Fase 2 — com hardware
-
-### Chegada das placas 🔌
-- [ ] Identificar qual USB-C é o USB-Serial-JTAG nativo e qual é a ponte UART (e o chip da ponte)
-- [ ] Confirmar tamanho da flash (`esptool.py flash_id`)
-- [ ] Gravar o "hello" e ver saída nas duas portas
-
-### M2 · Captura e escrita 🔌
-- [ ] `IdfLogHook`, `FreeRtosLogQueue`, `WriterTask`, `UsbJtagSink`, `EspClock`
-- [ ] Proteção contra recursão e contador de descartes
-- [ ] App de demo com tarefa crítica de 1 kHz alternando um GPIO
-- [ ] **Medição:** jitter com analisador lógico (PulseView) + `esp_timer` interno; definir o X do critério 3
-- [ ] `esp-logcat stream` funcionando com a placa
-
-### M4b · Persistência — integração 🔌
-- [ ] `LittleFsFileSystem`, `NvsBootInfo`
-- [ ] Linha de boot com contador, motivo do reset e versão
-- [ ] Política de flush (periódico + ERROR + comando)
 
 ### M5b · Console — integração 🔌
 - [ ] Console na porta nativa; comandos executando de verdade

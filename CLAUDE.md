@@ -12,10 +12,12 @@ commits em inglês.
 ## Ambiente
 - Windows nativo (não WSL) para firmware — USB funciona direto.
 - PlatformIO no VS Code. Python 3.12 com `.venv` na pasta `host/`.
-- Placa alvo: ESP32-C3 genérica com duas USB-C (RISC-V): uma no USB-Serial-JTAG
-  nativo, outra numa ponte USB-UART na UART0. Hardware completo no PRD §6.
-- Hardware chega ~11/nov/2026. Até lá, tudo que der roda em `env:native` e no host
-  (inclusive `replay` de logs de exemplo em `host/tests/fixtures/`).
+- Placa alvo: ESP32-C3 rev v0.4 com 4 MB de flash embutida e duas USB-C: uma no
+  USB-Serial-JTAG nativo, outra numa ponte CH340K na UART0. Hardware chegou em 06/nov/2026;
+  fatos, portas e armadilhas em `docs/hardware.md` (leia antes de mexer em gravação/serial).
+- Portas neste PC: COM5 = CH340K (UART0), COM6 = USB-Serial-JTAG nativo (via hub). O número da
+  COM muda de máquina para máquina: nunca fixar no `platformio.ini`.
+- Núcleo e host continuam testados no PC (`env:native`, pytest); a placa valida adaptadores.
 
 ## Estrutura
 ```
@@ -30,9 +32,10 @@ esp32-logcat/
 ├── .github/
 │   ├── workflows/ci.yml      testes native + pytest + validação dos templates
 │   └── ISSUE_TEMPLATE/       formulários de issue
-├── scripts/                  github_bootstrap.py (labels, milestones, issues)
+├── scripts/                  github_bootstrap.py (GitHub), serial_capture.py (boot nas 2 portas)
 ├── docs/
 │   ├── PRD.md
+│   ├── hardware.md           placa real: chip, flash, portas, armadilhas
 │   └── decisions/            ADRs curtos (uma decisão por arquivo)
 ├── firmware/                 projeto PlatformIO
 │   ├── platformio.ini        envs: esp32c3 (alvo) e native (testes no PC)

@@ -1,6 +1,6 @@
 # Project-chosen ESP-IDF options. The full sdkconfig.<env> is generated and not versioned.
 
-# Flash size of the target board (confirm on arrival)
+# Flash size of the target board (4 MB embedded, confirmed in docs/hardware.md)
 CONFIG_ESPTOOLPY_FLASHSIZE_4MB=y
 
 # Custom partition table (logs + coredump). PlatformIO flashes it from board_build.partitions;

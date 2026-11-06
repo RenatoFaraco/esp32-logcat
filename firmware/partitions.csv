@@ -1,4 +1,4 @@
-# ESP32-C3, 4 MB flash (confirm with `esptool.py flash_id` when the board arrives)
+# ESP32-C3, 4 MB embedded flash (confirmed with `esptool.py flash_id`, docs/hardware.md)
 # Name,   Type, SubType,  Offset,  Size
 nvs,      data, nvs,      0x9000,  0x6000
 phy_init, data, phy,      0xf000,  0x1000

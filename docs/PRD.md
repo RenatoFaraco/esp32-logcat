@@ -105,13 +105,13 @@ coredump, data, coredump, ,        0x10000
 
 | Item | Qtd | Uso no projeto |
 |------|-----|----------------|
-| Placa ESP32-C3 genérica, **duas USB-C** | 2 | Alvo. Uma porta = USB-Serial-JTAG nativo (gravação, debug, console); outra = ponte USB-UART na UART0 (canal de log secundário). Identificar portas e flash na chegada |
+| Placa ESP32-C3 genérica, **duas USB-C** | 2 | Alvo. Uma porta = USB-Serial-JTAG nativo (gravação, debug, console); outra = ponte USB-UART na UART0 (canal de log secundário). Identificado no bring-up: CH340K na UART0, 4 MB de flash embutida (`hardware.md`) |
 | Módulo USB-UART CH343P | 1 | Canal extra / ler UART de outros dispositivos (alta velocidade) |
 | Módulo USB-UART CP2102 | 1 | Reserva / segundo canal externo |
 | Analisador lógico 24 MHz, 8 canais (PulseView/sigrok) | 1 | Critério de aceite 3 (jitter da tarefa crítica via GPIO) |
 
 Regras: conversores externos sempre em **3,3 V** nos sinais; ligar só TX/RX/GND cruzados.
-Chegada prevista: ~11/nov/2026. Até lá: M0, M1, M3 e o núcleo do M4/M5 em `env:native`.
+Chegou em 06/nov/2026 (previsão era ~11/nov). Detalhes da placa e das portas em `docs/hardware.md`.
 
 ## 7. Critérios de aceite v1
 
