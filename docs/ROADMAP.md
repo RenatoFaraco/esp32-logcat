@@ -37,12 +37,14 @@ Cada marco termina com: testes passando no CI, commit/tag e este arquivo atualiz
 **Ordem de trabalho combinada** (firmware primeiro: a placa é a maior incerteza; o host entra
 quando o firmware passa a precisar dele):
 
-1. Chegada das placas (#9)
-2. Fechar o M1: sanitizers (#42) e release `v0.2.0`
-3. M2 · parte 1 — captura e saída USB (#10, #11, #12)
-4. M3 · ferramenta host (#16–#21)
-5. M2 · parte 2 — `stream`, app de demo e medição de jitter (#15, #13, #14)
-6. M4 (a e b), M5 (a e b), M6, M7 (stretch)
+1. ~~Chegada das placas (#9)~~ — feito em 06/nov
+2. ~~Fechar o M1: sanitizers (#42) e release `v0.2.0`~~ — feito em 06/nov
+3. **Esqueleto do host** ("walking skeleton"): parser (#16), cores (#18) e `stream` mínimo
+   (#15) — para acompanhar os logs da placa na própria ferramenta durante o M2
+4. M2 · parte 1 — captura e saída USB (#10, #11, #12), com uma tarefa de heartbeat
+5. Resto do M3 — filtros (#17), replay (#19), fixtures C++/Python (#20), sessão (#21)
+6. M2 · parte 2 — `stream` completo com filtros, app de demo e medição de jitter (#15, #13, #14)
+7. M4 (a e b), M5 (a e b), M6, M7 (stretch)
 
 Os blocos 🖥️ (M3, M4a, M5a) podem ser adiantados sempre que o trabalho com a placa travar.
 
@@ -59,7 +61,7 @@ Os blocos 🖥️ (M3, M4a, M5a) podem ser adiantados sempre que o trabalho com 
 - [ ] Interação com o filtro por tag do próprio IDF (`esp_log_level_set`) — ver #10
 
 ### M3 · Ferramenta host 🖥️
-- [ ] `parser.py` (4 tipos de linha, ARCHITECTURE §6)
+- [x] `parser.py`: formato do PRD (espelho do parser C++), formato nativo do ESP-IDF, resposta de comando, marcadores de dump e raw (#16)
 - [ ] `filters.py` com sintaxe `TAG:L`
 - [ ] `render.py` com cores
 - [ ] `esp-logcat replay <arquivo>` + fixtures em `tests/fixtures/`

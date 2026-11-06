@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Host `parser.py`: classifies each line as an esp32-logcat `LogLine` (validated exactly like the
+  firmware parser, same rejection reasons), `InvalidLine`, ESP-IDF native `IdfLine`,
+  `CommandReply`, dump markers or `RawLine`. Pure functions; never raises on any input. Tested
+  against a real boot capture from the board (CRLF line endings included).
+
 ## [0.2.0] - 2026-11-06
 
 Milestone **M1 · Core**: the platform-independent logging core, tested on the PC and under
