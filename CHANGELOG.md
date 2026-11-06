@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Firmware `IdfLogHook`: every `ESP_LOGx` (application and ESP-IDF) goes through the core —
+  recognized by the new core `parse_idf_text`, filtered per tag, numbered and written in the
+  PRD §3 format. Output is still synchronous in the caller's context (queue and writer task
+  come in #11/#12). Demo app with a 1 s heartbeat showing capture cost and stack headroom.
 - Host `parser.py`: classifies each line as an esp32-logcat `LogLine` (validated exactly like the
   firmware parser, same rejection reasons), `InvalidLine`, ESP-IDF native `IdfLine`,
   `CommandReply`, dump markers or `RawLine`. Pure functions; never raises on any input. Tested
