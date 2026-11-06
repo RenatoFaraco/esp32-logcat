@@ -44,7 +44,7 @@ void test_default_threshold_is_info() {
 void test_set_default_changes_tags_without_override() {
     TagLevelFilter filter;
     TEST_ASSERT_TRUE(filter.set("PRESSURE", LogLevel::Error));
-    filter.set_default(LogLevel::Verbose);
+    TEST_ASSERT_TRUE(filter.set_default(LogLevel::Verbose));
     TEST_ASSERT_TRUE(filter.enabled("OTHER", LogLevel::Verbose));
     TEST_ASSERT_FALSE(filter.enabled("PRESSURE", LogLevel::Warn));
 }
@@ -84,7 +84,7 @@ void test_updating_existing_tag_does_not_add_entry() {
 void test_enabled_is_threshold_inclusive_for_every_pair() {
     TagLevelFilter filter;
     for (LogLevel threshold : kLineLevels) {
-        filter.set("T", threshold);
+        TEST_ASSERT_TRUE(filter.set("T", threshold));
         for (LogLevel level : kLineLevels) {
             const bool expected = static_cast<uint8_t>(level) <= static_cast<uint8_t>(threshold);
             TEST_ASSERT_EQUAL(expected, filter.enabled("T", level));
@@ -164,68 +164,89 @@ void test_invalid_line_levels_are_never_enabled() {
     TagLevelFilter filter(LogLevel::Verbose);
     TEST_ASSERT_FALSE(filter.enabled("ANY", LogLevel::None));
     TEST_ASSERT_FALSE(filter.enabled("ANY", static_cast<LogLevel>(99)));
-    filter.set("T", LogLevel::None);
+    TEST_ASSERT_TRUE(filter.set("T", LogLevel::None));
     TEST_ASSERT_FALSE(filter.enabled("T", LogLevel::None));
 }
 
 // ---------------------------------------------------------------- concurrency
 
-// One writer (the console) adds every tag and keeps flipping their levels while readers (every
-// task that logs) query them. A reader must only ever see the default or a level the writer
-// stored for *that* tag: never a half-written tag matching the wrong entry.
+// Publication under contention. Each epoch uses a fresh filter and releases 3 reader threads
+// *before* the writer publishes the 16 tags, so reads overlap the publications themselves (not
+// only level updates). A reader must only ever see the default or the level the writer stored
+// for *that* tag: never a half-written entry or a level read before it was stored.
+// Note: x86 does not reorder stores, so this cannot prove the release/acquire ordering on its
+// own; the ThreadSanitizer job (#42) checks the happens-before relation directly.
 void test_concurrent_readers_see_only_published_values() {
-    TagLevelFilter filter;  // default Info
-    std::atomic<bool> running{true};
-    std::atomic<int> violations{0};
-    std::atomic<long> reads{0};
-
     auto tag_name = [](size_t i, char (&out)[8]) {
         std::snprintf(out, sizeof(out), "TAG%02u", static_cast<unsigned>(i));
     };
-    // Even tags only ever get Error/Debug, odd tags Warn/Verbose.
+    // Default Info until published; even tags get Error, odd tags Warn.
     auto allowed = [](size_t i, LogLevel level) {
-        if (level == LogLevel::Info)
-            return true;  // default before the tag is published
-        return (i % 2 == 0) ? (level == LogLevel::Error || level == LogLevel::Debug)
-                            : (level == LogLevel::Warn || level == LogLevel::Verbose);
+        return level == LogLevel::Info ||
+               level == ((i % 2 == 0) ? LogLevel::Error : LogLevel::Warn);
     };
 
-    std::thread writer([&] {
+    int violations = 0;
+    long reads = 0;
+    for (int epoch = 0; epoch < 200; ++epoch) {
+        TagLevelFilter filter;  // default Info
+        std::atomic<int> ready{0};
+        std::atomic<bool> go{false};
+        std::atomic<bool> done{false};
+        std::atomic<int> epoch_violations{0};
+        std::atomic<long> epoch_reads{0};
+
+        std::vector<std::thread> readers;
+        for (int r = 0; r < 3; ++r) {
+            readers.emplace_back([&] {
+                char tag[8];
+                ready.fetch_add(1);
+                while (!go.load()) {
+                }
+                do {  // at least one full pass even if the writer already finished
+                    for (size_t i = 0; i < logcat::kMaxTagFilters; ++i) {
+                        tag_name(i, tag);
+                        if (!allowed(i, filter.threshold(tag))) {
+                            epoch_violations.fetch_add(1);
+                        }
+                        epoch_reads.fetch_add(1);
+                    }
+                } while (!done.load());
+            });
+        }
+
+        while (ready.load() < 3) {
+        }
+        go.store(true);
         char tag[8];
-        for (int round = 0; round < 2000; ++round) {
-            for (size_t i = 0; i < logcat::kMaxTagFilters; ++i) {
-                tag_name(i, tag);
-                const bool flip = (round % 2) != 0;
-                const LogLevel level = (i % 2 == 0) ? (flip ? LogLevel::Debug : LogLevel::Error)
-                                                    : (flip ? LogLevel::Verbose : LogLevel::Warn);
-                filter.set(tag, level);
+        for (size_t i = 0; i < logcat::kMaxTagFilters; ++i) {
+            tag_name(i, tag);
+            if (!filter.set(tag, (i % 2 == 0) ? LogLevel::Error : LogLevel::Warn)) {
+                epoch_violations.fetch_add(1);
             }
         }
-        running.store(false);
-    });
-
-    std::vector<std::thread> readers;
-    for (int r = 0; r < 3; ++r) {
-        readers.emplace_back([&] {
-            char tag[8];
-            while (running.load()) {
-                for (size_t i = 0; i < logcat::kMaxTagFilters; ++i) {
-                    tag_name(i, tag);
-                    if (!allowed(i, filter.threshold(tag))) {
-                        violations.fetch_add(1);
-                    }
-                    reads.fetch_add(1);
-                }
-            }
-        });
+        done.store(true);
+        for (std::thread& reader : readers) {
+            reader.join();
+        }
+        violations += epoch_violations.load();
+        reads += epoch_reads.load();
+        TEST_ASSERT_EQUAL_size_t(logcat::kMaxTagFilters, filter.size());
     }
-    writer.join();
-    for (std::thread& reader : readers)
-        reader.join();
 
-    TEST_ASSERT_EQUAL_INT(0, violations.load());
-    TEST_ASSERT_TRUE(reads.load() > 0);
-    TEST_ASSERT_EQUAL_size_t(logcat::kMaxTagFilters, filter.size());
+    TEST_ASSERT_EQUAL_INT(0, violations);
+    TEST_ASSERT_TRUE(reads >= 200L * 3 * 16);
+}
+
+// Out-of-range thresholds are rejected instead of silently behaving like Verbose.
+void test_out_of_range_thresholds_are_rejected() {
+    TagLevelFilter filter;
+    TEST_ASSERT_FALSE(filter.set("T", static_cast<LogLevel>(6)));
+    TEST_ASSERT_FALSE(filter.set("T", static_cast<LogLevel>(99)));
+    TEST_ASSERT_EQUAL_size_t(0, filter.size());
+    TEST_ASSERT_FALSE(filter.set_default(static_cast<LogLevel>(99)));
+    TEST_ASSERT_FALSE(filter.set("*", static_cast<LogLevel>(99)));
+    TEST_ASSERT_EQUAL_CHAR('I', logcat::level_to_char(filter.threshold("ANY")));
 }
 
 int main() {
@@ -244,6 +265,7 @@ int main() {
     RUN_TEST(test_none_silences_a_tag);
     RUN_TEST(test_none_default_silences_everything_but_overrides);
     RUN_TEST(test_invalid_line_levels_are_never_enabled);
+    RUN_TEST(test_out_of_range_thresholds_are_rejected);
     RUN_TEST(test_concurrent_readers_see_only_published_values);
     return UNITY_END();
 }

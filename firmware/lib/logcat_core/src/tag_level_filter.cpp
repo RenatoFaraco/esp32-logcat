@@ -22,10 +22,21 @@ bool is_line_level(LogLevel level) {
     return level >= LogLevel::Error && level <= LogLevel::Verbose;
 }
 
+bool is_threshold(LogLevel level) {
+    return level <= LogLevel::Verbose;  // None..Verbose; the enum is unsigned
+}
+
+// Forces constant initialization at compile time on every target that builds the core: if the
+// constructor ever stops being constexpr-evaluable, this line fails to compile instead of a
+// global instance silently falling back to dynamic initialization.
+[[maybe_unused]] constexpr TagLevelFilter kConstantInitProbe{LogLevel::Warn};
+
 }  // namespace
 
 size_t TagLevelFilter::find(const char* tag) const {
-    const size_t count = count_.load(std::memory_order_acquire);
+    // Clamped: a count corrupted by a stray write elsewhere must not walk past the table.
+    const uint32_t published = count_.load(std::memory_order_acquire);
+    const size_t count = published < kMaxTagFilters ? published : kMaxTagFilters;
     for (size_t i = 0; i < count; ++i) {
         if (same_tag(entries_[i].tag, tag)) {
             return i;
@@ -35,12 +46,11 @@ size_t TagLevelFilter::find(const char* tag) const {
 }
 
 bool TagLevelFilter::set(const char* tag, LogLevel threshold) {
-    if (tag == nullptr || tag[0] == '\0') {
+    if (tag == nullptr || tag[0] == '\0' || !is_threshold(threshold)) {
         return false;
     }
     if (tag[0] == '*' && tag[1] == '\0') {
-        set_default(threshold);
-        return true;
+        return set_default(threshold);
     }
     const uint8_t value = static_cast<uint8_t>(threshold);
 
@@ -68,8 +78,12 @@ bool TagLevelFilter::set(const char* tag, LogLevel threshold) {
     return true;
 }
 
-void TagLevelFilter::set_default(LogLevel threshold) {
+bool TagLevelFilter::set_default(LogLevel threshold) {
+    if (!is_threshold(threshold)) {
+        return false;
+    }
     default_.store(static_cast<uint8_t>(threshold), std::memory_order_relaxed);
+    return true;
 }
 
 LogLevel TagLevelFilter::threshold(const char* tag) const {

@@ -13,9 +13,12 @@ inline constexpr size_t kMaxTagFilters = 16;
 // Per-tag log level threshold with a default for tags without an override (PRD F2), e.g.
 // `log level PRESSURE D`, `log level wifi N` (None = silence), `log level * W` (default).
 //
-// Concurrency: ONE writer, many lock-free readers.
+// Concurrency: lock-free readers, serialized writers.
 // - enabled()/threshold() run on every log call, in any task, and never block (ADR-004).
-// - set()/set_default() must be called from a single task (the console).
+// - Adding a NEW tag must be serialized: one writer task at a time (the console, or a mutex
+//   among writers in the adapter). Two concurrent set() calls adding tags would race on the
+//   same free entry, and could even rewrite an already published one.
+// - Updating an EXISTING tag and set_default() are single atomic stores, safe from any task.
 // A new tag is fully written before the entry count is published with a release store; readers
 // load the count with acquire and only look at published entries, so they never see a
 // half-written tag. Changing the level of an existing tag is an atomic 1-byte store.
@@ -32,11 +35,13 @@ public:
     constexpr explicit TagLevelFilter(LogLevel default_threshold = LogLevel::Info)
         : entries_{}, count_(0), default_(static_cast<uint8_t>(default_threshold)) {}
 
-    // Sets the threshold of `tag`; "*" sets the default. Returns false for a null or empty tag
-    // and when the table is full and `tag` is new (existing tags can always be updated).
-    bool set(const char* tag, LogLevel threshold);
+    // Sets the threshold of `tag`; "*" sets the default. Returns false for a null or empty tag,
+    // a threshold outside None..Verbose, or a full table with a new `tag` (existing tags can
+    // always be updated). [[nodiscard]]: a full table must be reported, not ignored.
+    [[nodiscard]] bool set(const char* tag, LogLevel threshold);
 
-    void set_default(LogLevel threshold);
+    // Returns false (and keeps the old default) for a threshold outside None..Verbose.
+    [[nodiscard]] bool set_default(LogLevel threshold);
 
     // Threshold that applies to `tag`: its override, or the default.
     LogLevel threshold(const char* tag) const;

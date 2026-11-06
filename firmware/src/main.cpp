@@ -32,7 +32,9 @@ extern "C" void app_main(void) {
     const logcat::ParseStatus status = logcat::parse_line(line, length, parsed);
     ESP_LOGI(TAG, "parsed back: %s (tag=%s)", logcat::to_string(status), parsed.tag);
 
-    tag_filter.set("NOISY", logcat::LogLevel::None);
+    if (!tag_filter.set("NOISY", logcat::LogLevel::None)) {
+        ESP_LOGW(TAG, "tag filter table full");
+    }
     static logcat::RingBuffer<logcat::LogRecord, 4> recent;  // zeroed by the loader: empty
     if (tag_filter.enabled(parsed.tag, parsed.level)) {
         recent.push(parsed);

@@ -22,11 +22,12 @@ Cada marco termina com: testes passando no CI, commit/tag e este arquivo atualiz
 - **Pronto quando:** CI verde num push.
 
 ### M1 · Núcleo 🖥️
-- [ ] `LogRecord`, `Sequencer`
-- [ ] `LineFormatter` e `LineParser` (ida e volta: format → parse = original)
-- [ ] `RingBuffer<T, N>`
-- [ ] `TagLevelFilter`
-- [ ] Testes Unity para tudo, incluindo casos de borda (truncamento, tag longa, buffer cheio)
+- [x] `LogRecord`, `Sequencer`
+- [x] `LineFormatter` e `LineParser` (ida e volta: format → parse = original)
+- [x] `RingBuffer<T, N>`
+- [x] `TagLevelFilter`
+- [x] Testes Unity para tudo, incluindo casos de borda (truncamento, tag longa, buffer cheio)
+- [ ] CI com sanitizers (ASan/UBSan/TSan) no núcleo (#42)
 - **Pronto quando:** cobertura dos módulos do núcleo e CI verde.
 
 ### M3 · Ferramenta host 🖥️  *(antecipado — não depende do M2)*
