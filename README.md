@@ -57,6 +57,15 @@ pio test -e native     # core unit tests on the PC
 pio run -e esp32c3     # build for the target
 ```
 
+The CI also runs the core tests under sanitizers: `native_asan` (AddressSanitizer +
+UndefinedBehaviorSanitizer) and `native_tsan` (ThreadSanitizer). They need a Linux toolchain —
+MinGW on Windows has no ASan/TSan runtime — so run them on Linux or WSL:
+
+```sh
+pio test -e native_asan -v   # -v shows the sanitizer report if a test fails
+pio test -e native_tsan -v
+```
+
 Host tool:
 
 ```sh

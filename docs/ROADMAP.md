@@ -27,7 +27,7 @@ Cada marco termina com: testes passando no CI, commit/tag e este arquivo atualiz
 - [x] `RingBuffer<T, N>`
 - [x] `TagLevelFilter`
 - [x] Testes Unity para tudo, incluindo casos de borda (truncamento, tag longa, buffer cheio)
-- [ ] CI com sanitizers (ASan/UBSan/TSan) no núcleo (#42)
+- [x] CI com sanitizers (ASan/UBSan/TSan) no núcleo (#42)
 - **Pronto quando:** cobertura dos módulos do núcleo e CI verde → **release `v0.2.0`**.
 
 ---

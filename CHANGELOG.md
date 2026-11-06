@@ -15,6 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `scripts/serial_capture.py`: resets the board through the native USB and captures the boot on
   both ports (includes the Windows `usbser.sys` workaround for RTS).
 - `SECURITY.md` with supported versions, private vulnerability reporting and known limitations.
+- CI runs the core tests under AddressSanitizer + UndefinedBehaviorSanitizer (`native_asan`)
+  and ThreadSanitizer (`native_tsan`); each was proven to catch a planted bug of its kind.
 
 - Core `LogRecord` (160 B, trivially copyable for the FreeRTOS queue) with bounded tag/message
   copies and truncation flag; `LogLevel` numbered like ESP-IDF's levels, with letter

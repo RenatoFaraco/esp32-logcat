@@ -91,7 +91,12 @@ Nunca logar segredos (senha de Wi-Fi, chaves, tokens).
 | Onde | Ferramenta | Comando |
 |------|-----------|---------|
 | Núcleo C++ | Unity (`pio test`) | `cd firmware && pio test -e native` |
+| Núcleo C++ sob ASan+UBSan | Unity + sanitizers | `pio test -e native_asan -v` (só Linux/CI) |
+| Núcleo C++ sob TSan | Unity + sanitizer | `pio test -e native_tsan -v` (só Linux/CI) |
 | Host | pytest | `cd host && pytest` |
+
+- Sanitizers rodam no CI (Linux); o MinGW do Windows não tem o runtime. Teste que existe para
+  pegar leitura fora do buffer, `bool` inválido ou corrida de dados só prova algo sob eles.
 
 - Nome do teste descreve o comportamento: `test_ring_buffer_overwrites_oldest_when_full`.
 - Bug corrigido → teste que reproduz o bug entra no mesmo commit.

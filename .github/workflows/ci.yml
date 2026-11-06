@@ -35,6 +35,42 @@ jobs:
       - name: Build target (esp32c3)
         run: pio run -e esp32c3
 
+  firmware-sanitizers:
+    # Out-of-bounds accesses, undefined behavior and data races only show up under sanitizers.
+    # Linux only: MinGW on Windows has no ASan/TSan runtime. TSan cannot share a binary with ASan.
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        env: [native_asan, native_tsan]
+    defaults:
+      run:
+        working-directory: firmware
+    env:
+      # Any report must end the program with an error so PlatformIO marks the test as failed.
+      ASAN_OPTIONS: detect_leaks=1:abort_on_error=1
+      UBSAN_OPTIONS: print_stacktrace=1:halt_on_error=1
+      TSAN_OPTIONS: halt_on_error=1:second_deadlock_stack=1
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Cache PlatformIO
+        uses: actions/cache@v4
+        with:
+          path: ~/.platformio
+          key: pio-${{ runner.os }}-${{ hashFiles('firmware/platformio.ini') }}
+
+      - name: Install tools
+        run: pip install platformio==6.1.19
+
+      - name: Core unit tests (${{ matrix.env }})
+        # -v: show the test program's own output, where the sanitizer reports are printed
+        run: pio test -e ${{ matrix.env }} -v
+
   github-config:
     # Invalid issue forms are silently hidden by GitHub, so validate them here.
     runs-on: ubuntu-latest
