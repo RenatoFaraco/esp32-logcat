@@ -7,39 +7,57 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-11-06
+
+Milestone **M1 · Core**: the platform-independent logging core, tested on the PC and under
+sanitizers, plus the first run on real hardware. Not yet a logging system on the device: the
+esp_log hook, queue and writer task come in M2.
+
 ### Added
 
-- Board bring-up on real hardware: ESP32-C3 rev v0.4 with 4 MB embedded flash, CH340K bridge
-  on UART0 and native USB-Serial-JTAG, both receiving the console. The first line produced by
-  the core formatter on the device matches the PRD §3 format. Findings in `docs/hardware.md`.
-- `scripts/serial_capture.py`: resets the board through the native USB and captures the boot on
-  both ports (includes the Windows `usbser.sys` workaround for RTS).
-- `SECURITY.md` with supported versions, private vulnerability reporting and known limitations.
-- CI runs the core tests under AddressSanitizer + UndefinedBehaviorSanitizer (`native_asan`)
-  and ThreadSanitizer (`native_tsan`); each was proven to catch a planted bug of its kind.
+**Core library** (`firmware/lib/logcat_core`, C++17, no heap, no platform includes)
 
-- Core `LogRecord` (160 B, trivially copyable for the FreeRTOS queue) with bounded tag/message
-  copies and truncation flag; `LogLevel` numbered like ESP-IDF's levels, with letter
-  conversions for the line format.
-- Core `Sequencer`: per-boot `seq` wrapping at 1,000,000 (6-digit field) and a dropped-line
+- `LogRecord` (160 B, trivially copyable for the FreeRTOS queue) with bounded tag/message
+  copies and a truncation flag; `LogLevel` numbered like ESP-IDF's levels, with letter
+  conversions for the line format and `LogLevel::None` to silence a tag.
+- `Sequencer`: per-boot `seq` wrapping exactly at 1,000,000 (6-digit field) and a dropped-line
   counter, safe for concurrent loggers.
-- The target build now compiles the core library.
-- ADR-006: log lines are printable ASCII only (`0x20`–`0x7E`), single-line, enforced by the
-  formatter and checked by the parsers.
-- Core `format_line`: `LogRecord` to the PRD §3 line (max 170 bytes) in a fixed-size buffer,
-  no printf. Boot printed modulo 10000, seq modulo 1e6, non-ASCII and control bytes mapped to
-  `?`, empty tag `-`, truncated messages shown as 124 chars + `...`.
-- ADR-007: no per-line checksum in v1.
-- Core `parse_line`: strict parser for the PRD §3 line, returning a categorized status
-  (`ok`, `torn`, `garbage`, `bad_header`, `bad_level`, `overlong`). Torn lines (no final `\n`
-  or closed with DEL) are never taken as records; `format_line(parse_line(L)) == L` for every
-  valid line.
-- Core `RingBuffer<T, N>`: header-only circular buffer keeping the last N items, with no
-  constructor (usable in RTC_NOINIT memory), `is_consistent()` for memory that survived a
-  reset, and every access bounded even when its indices are garbage.
-- Core `TagLevelFilter`: per-tag threshold with a default (`*`), 16 tags, comparing the first
-  15 chars; lock-free for readers (single writer, release/acquire publication, no
-  read-modify-write atomics). `LogLevel::None` silences a tag.
+- `format_line`: `LogRecord` to the PRD §3 line (max 170 bytes) in a fixed-size buffer, no
+  printf. Boot printed modulo 10000, seq modulo 1e6, non-ASCII and control bytes mapped to `?`
+  (a message can never forge a line), empty tag `-`, truncated messages as 124 chars + `...`.
+- `parse_line`: strict parser returning a categorized status (`ok`, `torn`, `garbage`,
+  `bad_header`, `bad_level`, `overlong`). Torn lines (no final `\n`, or closed with DEL) are
+  never taken as records; `format_line(parse_line(L)) == L` for every valid line.
+- `RingBuffer<T, N>`: header-only circular buffer with no constructor (usable in RTC_NOINIT
+  memory), a single-counter state so a reset mid-push cannot leave mismatched indices,
+  `is_consistent()` for memory that survived a reset, and every access bounded even when the
+  state is garbage.
+- `TagLevelFilter`: per-tag threshold with a default (`*`), 16 tags compared on their first
+  15 chars; lock-free readers (release/acquire publication, no read-modify-write atomics — no
+  emulated `__atomic_*` calls on the ESP32-C3).
+- The target build compiles the core library.
+
+**Hardware**
+
+- Board bring-up: ESP32-C3 rev v0.4 with 4 MB embedded flash, CH340K bridge on UART0 and
+  native USB-Serial-JTAG, both receiving the console. The core formatter's first line on the
+  device matches the PRD §3 format. Findings in `docs/hardware.md`.
+- `scripts/serial_capture.py`: resets the board through the native USB and captures the boot
+  on both ports (includes the Windows `usbser.sys` workaround for RTS).
+
+**CI and tooling**
+
+- Core tests under AddressSanitizer + UndefinedBehaviorSanitizer (`native_asan`) and
+  ThreadSanitizer (`native_tsan`); each was proven to catch a planted bug of its kind.
+- Project subagents for firmware review, persistence audit, test running and milestone checks.
+
+**Documentation**
+
+- ADR-006: log lines are printable ASCII only, single-line.
+- ADR-007: no per-line checksum in v1, with the bit flips that still pass.
+- PRD §3 states the exact line contract (field rules, truncation, torn-line sentinel).
+- `SECURITY.md` with supported versions, private vulnerability reporting and known
+  limitations.
 
 ## [0.1.0] - 2026-10-21
 
@@ -68,5 +86,6 @@ No logging functionality yet.
 - Repository basics: MIT license, `.gitignore`, `.gitattributes` (LF everywhere),
   `.clang-format`.
 
-[Unreleased]: https://github.com/RenatoFaraco/esp32-logcat/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/RenatoFaraco/esp32-logcat/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/RenatoFaraco/esp32-logcat/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/RenatoFaraco/esp32-logcat/releases/tag/v0.1.0

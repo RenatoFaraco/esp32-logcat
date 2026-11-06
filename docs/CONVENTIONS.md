@@ -101,7 +101,8 @@ Nunca logar segredos (senha de Wi-Fi, chaves, tokens).
 - Nome do teste descreve o comportamento: `test_ring_buffer_overwrites_oldest_when_full`.
 - Bug corrigido → teste que reproduz o bug entra no mesmo commit.
 - Fixtures de log compartilhadas em `host/tests/fixtures/` e usadas pelos dois lados para
-  garantir que formatter (C++) e parser (Python) concordam.
+  garantir que formatter (C++) e parser (Python) concordam. Entram com o parser Python (#20);
+  até lá os testes C++ usam linhas embutidas no próprio teste.
 
 ## 6. Documentação
 

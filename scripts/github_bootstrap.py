@@ -108,7 +108,7 @@ ISSUES = [
             "Text line → `LogRecord`. Used on the device to read flash and mirrored by the host parser.",
             [
                 "Strict parse of the PRD §3 format; reports failure on malformed lines",
-                "Shared example lines in `host/tests/fixtures/` used by the C++ tests",
+                "Shared example lines in `host/tests/fixtures/` used by the C++ tests (deferred to #20)",
             ],
             [
                 "Round trip: `parse(format(r)) == r` for representative records",

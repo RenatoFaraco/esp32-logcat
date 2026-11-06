@@ -21,7 +21,7 @@ Cada marco termina com: testes passando no CI, commit/tag e este arquivo atualiz
 - [x] ADRs 001–005
 - **Pronto quando:** CI verde num push.
 
-### M1 · Núcleo 🖥️
+### M1 · Núcleo 🖥️ — `v0.2.0`
 - [x] `LogRecord`, `Sequencer`
 - [x] `LineFormatter` e `LineParser` (ida e volta: format → parse = original)
 - [x] `RingBuffer<T, N>`
