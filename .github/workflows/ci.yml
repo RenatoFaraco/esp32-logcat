@@ -68,7 +68,8 @@ jobs:
         run: pip install platformio==6.1.19
 
       - name: Core unit tests (${{ matrix.env }})
-        run: pio test -e ${{ matrix.env }}
+        # -v: show the test program's own output, where the sanitizer reports are printed
+        run: pio test -e ${{ matrix.env }} -v
 
   github-config:
     # Invalid issue forms are silently hidden by GitHub, so validate them here.
