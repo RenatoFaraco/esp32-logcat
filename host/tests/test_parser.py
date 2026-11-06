@@ -285,6 +285,18 @@ def test_real_boot_capture_from_the_board():
     assert not [line for line in parsed if isinstance(line, InvalidLine)]
 
 
+def test_every_line_of_the_real_capture_lands_in_its_category():
+    data = (FIXTURES / "boot_esp32c3_rev4.log").read_bytes()
+    for raw in split_lines(data):
+        line = parse_line(raw.replace(b"\r\n", b"\n"))
+        if raw.startswith(b"0000:"):
+            assert isinstance(line, LogLine), raw
+        elif raw[:3] in (b"I (", b"W (", b"E (", b"D (", b"V ("):
+            assert isinstance(line, IdfLine), raw
+        else:  # ROM lines: ESP-ROM:, Build:, rst:, SPIWP:, mode:, load:, entry ...
+            assert isinstance(line, RawLine), raw
+
+
 # ------------------------------------------------------------------ properties
 
 
@@ -317,3 +329,122 @@ def test_corrupted_lines_never_raise():
             data[rng.randrange(len(data))] = rng.randrange(256)
         line = parse_line(bytes(data))  # must classify, never raise
         assert line is not None
+
+
+def test_random_bytes_of_every_shape_never_raise():
+    rng = random.Random(11)
+    seeds = [
+        NOMINAL,
+        b"I (253) APP: formatted 49 bytes\n",
+        b"#BEGIN log_003.txt 4096\n",
+        b"#END 1a2b3c4d\n",
+        b"#> boot=42\n",
+        b"ESP-ROM:esp32c3-api1-20210207\n",
+    ]
+    for _ in range(5000):
+        data = bytearray(rng.choice(seeds))
+        for _ in range(rng.randint(1, 4)):
+            data[rng.randrange(len(data))] = rng.randrange(256)
+        parse_line(bytes(data))
+        parse_line(bytes(data), assume_log=True)
+    for _ in range(1000):
+        data = bytes(rng.randrange(256) for _ in range(rng.randint(0, 300)))
+        parse_line(data)
+        parse_line(data, assume_log=True)
+
+
+# ------------------------------------------------------------------ review of #16
+
+
+@pytest.mark.parametrize(
+    "data",
+    [
+        b"#BEGIN f " + b"9" * 5000 + b"\n",  # int() limit of 4300 digits
+        b"I (" + b"9" * 5000 + b") T: x\n",
+    ],
+    ids=["dump_size", "idf_timestamp"],
+)
+def test_huge_numbers_never_raise(data):
+    assert isinstance(parse_line(data), RawLine)
+
+
+@pytest.mark.parametrize(
+    "data",
+    [b"#BEGIN log_003.txt 40", b"#END 1a2b3c4d", b"#> boot=4"],
+)
+def test_protocol_lines_without_newline_are_raw(data):
+    # A torn "#BEGIN log_003.txt 4096" must not become a dump of 40 bytes.
+    assert isinstance(parse_line(data), RawLine)
+
+
+@pytest.mark.parametrize("name", [b"../../x", b"/etc/x", b"..", b".hidden", b"a/b", b"C:x"])
+def test_dump_file_names_cannot_escape_the_output_directory(name):
+    assert isinstance(parse_line(b"#BEGIN " + name + b" 10\n"), RawLine)
+
+
+def test_ansi_codes_do_not_disguise_protocol_lines():
+    assert isinstance(parse_line(b"\x1b[0m#END 1a2b3c4d\n"), RawLine)
+    assert isinstance(parse_line(b"\x1b[0m#> hi\n"), RawLine)
+
+
+@pytest.mark.parametrize("data", [b"12:34:56 sync\n", b"5: ok\n", b"42\n", b"2024: report\n"])
+def test_text_starting_with_digits_is_not_a_damaged_log_line(data):
+    assert isinstance(parse_line(data), RawLine)
+
+
+@pytest.mark.parametrize("cut", [1, 4, 5, 11, 17, 24])
+def test_short_torn_heads_are_still_counted(cut):
+    assert_invalid(NOMINAL[:cut], InvalidReason.TORN)
+
+
+@pytest.mark.parametrize("junk", [b"x", b"\x00", b"\xff\xfe", b"garbage!"])
+def test_junk_before_a_log_line_is_counted_not_hidden(junk):
+    # UART noise right after a reset shifts the header: still our line, just damaged.
+    line = parse_line(junk + NOMINAL)
+    assert isinstance(line, InvalidLine)
+    assert line.reason in (InvalidReason.GARBAGE, InvalidReason.BAD_HEADER)
+
+
+def test_known_limitation_lost_colon_is_raw():
+    # A byte lost at index 4 shifts every separator and removes the ':' anchor: not
+    # recognizable without fragile heuristics. Documented, not counted.
+    assert isinstance(parse_line(NOMINAL[:4] + NOMINAL[5:]), RawLine)
+
+
+def test_known_limitation_log_line_inside_idf_message():
+    # Interleaved output, or an app logging a received line on purpose: indistinguishable
+    # here. Flagging it as suspicious is the stream's job (#15).
+    line = parse_line(b"I (253) APP: foo0042:000137 0000123456 W PRESSURE: x\n")
+    assert isinstance(line, IdfLine)
+
+
+# ------------------------------------------------------------------ assume_log mode
+
+
+@pytest.mark.parametrize(
+    ("data", "reason"),
+    [
+        (b"", InvalidReason.TORN),
+        (b"\x7f\n", InvalidReason.TORN),
+        (b"\xff" * 40 + b"\n", InvalidReason.GARBAGE),
+        (b"\x00" * 30 + b"\n", InvalidReason.GARBAGE),
+        (b"\xff" * 200, InvalidReason.OVERLONG),
+        (b"I (253) APP: idf line inside a dump\n", InvalidReason.BAD_HEADER),
+        (b"hello\n", InvalidReason.BAD_HEADER),
+    ],
+)
+def test_assume_log_mode_matches_the_firmware_parser(data, reason):
+    # Inside a dump block or a file read from flash every line is ours: no heuristics, same
+    # categories as the C++ parse_line. Garbage is counted instead of shown as raw.
+    line = parse_line(data, assume_log=True)
+    assert isinstance(line, InvalidLine)
+    assert line.reason is reason
+
+
+def test_assume_log_mode_still_parses_valid_lines():
+    assert parse_line(NOMINAL, assume_log=True) == parse_line(NOMINAL)
+
+
+def test_lenient_and_assume_log_default_to_off():
+    assert isinstance(parse_line(b"0001:000001 0000000001 I APP:\n"), InvalidLine)
+    assert isinstance(parse_line(b"hello\n"), RawLine)

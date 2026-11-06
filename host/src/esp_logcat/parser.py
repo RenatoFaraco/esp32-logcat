@@ -31,12 +31,17 @@ _MIN_LINE_LENGTH = _HEADER_LENGTH + 1 + 2 + 1  # 1-char tag, ": ", "\n"
 
 # In a bytes pattern \d only matches ASCII 0-9: no Unicode digits, signs or spaces.
 _HEADER = re.compile(rb"(\d{4}):(\d{6}) (\d{10}) (.) ", re.DOTALL)
-# Short torn heads: up to 4 digits, then ':' or the end (possibly closed by DEL + "\n").
-_TORN_HEAD = re.compile(rb"\d{1,4}(?::|\x7f?\n?\Z)")
+# Header layout as a template: D = ASCII digit, L = level letter (any byte here; validated
+# later), other bytes literal. Used to recognize short torn heads such as "0042:0001".
+_HEADER_TEMPLATE = b"DDDD:DDDDDD DDDDDDDDDD L "
 # Fixed separators of the header: ':' at 4 and spaces at 11, 22 and 24.
 _SEPARATORS = ((4, ord(":")), (11, ord(" ")), (22, ord(" ")), (24, ord(" ")))
-_IDF = re.compile(rb"([EWIDV]) \((\d+)\) ([^:\n]+): (.*)", re.DOTALL)
-_DUMP_BEGIN = re.compile(rb"#BEGIN (\S+) (\d+)")
+# A full header after a few bytes of junk (UART noise right after a reset).
+_JUNK_THEN_HEADER = re.compile(rb".{1,8}?\d{4}:\d{6} \d{10} . ", re.DOTALL)
+# Bounded digit counts: int() on thousands of digits raises (Python's 4300-digit limit).
+_IDF = re.compile(rb"([EWIDV]) \((\d{1,10})\) ([^:\n]+): (.*)", re.DOTALL)
+# File names from the device end up as local file names (M5 dump): no paths, no dot-files.
+_DUMP_BEGIN = re.compile(rb"#BEGIN ([A-Za-z0-9_][A-Za-z0-9._-]{0,63}) (\d{1,10})")
 _DUMP_END = re.compile(rb"#END ([0-9a-fA-F]{8})")
 _ANSI = re.compile(rb"\x1b\[[0-9;]*[A-Za-z]")
 
@@ -100,44 +105,71 @@ class RawLine:
 Line = LogLine | InvalidLine | IdfLine | CommandReply | DumpBegin | DumpEnd | RawLine
 
 
-def parse_line(data: bytes, *, lenient: bool = False) -> Line:
+def parse_line(data: bytes, *, lenient: bool = False, assume_log: bool = False) -> Line:
     """Classify one line. Never raises: unknown input becomes a RawLine.
+
+    ``assume_log``: every line is esp32-logcat (inside a dump block, a file read from flash, the
+    shared C++/Python fixture). No heuristics: the result is a LogLine or an InvalidLine with
+    exactly the firmware's categories, so garbage is counted instead of shown as raw text.
 
     ``lenient`` accepts ``TAG:`` directly followed by ``\\n`` in the esp32-logcat format, for
     fixtures edited by hand that lost the trailing space of an empty message. Device data must
     always be parsed strictly.
     """
-    if _looks_like_log_line(data):
+    if assume_log or _looks_like_log_line(data):
         return _parse_log_line(data, lenient)
-    body = _ANSI.sub(b"", data.removesuffix(b"\n"))
-    if body.startswith(b"#> "):
+    complete = data.endswith(b"\n")
+    body = data.removesuffix(b"\n")
+    # Protocol lines must be complete and exact: a torn "#BEGIN log.txt 4096" must not become
+    # a 40-byte dump, and ANSI codes must not disguise them.
+    if complete and body.startswith(b"#> "):
         return CommandReply(text=_decode(body[3:]))
-    if match := _DUMP_BEGIN.fullmatch(body):
-        return DumpBegin(filename=_decode(match[1]), size=int(match[2]))
-    if match := _DUMP_END.fullmatch(body):
+    if complete and (match := _DUMP_BEGIN.fullmatch(body)):
+        return DumpBegin(filename=match[1].decode("ascii"), size=int(match[2]))
+    if complete and (match := _DUMP_END.fullmatch(body)):
         return DumpEnd(crc32=int(match[1], 16))
-    if data.endswith(b"\n") and (match := _IDF.fullmatch(body)):
+    plain = _ANSI.sub(b"", body)
+    if complete and (match := _IDF.fullmatch(plain)):
         return IdfLine(
             level=match[1].decode("ascii"),
             timestamp_ms=int(match[2]),
             tag=_decode(match[3]),
             msg=_decode(match[4]),
         )
-    return RawLine(text=_decode(body))
+    return RawLine(text=_decode(plain))
 
 
 def _looks_like_log_line(data: bytes) -> bool:
     """True for esp32-logcat lines, valid or damaged, so damage is counted as InvalidLine.
 
-    Recognized by structure, not only by the first bytes: a corrupted digit or ':' at the
-    start must still be reported as a bad header, not silently shown as raw text. Three of the
-    four fixed separators are enough; ESP-IDF and ROM lines practically never match them.
+    Three cases, each strict enough not to flag ordinary text ("12:34:56 sync", "42"):
+    - a full-size header with at least 3 of its 4 fixed separators (a corrupted digit or ':'
+      is still counted as a bad header, not shown as raw text);
+    - a torn line (no final newline, or closed with DEL) that is an exact prefix of a header;
+    - a full header after up to 8 bytes of junk (UART noise after a reset).
+    Known limitation: a byte lost at index 4 removes the ':' anchor and shifts every separator.
     """
-    if _TORN_HEAD.match(data):
+    if len(data) >= _HEADER_LENGTH and (
+        sum(data[index] == value for index, value in _SEPARATORS) >= 3
+    ):
         return True
-    if len(data) < _HEADER_LENGTH:
+    torn = not data.endswith(b"\n") or data.endswith(b"\x7f\n")
+    head = data.removesuffix(b"\n").removesuffix(b"\x7f")
+    if torn and head and _is_header_prefix(head):
+        return True
+    return _JUNK_THEN_HEADER.match(data) is not None
+
+
+def _is_header_prefix(head: bytes) -> bool:
+    if len(head) >= _HEADER_LENGTH:
         return False
-    return sum(data[index] == value for index, value in _SEPARATORS) >= 3
+    for byte, expected in zip(head, _HEADER_TEMPLATE, strict=False):
+        if expected == ord("D"):
+            if not 0x30 <= byte <= 0x39:
+                return False
+        elif expected != ord("L") and byte != expected:
+            return False
+    return True
 
 
 def _parse_log_line(data: bytes, lenient: bool) -> LogLine | InvalidLine:
