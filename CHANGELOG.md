@@ -28,6 +28,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Core `RingBuffer<T, N>`: header-only circular buffer keeping the last N items, with no
   constructor (usable in RTC_NOINIT memory), `is_consistent()` for memory that survived a
   reset, and every access bounded even when its indices are garbage.
+- Core `TagLevelFilter`: per-tag threshold with a default (`*`), 16 tags, comparing the first
+  15 chars; lock-free for readers (single writer, release/acquire publication, no
+  read-modify-write atomics). `LogLevel::None` silences a tag.
 
 ## [0.1.0] - 2026-10-21
 

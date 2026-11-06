@@ -6,11 +6,12 @@
 
 namespace logcat {
 
-// Numbering follows ESP-IDF's esp_log_level_t (ERROR = 1 ... VERBOSE = 5) for familiarity.
+// Numbering follows ESP-IDF's esp_log_level_t (NONE = 0, ERROR = 1 ... VERBOSE = 5).
 // The esp_log_set_vprintf hook only sees the formatted text, so the adapter gets the level
 // from its letter via level_from_char, never by casting an unchecked number.
 // Lower value = more severe: "enabled" means level <= threshold.
 enum class LogLevel : uint8_t {
+    None = 0,  // filter threshold only ("silence this tag"); never the level of a line
     Error = 1,
     Warn = 2,
     Info = 3,
@@ -18,9 +19,12 @@ enum class LogLevel : uint8_t {
     Verbose = 5,
 };
 
-// Letter used in the line format (PRD §3). Out-of-range values map to '?'.
+// Letter used in the line format (PRD §3). None and out-of-range values map to '?', which the
+// parser rejects: a line can never carry them.
 constexpr char level_to_char(LogLevel level) {
     switch (level) {
+        case LogLevel::None:
+            return '?';
         case LogLevel::Error:
             return 'E';
         case LogLevel::Warn:
