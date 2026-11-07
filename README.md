@@ -90,6 +90,17 @@ pio test -e native     # core unit tests on the PC
 pio run -e esp32c3     # build for the target
 ```
 
+**VS Code IntelliSense** (errors like `cannot open source file "freertos/FreeRTOS.h"`): the
+repository root is opened as the workspace, not the PlatformIO project in `firmware/`, so the
+PlatformIO extension does not configure IntelliSense. `.vscode/settings.json` points it at a
+compile database instead; generate it once, and again after adding source files:
+
+```sh
+pio run -d firmware -e esp32c3 -t compiledb   # writes firmware/compile_commands.json (ignored)
+```
+
+Then run *C/C++: Reset IntelliSense Database* from the command palette if the errors stay.
+
 The CI also runs the core tests under sanitizers: `native_asan` (AddressSanitizer +
 UndefinedBehaviorSanitizer) and `native_tsan` (ThreadSanitizer). They need a Linux toolchain —
 MinGW on Windows has no ASan/TSan runtime — so run them on Linux or WSL:
