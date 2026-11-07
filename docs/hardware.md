@@ -32,8 +32,18 @@ Get-CimInstance Win32_PnPEntity | Where-Object { $_.Name -match '\(COM\d+\)' } |
   ForEach-Object { '{0} | {1}' -f $_.Name, $_.DeviceID }
 ```
 
-Saída do console: o IDF manda o console para a UART0 e, como secundário, para a USB-Serial-JTAG
-(padrão do C3). As duas portas recebem **a mesma saída**, inclusive o bootloader da ROM.
+O que sai em cada porta (desde #11/#12, firmware com `CONFIG_ESP_CONSOLE_SECONDARY_NONE=y`):
+
+| | Nativa (COM6) — o stream do logcat | Ponte UART (COM5) — o console |
+|---|---|---|
+| ROM, bootloader e logs do início do app (formato do IDF) | sim (a ROM imprime nas duas) | sim |
+| Linhas do logcat (formato do PRD §3) | sim, pelo driver, só `\n` | sim, espelho, com `\r\n` |
+| `printf` e texto que não é log | não | sim |
+| Avisos `W LOGCAT: ...` (descartes) | sim | sim |
+
+Antes, o IDF mandava o console também para a USB-Serial-JTAG como secundário (padrão do C3), e
+as duas portas recebiam a mesma saída. O console secundário bloqueava ~50 ms por linha quando
+ninguém lia a porta nativa (#12) e disputaria a FIFO com o driver: foi desligado.
 
 ## Gravar e monitorar
 
@@ -125,8 +135,14 @@ A FIFO guarda os primeiros 64 bytes escritos: com linhas curtas, pode ser uma li
 o começo da seguinte. O host trata isso (`pipeline.split_glued`): nas linhas que começam nos
 primeiros 64 bytes depois de conectar, corta onde começa outro cabeçalho ou o `ESP-ROM:`, e o
 pedaço vira linha rasgada; uma lacuna logo depois de uma dessas linhas conta como "não
-recebida antes da conexão", não como perda. No firmware, o `UsbJtagSink` (#12) pode evitar o
-problema na origem.
+recebida antes da conexão", não como perda.
+
+Desde #12 o firmware evita isso na origem: o `UsbJtagSink` escreve pelo driver, que copia a
+linha inteira (ou nada) para o seu ring buffer, e o console secundário não escreve mais na FIFO.
+Medido em 07/nov: depois de 40 s com a porta fechada, a primeira linha ao abrir já é a ao vivo,
+seguida de `W LOGCAT: 39 lines not sent to usb: no reader` (o que estava no ring é descartado
+pelo `pyserial`, que limpa o buffer de entrada ao abrir). O tratamento do host continua valendo
+para firmwares antigos e para a FIFO da ROM.
 
 ## Boot capturado (06/nov, reset pela USB nativa, trecho)
 

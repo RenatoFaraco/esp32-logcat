@@ -11,3 +11,9 @@ CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions.csv"
 # Firmware rules (CLAUDE.md): no C++ exceptions, no RTTI
 # CONFIG_COMPILER_CXX_EXCEPTIONS is not set
 # CONFIG_COMPILER_CXX_RTTI is not set
+
+# The native USB port (USB-Serial-JTAG) belongs to the logcat stream (UsbJtagSink, #12): no
+# secondary ESP-IDF console there. The secondary console wrote the same FIFO directly (mixing
+# bytes with the driver's) and blocked ~50 ms per line when no host was reading. The UART0
+# console (CH340K) keeps bootloader and printf output plus a mirror of the log lines.
+CONFIG_ESP_CONSOLE_SECONDARY_NONE=y

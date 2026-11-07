@@ -60,7 +60,8 @@ Um commit = uma mudança coerente que compila e passa nos testes.
 ### Organização
 - Núcleo: `lib/logcat_core/include/logcat/<modulo>.hpp` + `src/<modulo>.cpp`.
 - Nenhum `#include` de `esp_*`, `freertos/*`, `driver/*` ou LittleFS no núcleo.
-- Adaptadores em `src/adapters/`, um par `.hpp/.cpp` por adaptador.
+- Adaptadores em `src/adapters/`, um par `.hpp/.cpp` por adaptador; um adaptador de uma linha
+  só, sem estado nem inicialização (ex.: `EspClock`), pode ficar só no `.hpp`.
 
 ### Tags de log
 - Maiúsculas, curtas (≤ 15 caracteres), uma por módulo: `static constexpr const char* TAG = "PRESSURE";`
