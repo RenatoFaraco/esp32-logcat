@@ -73,6 +73,7 @@ Sem checksum por linha na v1 (ADR-007). Ordem cronológica = posição no arquiv
 | H4 | `esp-logcat shell` — envia comandos do console |
 | H5 | `esp-logcat replay <arquivo>` — reproduz um log salvo com os mesmos filtros (desenvolvimento sem hardware) |
 | H6 | Salvar sessão em arquivo com timestamp do PC ao lado do uptime do dispositivo |
+| H7 | `esp-logcat tui` — interface interativa no terminal (rolar, pausar, trocar filtro, contadores, estado da porta) sobre o mesmo backend; `stream` continua texto em stdout (ADR-008) |
 
 ## 4. Fora do escopo v1 (backlog)
 

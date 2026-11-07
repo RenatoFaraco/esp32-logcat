@@ -47,7 +47,7 @@ esp32-logcat/
 │   └── test/                 testes Unity (env:native)
 └── host/                     ferramenta Python `esp-logcat`
     ├── pyproject.toml
-    ├── src/esp_logcat/
+    ├── src/esp_logcat/       backend (transport, parser, filtros) + render; tui/ (Textual)
     └── tests/
         └── fixtures/         logs de exemplo para testes e replay
 ```
@@ -75,6 +75,7 @@ esp32-logcat/
 |--------|----------------|------|
 | `test-runner` | Depois de mudar `firmware/` ou `host/`; antes de commitar | Rodar native + pytest (alvo só se `src/`/build mudou) |
 | `firmware-reviewer` | Depois de escrever/alterar C++ em `firmware/`, antes do PR | Só ler |
+| `host-reviewer` | Depois de escrever/alterar Python em `host/` (backend ou TUI), antes do PR | Só ler |
 | `persistence-auditor` | Mudou formato da linha, parser, buffer, flash, NVS, RTC ou partições | Só ler |
 | `milestone-checker` | Antes de fechar marco ou abrir PR de release | Só ler |
 

@@ -148,16 +148,29 @@ O host separa os três tipos; linhas que não casam com nenhum são exibidas com
 ## 7. Ferramenta host (`host/`)
 
 ```
-src/esp_logcat/
-  cli.py          argparse: stream | dump | shell | replay
-  transport.py    SerialTransport (pyserial) | FileTransport (replay)
-  parser.py       linha → LogLine | CommandReply | DumpBlock | Raw
-  filters.py      sintaxe estilo logcat: "*:W" "PRESSURE:D"
-  render.py       cores por nível (rich), timestamp do PC ao lado do uptime
-  session.py      grava a sessão em arquivo
+transport (bytes) → parser (Line) → stats/filters → render (rich Text) → { cli stream | tui }
 ```
 
-Dependências: `pyserial`, `rich`. Parser e filtros são funções puras → fáceis de testar.
+```
+src/esp_logcat/
+  cli.py          argparse: stream | replay | dump | shell | tui
+  transport.py    SerialTransport (pyserial) | FileTransport (replay)
+  parser.py       bytes → LogLine | InvalidLine | IdfLine | CommandReply | DumpBegin/End | RawLine
+  stats.py        lacunas e reordenação de seq, uptime que regride, mudança de boot
+  filters.py      sintaxe estilo logcat: "*:W" "PRESSURE:D"
+  render.py       Line → rich.text.Text: cores por nível, timestamp do PC ao lado do uptime
+  session.py      grava a sessão em arquivo
+  tui/            frontend interativo (Textual): log, filtro, contadores, estado da porta
+```
+
+Camadas (ADR-008): só `render` importa `rich` e só `tui/` importa `textual`; o resto é
+Python puro, testado sem terminal. `stream` e `replay` continuam texto em stdout (pipe,
+`> arquivo`); o TUI é um consumidor a mais do mesmo backend. O texto da placa é dado, nunca
+markup: o renderer monta `Text` com estilos explícitos e troca caracteres de controle por
+símbolos visíveis.
+
+Dependências: `pyserial`, `rich`, `textual` (quando o TUI entrar). Parser, filtros e
+estatísticas são funções puras → fáceis de testar.
 
 ## 8. Orçamento de memória (estimativa inicial, validar no M2)
 
@@ -178,3 +191,7 @@ Iniciais:
 - ADR-002: Formato de linha em texto legível na v1 (binário fica para a v2)
 - ADR-003: Núcleo independente de plataforma (ports & adapters) testado em `native`
 - ADR-004: Descartar logs com fila cheia em vez de bloquear
+- ADR-005: C++17 estrito só no núcleo, via `env:native`
+- ADR-006: Linhas de log só com ASCII imprimível
+- ADR-007: Sem checksum por linha na v1
+- ADR-008: Host em camadas, com TUI (Textual) como segundo frontend
