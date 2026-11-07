@@ -17,4 +17,4 @@ O mesmo texto vai para USB, RAM e flash.
 - Campos de largura fixa simplificam o parser e a ordenação.
 - Mais bytes por linha que um formato binário → menos histórico na mesma partição.
 - Mudar o formato exige atualizar formatter, parsers e testes dos dois lados no mesmo commit.
-- Formato binário fica para a v2.
+- Formato binário fica para a v3, junto com a telemetria por MQTT (ROADMAP, "Depois da v1").

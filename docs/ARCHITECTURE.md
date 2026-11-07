@@ -191,10 +191,16 @@ Decisões relevantes viram ADRs em `docs/decisions/` (modelo em `CONVENTIONS.md`
 Iniciais:
 
 - ADR-001: ESP-IDF via PlatformIO (C++17) em vez de framework Arduino
-- ADR-002: Formato de linha em texto legível na v1 (binário fica para a v2)
+- ADR-002: Formato de linha em texto legível na v1 (binário fica para a v3)
 - ADR-003: Núcleo independente de plataforma (ports & adapters) testado em `native`
 - ADR-004: Descartar logs com fila cheia em vez de bloquear
 - ADR-005: C++17 estrito só no núcleo, via `env:native`
 - ADR-006: Linhas de log só com ASCII imprimível
 - ADR-007: Sem checksum por linha na v1
 - ADR-008: Host em camadas, com TUI (Textual) como segundo frontend
+
+Propostas para depois da v1 (ROADMAP, "Depois da v1"):
+
+- ADR-009: v2 como componente ESP-IDF multichip, só na família Espressif
+- ADR-010: Host em Go na v2.x, validado por uma suíte de conformidade (substituirá o ADR-008)
+- ADR-011: Firmware em Rust na v3, como crate `no_std` paralelo
