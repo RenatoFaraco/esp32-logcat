@@ -1,8 +1,41 @@
 # esp32-logcat
 
+![esp32-logcat: an ESP32-C3 board with two USB-C ports, real esp-logcat stream output, and the stack used](docs/img/cover.svg)
+
 Persistent, `adb logcat`-style logging for embedded firmware.
 
-> **Status:** early development (milestone M0 — project foundation). Nothing here is usable yet.
+> **Status:** early development. On the ESP32-C3 every `ESP_LOGx` already goes through the
+> core and a non-blocking queue to the native USB port, and `esp-logcat stream` shows it live
+> (milestones M2/M3). Persistence in flash, the console and crash recovery are next.
+
+## User manual
+
+How to flash the board, connect, read the output and use pipes and files, with real terminal
+output from the board:
+
+- **English:** [docs/MANUAL.en.md](docs/MANUAL.en.md)
+- **Português (pt-BR):** [docs/MANUAL.md](docs/MANUAL.md)
+
+Quick start, with the firmware flashed and the board's native USB-C port plugged in:
+
+```powershell
+# PowerShell
+cd C:\dev\esp32-logcat
+host\.venv\Scripts\Activate.ps1
+esp-logcat ports
+esp-logcat stream --reset
+```
+
+```bat
+:: Command Prompt (cmd)
+cd /d C:\dev\esp32-logcat
+host\.venv\Scripts\activate.bat
+esp-logcat ports
+esp-logcat stream --reset
+```
+
+`Ctrl+C` stops the stream and prints a summary. First time on a machine (creating
+`host\.venv`, flashing): see section 1 of the manual.
 
 ## What it is
 

@@ -1,0 +1,270 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="640" viewBox="0 0 1280 640">
+<title>esp32-logcat</title>
+<defs><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0d1117"/><stop offset="1" stop-color="#161b22"/></linearGradient></defs>
+<rect width="1280" height="640" rx="18" fill="url(#bg)"/>
+<text x="60" y="108" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="58" font-weight="700" fill="#e6edf3">esp32-logcat</text>
+<text x="62" y="150" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="22" fill="#8b949e">Persistent, adb logcat-style logging</text>
+<text x="62" y="180" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="22" fill="#8b949e">for ESP32 firmware</text>
+<text x="62" y="222" font-family="Cascadia Code, Consolas, Menlo, monospace" font-size="15" fill="#7ee787">every ESP_LOGx · never blocks · numbered lines</text>
+<g transform="translate(110,300)">
+<rect x="40" y="0" width="300" height="150" rx="12" fill="#1d3557"/>
+<rect x="40" y="0" width="300" height="150" rx="12" fill="none" stroke="#457b9d" stroke-width="2"/>
+<circle cx="70" cy="14" r="4.5" fill="#e9c46a"/>
+<circle cx="70" cy="14" r="2" fill="#1d3557"/>
+<circle cx="70" cy="136" r="4.5" fill="#e9c46a"/>
+<circle cx="70" cy="136" r="2" fill="#1d3557"/>
+<circle cx="88" cy="14" r="4.5" fill="#e9c46a"/>
+<circle cx="88" cy="14" r="2" fill="#1d3557"/>
+<circle cx="88" cy="136" r="4.5" fill="#e9c46a"/>
+<circle cx="88" cy="136" r="2" fill="#1d3557"/>
+<circle cx="106" cy="14" r="4.5" fill="#e9c46a"/>
+<circle cx="106" cy="14" r="2" fill="#1d3557"/>
+<circle cx="106" cy="136" r="4.5" fill="#e9c46a"/>
+<circle cx="106" cy="136" r="2" fill="#1d3557"/>
+<circle cx="124" cy="14" r="4.5" fill="#e9c46a"/>
+<circle cx="124" cy="14" r="2" fill="#1d3557"/>
+<circle cx="124" cy="136" r="4.5" fill="#e9c46a"/>
+<circle cx="124" cy="136" r="2" fill="#1d3557"/>
+<circle cx="142" cy="14" r="4.5" fill="#e9c46a"/>
+<circle cx="142" cy="14" r="2" fill="#1d3557"/>
+<circle cx="142" cy="136" r="4.5" fill="#e9c46a"/>
+<circle cx="142" cy="136" r="2" fill="#1d3557"/>
+<circle cx="160" cy="14" r="4.5" fill="#e9c46a"/>
+<circle cx="160" cy="14" r="2" fill="#1d3557"/>
+<circle cx="160" cy="136" r="4.5" fill="#e9c46a"/>
+<circle cx="160" cy="136" r="2" fill="#1d3557"/>
+<circle cx="178" cy="14" r="4.5" fill="#e9c46a"/>
+<circle cx="178" cy="14" r="2" fill="#1d3557"/>
+<circle cx="178" cy="136" r="4.5" fill="#e9c46a"/>
+<circle cx="178" cy="136" r="2" fill="#1d3557"/>
+<circle cx="196" cy="14" r="4.5" fill="#e9c46a"/>
+<circle cx="196" cy="14" r="2" fill="#1d3557"/>
+<circle cx="196" cy="136" r="4.5" fill="#e9c46a"/>
+<circle cx="196" cy="136" r="2" fill="#1d3557"/>
+<circle cx="214" cy="14" r="4.5" fill="#e9c46a"/>
+<circle cx="214" cy="14" r="2" fill="#1d3557"/>
+<circle cx="214" cy="136" r="4.5" fill="#e9c46a"/>
+<circle cx="214" cy="136" r="2" fill="#1d3557"/>
+<circle cx="232" cy="14" r="4.5" fill="#e9c46a"/>
+<circle cx="232" cy="14" r="2" fill="#1d3557"/>
+<circle cx="232" cy="136" r="4.5" fill="#e9c46a"/>
+<circle cx="232" cy="136" r="2" fill="#1d3557"/>
+<circle cx="250" cy="14" r="4.5" fill="#e9c46a"/>
+<circle cx="250" cy="14" r="2" fill="#1d3557"/>
+<circle cx="250" cy="136" r="4.5" fill="#e9c46a"/>
+<circle cx="250" cy="136" r="2" fill="#1d3557"/>
+<circle cx="268" cy="14" r="4.5" fill="#e9c46a"/>
+<circle cx="268" cy="14" r="2" fill="#1d3557"/>
+<circle cx="268" cy="136" r="4.5" fill="#e9c46a"/>
+<circle cx="268" cy="136" r="2" fill="#1d3557"/>
+<circle cx="286" cy="14" r="4.5" fill="#e9c46a"/>
+<circle cx="286" cy="14" r="2" fill="#1d3557"/>
+<circle cx="286" cy="136" r="4.5" fill="#e9c46a"/>
+<circle cx="286" cy="136" r="2" fill="#1d3557"/>
+<circle cx="304" cy="14" r="4.5" fill="#e9c46a"/>
+<circle cx="304" cy="14" r="2" fill="#1d3557"/>
+<circle cx="304" cy="136" r="4.5" fill="#e9c46a"/>
+<circle cx="304" cy="136" r="2" fill="#1d3557"/>
+<circle cx="322" cy="14" r="4.5" fill="#e9c46a"/>
+<circle cx="322" cy="14" r="2" fill="#1d3557"/>
+<circle cx="322" cy="136" r="4.5" fill="#e9c46a"/>
+<circle cx="322" cy="136" r="2" fill="#1d3557"/>
+<rect x="22" y="36" width="40" height="24" rx="10" fill="#c0c7cf" stroke="#8d99a6" stroke-width="1.5"/>
+<rect x="30" y="44" width="24" height="8" rx="4" fill="#5c6670"/>
+<text x="14" y="52" text-anchor="end" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="13" fill="#c9d1d9">USB-Serial-JTAG</text>
+<rect x="22" y="90" width="40" height="24" rx="10" fill="#c0c7cf" stroke="#8d99a6" stroke-width="1.5"/>
+<rect x="30" y="98" width="24" height="8" rx="4" fill="#5c6670"/>
+<text x="14" y="106" text-anchor="end" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="13" fill="#c9d1d9">CH340K · UART0</text>
+<rect x="180" y="40" width="70" height="70" rx="5" fill="#111"/>
+<rect x="186" y="46" width="58" height="58" rx="3" fill="none" stroke="#444" stroke-width="1"/>
+<text x="215" y="72" text-anchor="middle" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="11" font-weight="600" fill="#e6edf3">ESP32</text>
+<text x="215" y="88" text-anchor="middle" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="11" font-weight="600" fill="#e6edf3">-C3</text>
+<rect x="100" y="88" width="34" height="26" rx="3" fill="#111"/>
+<text x="117" y="105" text-anchor="middle" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="7.5" fill="#c9d1d9">CH340K</text>
+<rect x="266" y="42" width="24" height="24" rx="3" fill="#ddd"/>
+<circle cx="278" cy="54" r="6" fill="#666"/>
+<text x="278" y="80" text-anchor="middle" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="9" fill="#c9d1d9">BOOT</text>
+<rect x="302" y="42" width="24" height="24" rx="3" fill="#ddd"/>
+<circle cx="314" cy="54" r="6" fill="#666"/>
+<text x="314" y="80" text-anchor="middle" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="9" fill="#c9d1d9">RST</text>
+<circle cx="296" cy="108" r="5" fill="#2ec4b6"/>
+<rect x="100" y="40" width="40" height="30" rx="3" fill="#2b2d42"/>
+<text x="120" y="59" text-anchor="middle" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="7.5" fill="#c9d1d9">4 MB</text>
+</g>
+<text x="300" y="478" text-anchor="middle" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="15" fill="#8b949e">ESP32-C3 rev v0.4 · RISC-V 160 MHz · 4 MB flash · 2× USB-C</text>
+<svg x="500" y="40" width="740" height="337" class="rich-terminal" viewBox="0 0 1287 586.8" xmlns="http://www.w3.org/2000/svg">
+    <!-- Generated with Rich https://www.textualize.io -->
+    <style>
+
+    @font-face {
+        font-family: "Fira Code";
+        src: local("FiraCode-Regular"),
+                url("https://cdnjs.cloudflare.com/ajax/libs/firacode/6.2.0/woff2/FiraCode-Regular.woff2") format("woff2"),
+                url("https://cdnjs.cloudflare.com/ajax/libs/firacode/6.2.0/woff/FiraCode-Regular.woff") format("woff");
+        font-style: normal;
+        font-weight: 400;
+    }
+    @font-face {
+        font-family: "Fira Code";
+        src: local("FiraCode-Bold"),
+                url("https://cdnjs.cloudflare.com/ajax/libs/firacode/6.2.0/woff2/FiraCode-Bold.woff2") format("woff2"),
+                url("https://cdnjs.cloudflare.com/ajax/libs/firacode/6.2.0/woff/FiraCode-Bold.woff") format("woff");
+        font-style: bold;
+        font-weight: 700;
+    }
+
+    .terminal-233829136-matrix {
+        font-family: Fira Code, monospace;
+        font-size: 20px;
+        line-height: 24.4px;
+        font-variant-east-asian: full-width;
+    }
+
+    .terminal-233829136-title {
+        font-size: 18px;
+        font-weight: bold;
+        font-family: arial;
+    }
+
+    .terminal-233829136-r1 { fill: #9d65ff;font-weight: bold }
+.terminal-233829136-r2 { fill: #d9d9d9 }
+.terminal-233829136-r3 { fill: #878787 }
+.terminal-233829136-r4 { fill: #98e024;font-weight: bold }
+.terminal-233829136-r5 { fill: #98e024 }
+.terminal-233829136-r6 { fill: #fd971f;font-weight: bold }
+.terminal-233829136-r7 { fill: #fd971f }
+.terminal-233829136-r8 { fill: #f4005f;font-weight: bold }
+.terminal-233829136-r9 { fill: #f4005f }
+    </style>
+
+    <defs>
+    <clipPath id="terminal-233829136-clip-terminal">
+      <rect x="0" y="0" width="1267.8" height="535.8" />
+    </clipPath>
+    <clipPath id="terminal-233829136-line-0">
+    <rect x="0" y="1.5" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-233829136-line-1">
+    <rect x="0" y="25.9" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-233829136-line-2">
+    <rect x="0" y="50.3" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-233829136-line-3">
+    <rect x="0" y="74.7" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-233829136-line-4">
+    <rect x="0" y="99.1" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-233829136-line-5">
+    <rect x="0" y="123.5" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-233829136-line-6">
+    <rect x="0" y="147.9" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-233829136-line-7">
+    <rect x="0" y="172.3" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-233829136-line-8">
+    <rect x="0" y="196.7" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-233829136-line-9">
+    <rect x="0" y="221.1" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-233829136-line-10">
+    <rect x="0" y="245.5" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-233829136-line-11">
+    <rect x="0" y="269.9" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-233829136-line-12">
+    <rect x="0" y="294.3" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-233829136-line-13">
+    <rect x="0" y="318.7" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-233829136-line-14">
+    <rect x="0" y="343.1" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-233829136-line-15">
+    <rect x="0" y="367.5" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-233829136-line-16">
+    <rect x="0" y="391.9" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-233829136-line-17">
+    <rect x="0" y="416.3" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-233829136-line-18">
+    <rect x="0" y="440.7" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-233829136-line-19">
+    <rect x="0" y="465.1" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-233829136-line-20">
+    <rect x="0" y="489.5" width="1268.8" height="24.65"/>
+            </clipPath>
+    </defs>
+
+    <rect fill="#0c0c0c" stroke="rgba(255,255,255,0.35)" stroke-width="1" x="1" y="1" width="1285" height="584.8" rx="8"/><text class="terminal-233829136-title" fill="#d9d9d9" text-anchor="middle" x="642" y="27">esp-logcat&#160;stream</text>
+            <g transform="translate(26,22)">
+            <circle cx="0" cy="0" r="7" fill="#ff5f57"/>
+            <circle cx="22" cy="0" r="7" fill="#febc2e"/>
+            <circle cx="44" cy="0" r="7" fill="#28c840"/>
+            </g>
+        
+    <g transform="translate(9, 41)" clip-path="url(#terminal-233829136-clip-terminal)">
+    
+    <g class="terminal-233829136-matrix">
+    <text class="terminal-233829136-r1" x="0" y="20" textLength="292.8" clip-path="url(#terminal-233829136-line-0)">PS&#160;C:\dev\esp32-logcat&gt;&#160;</text><text class="terminal-233829136-r1" x="292.8" y="20" textLength="305" clip-path="url(#terminal-233829136-line-0)">esp-logcat&#160;stream&#160;--reset</text><text class="terminal-233829136-r2" x="1268.8" y="20" textLength="12.2" clip-path="url(#terminal-233829136-line-0)">
+</text><text class="terminal-233829136-r3" x="0" y="44.4" textLength="280.6" clip-path="url(#terminal-233829136-line-1)">0000:000000&#160;0000000027&#160;</text><text class="terminal-233829136-r4" x="280.6" y="44.4" textLength="12.2" clip-path="url(#terminal-233829136-line-1)">I</text><text class="terminal-233829136-r4" x="305" y="44.4" textLength="36.6" clip-path="url(#terminal-233829136-line-1)">APP</text><text class="terminal-233829136-r5" x="341.6" y="44.4" textLength="24.4" clip-path="url(#terminal-233829136-line-1)">:&#160;</text><text class="terminal-233829136-r5" x="366" y="44.4" textLength="329.4" clip-path="url(#terminal-233829136-line-1)">esp32-logcat&#160;hook&#160;installed</text><text class="terminal-233829136-r2" x="1268.8" y="44.4" textLength="12.2" clip-path="url(#terminal-233829136-line-1)">
+</text><text class="terminal-233829136-r3" x="0" y="68.8" textLength="280.6" clip-path="url(#terminal-233829136-line-2)">0000:000001&#160;0000000027&#160;</text><text class="terminal-233829136-r6" x="280.6" y="68.8" textLength="12.2" clip-path="url(#terminal-233829136-line-2)">W</text><text class="terminal-233829136-r6" x="305" y="68.8" textLength="36.6" clip-path="url(#terminal-233829136-line-2)">APP</text><text class="terminal-233829136-r7" x="341.6" y="68.8" textLength="24.4" clip-path="url(#terminal-233829136-line-2)">:&#160;</text><text class="terminal-233829136-r7" x="366" y="68.8" textLength="231.8" clip-path="url(#terminal-233829136-line-2)">a&#160;warning,&#160;letter&#160;W</text><text class="terminal-233829136-r2" x="1268.8" y="68.8" textLength="12.2" clip-path="url(#terminal-233829136-line-2)">
+</text><text class="terminal-233829136-r3" x="0" y="93.2" textLength="280.6" clip-path="url(#terminal-233829136-line-3)">0000:000002&#160;0000000027&#160;</text><text class="terminal-233829136-r8" x="280.6" y="93.2" textLength="12.2" clip-path="url(#terminal-233829136-line-3)">E</text><text class="terminal-233829136-r8" x="305" y="93.2" textLength="36.6" clip-path="url(#terminal-233829136-line-3)">APP</text><text class="terminal-233829136-r9" x="341.6" y="93.2" textLength="24.4" clip-path="url(#terminal-233829136-line-3)">:&#160;</text><text class="terminal-233829136-r9" x="366" y="93.2" textLength="219.6" clip-path="url(#terminal-233829136-line-3)">an&#160;error,&#160;letter&#160;E</text><text class="terminal-233829136-r2" x="1268.8" y="93.2" textLength="12.2" clip-path="url(#terminal-233829136-line-3)">
+</text><text class="terminal-233829136-r3" x="0" y="117.6" textLength="280.6" clip-path="url(#terminal-233829136-line-4)">0000:000003&#160;0000000027&#160;</text><text class="terminal-233829136-r4" x="280.6" y="117.6" textLength="12.2" clip-path="url(#terminal-233829136-line-4)">I</text><text class="terminal-233829136-r4" x="305" y="117.6" textLength="36.6" clip-path="url(#terminal-233829136-line-4)">APP</text><text class="terminal-233829136-r5" x="341.6" y="117.6" textLength="24.4" clip-path="url(#terminal-233829136-line-4)">:&#160;</text><text class="terminal-233829136-r5" x="366" y="117.6" textLength="902.8" clip-path="url(#terminal-233829136-line-4)">xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx…</text><text class="terminal-233829136-r2" x="1268.8" y="117.6" textLength="12.2" clip-path="url(#terminal-233829136-line-4)">
+</text><text class="terminal-233829136-r3" x="0" y="142" textLength="280.6" clip-path="url(#terminal-233829136-line-5)">0000:000004&#160;0000000027&#160;</text><text class="terminal-233829136-r4" x="280.6" y="142" textLength="12.2" clip-path="url(#terminal-233829136-line-5)">I</text><text class="terminal-233829136-r4" x="305" y="142" textLength="36.6" clip-path="url(#terminal-233829136-line-5)">APP</text><text class="terminal-233829136-r5" x="341.6" y="142" textLength="24.4" clip-path="url(#terminal-233829136-line-5)">:&#160;</text><text class="terminal-233829136-r5" x="366" y="142" textLength="549" clip-path="url(#terminal-233829136-line-5)">parse_line&#160;on&#160;the&#160;device:&#160;ok,&#160;ring&#160;buffer&#160;1/4</text><text class="terminal-233829136-r2" x="1268.8" y="142" textLength="12.2" clip-path="url(#terminal-233829136-line-5)">
+</text><text class="terminal-233829136-r3" x="0" y="166.4" textLength="36.6" clip-path="url(#terminal-233829136-line-6)">...</text><text class="terminal-233829136-r2" x="1268.8" y="166.4" textLength="12.2" clip-path="url(#terminal-233829136-line-6)">
+</text><text class="terminal-233829136-r3" x="0" y="190.8" textLength="280.6" clip-path="url(#terminal-233829136-line-7)">0000:000030&#160;0000000028&#160;</text><text class="terminal-233829136-r4" x="280.6" y="190.8" textLength="12.2" clip-path="url(#terminal-233829136-line-7)">I</text><text class="terminal-233829136-r4" x="305" y="190.8" textLength="61" clip-path="url(#terminal-233829136-line-7)">BURST</text><text class="terminal-233829136-r5" x="366" y="190.8" textLength="24.4" clip-path="url(#terminal-233829136-line-7)">:&#160;</text><text class="terminal-233829136-r5" x="390.4" y="190.8" textLength="170.8" clip-path="url(#terminal-233829136-line-7)">line&#160;26&#160;of&#160;100</text><text class="terminal-233829136-r2" x="1268.8" y="190.8" textLength="12.2" clip-path="url(#terminal-233829136-line-7)">
+</text><text class="terminal-233829136-r3" x="0" y="215.2" textLength="280.6" clip-path="url(#terminal-233829136-line-8)">0000:000031&#160;0000000028&#160;</text><text class="terminal-233829136-r4" x="280.6" y="215.2" textLength="12.2" clip-path="url(#terminal-233829136-line-8)">I</text><text class="terminal-233829136-r4" x="305" y="215.2" textLength="61" clip-path="url(#terminal-233829136-line-8)">BURST</text><text class="terminal-233829136-r5" x="366" y="215.2" textLength="24.4" clip-path="url(#terminal-233829136-line-8)">:&#160;</text><text class="terminal-233829136-r5" x="390.4" y="215.2" textLength="170.8" clip-path="url(#terminal-233829136-line-8)">line&#160;27&#160;of&#160;100</text><text class="terminal-233829136-r2" x="1268.8" y="215.2" textLength="12.2" clip-path="url(#terminal-233829136-line-8)">
+</text><text class="terminal-233829136-r7" x="0" y="239.6" textLength="36.6" clip-path="url(#terminal-233829136-line-9)">--&#160;</text><text class="terminal-233829136-r7" x="36.6" y="239.6" textLength="378.2" clip-path="url(#terminal-233829136-line-9)">42&#160;lines&#160;lost&#160;before&#160;seq&#160;000074</text><text class="terminal-233829136-r7" x="414.8" y="239.6" textLength="36.6" clip-path="url(#terminal-233829136-line-9)">&#160;--</text><text class="terminal-233829136-r2" x="1268.8" y="239.6" textLength="12.2" clip-path="url(#terminal-233829136-line-9)">
+</text><text class="terminal-233829136-r3" x="0" y="264" textLength="280.6" clip-path="url(#terminal-233829136-line-10)">0000:000074&#160;0000000031&#160;</text><text class="terminal-233829136-r4" x="280.6" y="264" textLength="12.2" clip-path="url(#terminal-233829136-line-10)">I</text><text class="terminal-233829136-r4" x="305" y="264" textLength="61" clip-path="url(#terminal-233829136-line-10)">BURST</text><text class="terminal-233829136-r5" x="366" y="264" textLength="24.4" clip-path="url(#terminal-233829136-line-10)">:&#160;</text><text class="terminal-233829136-r5" x="390.4" y="264" textLength="170.8" clip-path="url(#terminal-233829136-line-10)">line&#160;70&#160;of&#160;100</text><text class="terminal-233829136-r2" x="1268.8" y="264" textLength="12.2" clip-path="url(#terminal-233829136-line-10)">
+</text><text class="terminal-233829136-r3" x="0" y="288.4" textLength="280.6" clip-path="url(#terminal-233829136-line-11)">0000:000075&#160;0000000031&#160;</text><text class="terminal-233829136-r4" x="280.6" y="288.4" textLength="12.2" clip-path="url(#terminal-233829136-line-11)">I</text><text class="terminal-233829136-r4" x="305" y="288.4" textLength="61" clip-path="url(#terminal-233829136-line-11)">BURST</text><text class="terminal-233829136-r5" x="366" y="288.4" textLength="24.4" clip-path="url(#terminal-233829136-line-11)">:&#160;</text><text class="terminal-233829136-r5" x="390.4" y="288.4" textLength="170.8" clip-path="url(#terminal-233829136-line-11)">line&#160;71&#160;of&#160;100</text><text class="terminal-233829136-r2" x="1268.8" y="288.4" textLength="12.2" clip-path="url(#terminal-233829136-line-11)">
+</text><text class="terminal-233829136-r7" x="0" y="312.8" textLength="36.6" clip-path="url(#terminal-233829136-line-12)">--&#160;</text><text class="terminal-233829136-r7" x="36.6" y="312.8" textLength="378.2" clip-path="url(#terminal-233829136-line-12)">30&#160;lines&#160;lost&#160;before&#160;seq&#160;000106</text><text class="terminal-233829136-r7" x="414.8" y="312.8" textLength="36.6" clip-path="url(#terminal-233829136-line-12)">&#160;--</text><text class="terminal-233829136-r2" x="1268.8" y="312.8" textLength="12.2" clip-path="url(#terminal-233829136-line-12)">
+</text><text class="terminal-233829136-r3" x="0" y="337.2" textLength="280.6" clip-path="url(#terminal-233829136-line-13)">0000:000106&#160;0000000182&#160;</text><text class="terminal-233829136-r6" x="280.6" y="337.2" textLength="12.2" clip-path="url(#terminal-233829136-line-13)">W</text><text class="terminal-233829136-r6" x="305" y="337.2" textLength="73.2" clip-path="url(#terminal-233829136-line-13)">LOGCAT</text><text class="terminal-233829136-r7" x="378.2" y="337.2" textLength="24.4" clip-path="url(#terminal-233829136-line-13)">:&#160;</text><text class="terminal-233829136-r7" x="402.6" y="337.2" textLength="390.4" clip-path="url(#terminal-233829136-line-13)">dropped&#160;72&#160;lines:&#160;log&#160;queue&#160;full</text><text class="terminal-233829136-r2" x="1268.8" y="337.2" textLength="12.2" clip-path="url(#terminal-233829136-line-13)">
+</text><text class="terminal-233829136-r3" x="0" y="361.6" textLength="280.6" clip-path="url(#terminal-233829136-line-14)">0000:000107&#160;0000001030&#160;</text><text class="terminal-233829136-r4" x="280.6" y="361.6" textLength="12.2" clip-path="url(#terminal-233829136-line-14)">I</text><text class="terminal-233829136-r4" x="305" y="361.6" textLength="109.8" clip-path="url(#terminal-233829136-line-14)">HEARTBEAT</text><text class="terminal-233829136-r5" x="414.8" y="361.6" textLength="24.4" clip-path="url(#terminal-233829136-line-14)">:&#160;</text><text class="terminal-233829136-r5" x="439.2" y="361.6" textLength="829.6" clip-path="url(#terminal-233829136-line-14)">tick&#160;1,&#160;capture&#160;6989&#160;cycles&#160;(max&#160;181321),&#160;stack&#160;free&#160;2780&#160;B,&#160;writer…</text><text class="terminal-233829136-r2" x="1268.8" y="361.6" textLength="12.2" clip-path="url(#terminal-233829136-line-14)">
+</text><text class="terminal-233829136-r3" x="0" y="386" textLength="280.6" clip-path="url(#terminal-233829136-line-15)">0000:000108&#160;0000002030&#160;</text><text class="terminal-233829136-r4" x="280.6" y="386" textLength="12.2" clip-path="url(#terminal-233829136-line-15)">I</text><text class="terminal-233829136-r4" x="305" y="386" textLength="109.8" clip-path="url(#terminal-233829136-line-15)">HEARTBEAT</text><text class="terminal-233829136-r5" x="414.8" y="386" textLength="24.4" clip-path="url(#terminal-233829136-line-15)">:&#160;</text><text class="terminal-233829136-r5" x="439.2" y="386" textLength="829.6" clip-path="url(#terminal-233829136-line-15)">tick&#160;2,&#160;capture&#160;32221&#160;cycles&#160;(max&#160;181321),&#160;stack&#160;free&#160;2228&#160;B,&#160;write…</text><text class="terminal-233829136-r2" x="1268.8" y="386" textLength="12.2" clip-path="url(#terminal-233829136-line-15)">
+</text><text class="terminal-233829136-r3" x="0" y="410.4" textLength="280.6" clip-path="url(#terminal-233829136-line-16)">0000:000109&#160;0000003030&#160;</text><text class="terminal-233829136-r4" x="280.6" y="410.4" textLength="12.2" clip-path="url(#terminal-233829136-line-16)">I</text><text class="terminal-233829136-r4" x="305" y="410.4" textLength="109.8" clip-path="url(#terminal-233829136-line-16)">HEARTBEAT</text><text class="terminal-233829136-r5" x="414.8" y="410.4" textLength="24.4" clip-path="url(#terminal-233829136-line-16)">:&#160;</text><text class="terminal-233829136-r5" x="439.2" y="410.4" textLength="829.6" clip-path="url(#terminal-233829136-line-16)">tick&#160;3,&#160;capture&#160;22519&#160;cycles&#160;(max&#160;181321),&#160;stack&#160;free&#160;2228&#160;B,&#160;write…</text><text class="terminal-233829136-r2" x="1268.8" y="410.4" textLength="12.2" clip-path="url(#terminal-233829136-line-16)">
+</text><text class="terminal-233829136-r3" x="0" y="434.8" textLength="280.6" clip-path="url(#terminal-233829136-line-17)">0000:000110&#160;0000004030&#160;</text><text class="terminal-233829136-r4" x="280.6" y="434.8" textLength="12.2" clip-path="url(#terminal-233829136-line-17)">I</text><text class="terminal-233829136-r4" x="305" y="434.8" textLength="109.8" clip-path="url(#terminal-233829136-line-17)">HEARTBEAT</text><text class="terminal-233829136-r5" x="414.8" y="434.8" textLength="24.4" clip-path="url(#terminal-233829136-line-17)">:&#160;</text><text class="terminal-233829136-r5" x="439.2" y="434.8" textLength="829.6" clip-path="url(#terminal-233829136-line-17)">tick&#160;4,&#160;capture&#160;25268&#160;cycles&#160;(max&#160;181321),&#160;stack&#160;free&#160;2228&#160;B,&#160;write…</text><text class="terminal-233829136-r2" x="1268.8" y="434.8" textLength="12.2" clip-path="url(#terminal-233829136-line-17)">
+</text><text class="terminal-233829136-r3" x="0" y="459.2" textLength="280.6" clip-path="url(#terminal-233829136-line-18)">0000:000111&#160;0000005030&#160;</text><text class="terminal-233829136-r4" x="280.6" y="459.2" textLength="12.2" clip-path="url(#terminal-233829136-line-18)">I</text><text class="terminal-233829136-r4" x="305" y="459.2" textLength="109.8" clip-path="url(#terminal-233829136-line-18)">HEARTBEAT</text><text class="terminal-233829136-r5" x="414.8" y="459.2" textLength="24.4" clip-path="url(#terminal-233829136-line-18)">:&#160;</text><text class="terminal-233829136-r5" x="439.2" y="459.2" textLength="829.6" clip-path="url(#terminal-233829136-line-18)">tick&#160;5,&#160;capture&#160;23721&#160;cycles&#160;(max&#160;181321),&#160;stack&#160;free&#160;2228&#160;B,&#160;write…</text><text class="terminal-233829136-r2" x="1268.8" y="459.2" textLength="12.2" clip-path="url(#terminal-233829136-line-18)">
+</text><text class="terminal-233829136-r3" x="0" y="483.6" textLength="280.6" clip-path="url(#terminal-233829136-line-19)">0000:000112&#160;0000006030&#160;</text><text class="terminal-233829136-r4" x="280.6" y="483.6" textLength="12.2" clip-path="url(#terminal-233829136-line-19)">I</text><text class="terminal-233829136-r4" x="305" y="483.6" textLength="109.8" clip-path="url(#terminal-233829136-line-19)">HEARTBEAT</text><text class="terminal-233829136-r5" x="414.8" y="483.6" textLength="24.4" clip-path="url(#terminal-233829136-line-19)">:&#160;</text><text class="terminal-233829136-r5" x="439.2" y="483.6" textLength="829.6" clip-path="url(#terminal-233829136-line-19)">tick&#160;6,&#160;capture&#160;24630&#160;cycles&#160;(max&#160;181321),&#160;stack&#160;free&#160;2228&#160;B,&#160;write…</text><text class="terminal-233829136-r2" x="1268.8" y="483.6" textLength="12.2" clip-path="url(#terminal-233829136-line-19)">
+</text><text class="terminal-233829136-r3" x="0" y="508" textLength="280.6" clip-path="url(#terminal-233829136-line-20)">0000:000113&#160;0000007030&#160;</text><text class="terminal-233829136-r4" x="280.6" y="508" textLength="12.2" clip-path="url(#terminal-233829136-line-20)">I</text><text class="terminal-233829136-r4" x="305" y="508" textLength="109.8" clip-path="url(#terminal-233829136-line-20)">HEARTBEAT</text><text class="terminal-233829136-r5" x="414.8" y="508" textLength="24.4" clip-path="url(#terminal-233829136-line-20)">:&#160;</text><text class="terminal-233829136-r5" x="439.2" y="508" textLength="829.6" clip-path="url(#terminal-233829136-line-20)">tick&#160;7,&#160;capture&#160;23705&#160;cycles&#160;(max&#160;181321),&#160;stack&#160;free&#160;2228&#160;B,&#160;write…</text><text class="terminal-233829136-r2" x="1268.8" y="508" textLength="12.2" clip-path="url(#terminal-233829136-line-20)">
+</text><text class="terminal-233829136-r3" x="0" y="532.4" textLength="280.6" clip-path="url(#terminal-233829136-line-21)">0000:000114&#160;0000008030&#160;</text><text class="terminal-233829136-r4" x="280.6" y="532.4" textLength="12.2" clip-path="url(#terminal-233829136-line-21)">I</text><text class="terminal-233829136-r4" x="305" y="532.4" textLength="109.8" clip-path="url(#terminal-233829136-line-21)">HEARTBEAT</text><text class="terminal-233829136-r5" x="414.8" y="532.4" textLength="24.4" clip-path="url(#terminal-233829136-line-21)">:&#160;</text><text class="terminal-233829136-r5" x="439.2" y="532.4" textLength="829.6" clip-path="url(#terminal-233829136-line-21)">tick&#160;8,&#160;capture&#160;24630&#160;cycles&#160;(max&#160;181321),&#160;stack&#160;free&#160;2228&#160;B,&#160;write…</text><text class="terminal-233829136-r2" x="1268.8" y="532.4" textLength="12.2" clip-path="url(#terminal-233829136-line-21)">
+</text>
+    </g>
+    </g>
+</svg>
+
+<text x="500" y="412" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="16" fill="#8b949e">Real output from the board: a burst of 100 lines fills the 32-line queue.</text>
+<text x="500" y="436" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="16" fill="#8b949e">Lost lines leave a gap in seq, are counted and reported, and the caller never waits.</text>
+<rect x="86" y="570" width="152" height="32" rx="16" fill="#21262d" stroke="#30363d"/>
+<text x="162" y="591" text-anchor="middle" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="14" fill="#c9d1d9">ESP32-C3 · RISC-V</text>
+<rect x="247" y="570" width="107" height="32" rx="16" fill="#21262d" stroke="#30363d"/>
+<text x="300" y="591" text-anchor="middle" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="14" fill="#c9d1d9">ESP-IDF 6.1</text>
+<rect x="363" y="570" width="85" height="32" rx="16" fill="#21262d" stroke="#30363d"/>
+<text x="406" y="591" text-anchor="middle" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="14" fill="#c9d1d9">FreeRTOS</text>
+<rect x="457" y="570" width="63" height="32" rx="16" fill="#21262d" stroke="#30363d"/>
+<text x="488" y="591" text-anchor="middle" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="14" fill="#c9d1d9">C++17</text>
+<rect x="529" y="570" width="100" height="32" rx="16" fill="#21262d" stroke="#30363d"/>
+<text x="579" y="591" text-anchor="middle" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="14" fill="#c9d1d9">PlatformIO</text>
+<rect x="638" y="570" width="63" height="32" rx="16" fill="#21262d" stroke="#30363d"/>
+<text x="670" y="591" text-anchor="middle" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="14" fill="#c9d1d9">Unity</text>
+<rect x="710" y="570" width="107" height="32" rx="16" fill="#21262d" stroke="#30363d"/>
+<text x="764" y="591" text-anchor="middle" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="14" fill="#c9d1d9">Python 3.12</text>
+<rect x="826" y="570" width="85" height="32" rx="16" fill="#21262d" stroke="#30363d"/>
+<text x="868" y="591" text-anchor="middle" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="14" fill="#c9d1d9">pyserial</text>
+<rect x="920" y="570" width="56" height="32" rx="16" fill="#21262d" stroke="#30363d"/>
+<text x="948" y="591" text-anchor="middle" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="14" fill="#c9d1d9">rich</text>
+<rect x="985" y="570" width="70" height="32" rx="16" fill="#21262d" stroke="#30363d"/>
+<text x="1020" y="591" text-anchor="middle" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="14" fill="#c9d1d9">pytest</text>
+<rect x="1064" y="570" width="130" height="32" rx="16" fill="#21262d" stroke="#30363d"/>
+<text x="1129" y="591" text-anchor="middle" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="14" fill="#c9d1d9">GitHub Actions</text>
+</svg>
