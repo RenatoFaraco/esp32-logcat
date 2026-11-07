@@ -63,7 +63,7 @@ Os blocos 🖥️ (M3, M4a, M5a) podem ser adiantados sempre que o trabalho com 
 ### M3 · Ferramenta host 🖥️
 - [x] `parser.py`: formato do PRD (espelho do parser C++), formato nativo do ESP-IDF, resposta de comando, marcadores de dump e raw (#16)
 - [ ] `filters.py` com sintaxe `TAG:L`
-- [ ] `render.py` com cores, devolvendo `rich.text.Text` (#18)
+- [x] `render.py` com cores, devolvendo `rich.text.Text` (#18)
 - [ ] `esp-logcat tui` com Textual, depois dos filtros (H7, ADR-008)
 - [ ] `esp-logcat replay <arquivo>` + fixtures em `tests/fixtures/`
 - [ ] Testes de compatibilidade: as mesmas linhas de exemplo validadas pelo parser C++ e pelo Python

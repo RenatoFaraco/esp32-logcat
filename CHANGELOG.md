@@ -17,6 +17,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   firmware parser, same rejection reasons), `InvalidLine`, ESP-IDF native `IdfLine`,
   `CommandReply`, dump markers or `RawLine`. Pure functions; never raises on any input. Tested
   against a real boot capture from the board (CRLF line endings included).
+- Host `render.py`: each parsed line becomes a `rich.text.Text` colored by level (adb logcat
+  palette, bright blue for Debug), whose plain text is the original line. ESP-IDF lines in the
+  level color without bold, raw lines dimmed, invalid lines labeled with their reason and raw
+  bytes, optional PC timestamp. Device text is never markup; control and format characters
+  and lone surrogates are shown as ASCII escapes. Ruff now rejects bidi characters in source
+  (`PLE2502`).
 - ADR-008: the host is layered (transport → parser → stats/filters → render) and gets an
   interactive TUI (`esp-logcat tui`, Textual) as a second frontend; `stream` stays plain stdout.
 - `host-reviewer` subagent: read-only review of host code (layers, format contract, serial on

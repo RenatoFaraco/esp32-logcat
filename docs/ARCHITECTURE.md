@@ -166,8 +166,10 @@ src/esp_logcat/
 Camadas (ADR-008): só `render` importa `rich` e só `tui/` importa `textual`; o resto é
 Python puro, testado sem terminal. `stream` e `replay` continuam texto em stdout (pipe,
 `> arquivo`); o TUI é um consumidor a mais do mesmo backend. O texto da placa é dado, nunca
-markup: o renderer monta `Text` com estilos explícitos e troca caracteres de controle por
-símbolos visíveis.
+markup: o renderer monta `Text` com estilos explícitos e troca caracteres de controle e de
+formatação por escapes ASCII (`\x1b`, `\u202E`). O texto do `Text` é a linha original sem o
+`\n`; quem imprime usa `soft_wrap=True` para o `Console` não quebrar a linha em 80 colunas
+fora do terminal.
 
 Dependências: `pyserial`, `rich`, `textual` (quando o TUI entrar). Parser, filtros e
 estatísticas são funções puras → fáceis de testar.
