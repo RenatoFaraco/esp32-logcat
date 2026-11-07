@@ -104,7 +104,8 @@ struct BootInfo   { virtual uint32_t boot_count() = 0;
 
 | Problema | Solução |
 |----------|---------|
-| Recursão: LittleFS ou driver USB logam dentro da `WriterTask` | Flag de reentrada: logs gerados pela própria `WriterTask` vão direto ao sink USB, sem fila |
+| Recursão: LittleFS ou driver USB logam dentro da `WriterTask` | O hook reconhece a própria `WriterTask` e manda o texto cru para o console (UART), sem fila: o sink USB pode ser justamente quem está falhando, e a fila formaria o laço escrever → logar → enfileirar → escrever |
+| Host ausente na USB nativa | `UsbJtagSink` escreve com timeout 0 no ring buffer do driver (linha inteira ou nada); linhas recusadas são contadas e reportadas (`W LOGCAT: N lines not sent to usb`) quando o host volta |
 | Log em ISR | `ESP_LOGx` é proibido em ISR; usar `ESP_DRAM_LOGx` (não passa pelo hook) ou sinalizar uma tarefa |
 | Logs antes do hook | Logs do bootloader e do início do app saem pelo console padrão; o hook é instalado o mais cedo possível em `app_main` |
 | Mensagem maior que `msg[N]` | Trunca e marca `truncated`; a linha mostra até 124 chars + `...` (ADR-006) |

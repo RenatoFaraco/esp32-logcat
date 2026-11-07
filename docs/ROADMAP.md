@@ -56,8 +56,8 @@ Os blocos 🖥️ (M3, M4a, M5a) podem ser adiantados sempre que o trabalho com 
 - [x] Ver saída na porta nativa (mesma saída nas duas portas)
 
 ### M2 · Captura e escrita 🔌 — parte 1
-- [ ] `IdfLogHook`, `FreeRtosLogQueue`, `WriterTask`, `UsbJtagSink`, `EspClock`
-- [ ] Proteção contra recursão e contador de descartes
+- [x] `IdfLogHook`, `FreeRtosLogQueue`, `WriterTask`, `UsbJtagSink`, `EspClock` (#10, #11, #12)
+- [x] Proteção contra recursão e contador de descartes (#11, #12)
 - [ ] Interação com o filtro por tag do próprio IDF (`esp_log_level_set`) — ver #10
 
 ### M3 · Ferramenta host 🖥️

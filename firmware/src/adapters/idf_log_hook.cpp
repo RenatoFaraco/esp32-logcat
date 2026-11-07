@@ -4,11 +4,14 @@
 #include <cstdarg>
 #include <cstdio>
 
+#include "adapters/writer_task.hpp"
 #include "esp_cpu.h"
 #include "esp_log.h"
+#include "esp_rom_sys.h"
 #include "esp_timer.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 #include "logcat/idf_text.hpp"
-#include "logcat/line_formatter.hpp"
 #include "logcat/log_record.hpp"
 #include "sdkconfig.h"
 
@@ -28,6 +31,7 @@ namespace {
 std::atomic<vprintf_like_t> previous_output{nullptr};
 Sequencer* sequencer_ptr = nullptr;
 TagLevelFilter* filter_ptr = nullptr;
+FreeRtosLogQueue* queue_ptr = nullptr;
 std::atomic<uint32_t> last_cycles{0};
 std::atomic<uint32_t> max_cycles{0};
 
@@ -39,14 +43,6 @@ thread_local bool in_hook = false;
 vprintf_like_t previous() {
     const vprintf_like_t output = previous_output.load(std::memory_order_acquire);
     return output != nullptr ? output : &vprintf;
-}
-
-int write_previous(const char* format, ...) {
-    va_list args;
-    va_start(args, format);
-    const int written = previous()(format, args);
-    va_end(args);
-    return written;
 }
 
 void record_cycles(uint32_t cycles) {
@@ -62,11 +58,20 @@ struct HookGuard {
 };
 
 // Runs in the context of whoever logs, in any task, possibly several at once: it only touches
-// its own stack, atomics and the lock-free Sequencer/TagLevelFilter. Never runs in an ISR, with
-// the scheduler stopped or with the cache disabled: ESP-IDF detects those constrained contexts
-// (esp_log_util_is_constrained) and prints through the ROM without calling the hook.
+// its own stack, atomics, the lock-free Sequencer/TagLevelFilter and the queue.
+//
+// Log v1 does NOT keep constrained contexts away from the hook (only log v2 with
+// CONFIG_LOG_API_CONSTRAINED_ENV_SAFE routes them to the ROM): an ESP_LOGx wrongly placed in an
+// ISR, or with the scheduler suspended, reaches this function. There, xQueueSend and the
+// stdout lock are illegal, so such text goes to the ROM printer (no locks, no queue).
 int hook(const char* format, va_list args) {
-    if (in_hook) {
+    if (xPortInIsrContext() || xTaskGetSchedulerState() != taskSCHEDULER_RUNNING) {
+        return esp_rom_vprintf(format, args);
+    }
+    // Inside the writer task (a driver logging while we write to it): straight to the console,
+    // raw. Going through the queue would loop (write -> log -> enqueue -> write ...), and the
+    // USB sink may be the very thing that is failing.
+    if (in_hook || xTaskGetCurrentTaskHandle() == writer_task_handle()) {
         return previous()(format, args);
     }
     const HookGuard guard;
@@ -75,8 +80,8 @@ int hook(const char* format, va_list args) {
     // vsnprintf consumes `args`; keep a copy to pass non-log output through unchanged.
     va_list original;
     va_copy(original, args);
-    // One buffer for the text and, later, for the formatted line: ~170 B on the caller's stack
-    // instead of two. The text is dead once copied into the record.
+    // The formatted ESP-IDF text, ~170 B on the caller's stack; dead once copied into the
+    // record (the line itself is formatted later, by the writer task).
     char buffer[kCaptureBufferSize];
     const int printed = vsnprintf(buffer, sizeof(buffer), format, args);
     CapturedLine captured{};
@@ -101,19 +106,21 @@ int hook(const char* format, va_list args) {
     record.uptime_ms = static_cast<uint32_t>(esp_timer_get_time() / 1000);
     record.boot = 0;  // boot counter comes with NVS (M4)
     record.seq = sequencer_ptr->next();
+    // Zero timeout: a full queue drops the line and counts it; the writer reports the count
+    // and the host sees the gap in seq (ADR-004). The caller never waits for I/O.
+    if (!queue_ptr->try_send(record)) {
+        sequencer_ptr->record_drop();
+    }
     record_cycles(esp_cpu_get_cycle_count() - start);
-
-    // PROVISIONAL (#10): synchronous output in the caller's context, until #11/#12. Measured:
-    // when no host reads the native USB port, this blocks ~50 ms per line (see #12).
-    const size_t length = format_line(record, buffer);
-    return write_previous("%.*s", static_cast<int>(length), buffer);
+    return 0;
 }
 
 }  // namespace
 
-void install_idf_log_hook(Sequencer& sequencer, TagLevelFilter& filter) {
+void install_idf_log_hook(Sequencer& sequencer, TagLevelFilter& filter, FreeRtosLogQueue& queue) {
     sequencer_ptr = &sequencer;
     filter_ptr = &filter;
+    queue_ptr = &queue;
     const vprintf_like_t replaced = esp_log_set_vprintf(&hook);
     // A second call returns the hook itself: storing it would make the hook call itself forever.
     if (replaced != &hook) {

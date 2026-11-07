@@ -26,9 +26,9 @@ struct IdfText {
 // Pure text parsing: the IDF format lives here so it can be tested on the PC.
 bool parse_idf_text(const char* text, size_t length, IdfText& out);
 
-// One buffer for the hook: it first receives the vsnprintf output, then (once the tag and the
-// message were copied into the LogRecord) the formatted line. 171 bytes fit "L (4294967295) ",
-// a 15-char tag, ": " and a 127-char message; a longer tag only shortens the message (cut).
+// The hook's buffer for the vsnprintf output (the line itself is formatted later, by the
+// writer task). 171 bytes fit "L (4294967295) ", a 15-char tag, ": " and a 127-char message;
+// a longer tag only shortens the message (cut).
 inline constexpr size_t kCaptureBufferSize = kLineBufferSize;
 
 // Result of capture_idf_line: NUL-terminated strings inside the caller's buffer.

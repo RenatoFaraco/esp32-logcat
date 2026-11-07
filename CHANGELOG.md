@@ -9,6 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Firmware log pipeline: callers never wait for I/O (ADR-004). The hook only formats the
+  message, filters, numbers and enqueues with zero timeout; a full queue drops and counts.
+  - Core `Writer` (native-tested) with the `Sink` and `Clock` interfaces: formats each record
+    once, writes it to every sink and reports losses as `W LOGCAT` lines with their own seq
+    (`dropped N lines: log queue full`, `N lines not sent to usb: no reader`).
+  - Adapters: static `FreeRtosLogQueue` (32 records), static writer task, `UsbJtagSink`
+    (USB-Serial-JTAG driver, zero timeout, whole lines, `\n` only), `ConsoleSink` (UART mirror),
+    `EspClock`. The ESP-IDF secondary console on the native port is off.
+  - Measured on the board: a burst of 100 lines delivers 30 and reports the 70 dropped, matching
+    the host's gaps; with no host reading the native port the heartbeat keeps its 1000 ms period
+    (it was 1050 ms with the synchronous output).
+
 - Firmware `IdfLogHook`: every `ESP_LOGx` (application and ESP-IDF) goes through the core —
   recognized by the new core `parse_idf_text`, filtered per tag, numbered and written in the
   PRD §3 format. Output is still synchronous in the caller's context (queue and writer task
