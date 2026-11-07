@@ -17,6 +17,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   firmware parser, same rejection reasons), `InvalidLine`, ESP-IDF native `IdfLine`,
   `CommandReply`, dump markers or `RawLine`. Pure functions; never raises on any input. Tested
   against a real boot capture from the board (CRLF line endings included).
+- ADR-008: the host is layered (transport → parser → stats/filters → render) and gets an
+  interactive TUI (`esp-logcat tui`, Textual) as a second frontend; `stream` stays plain stdout.
+- `host-reviewer` subagent: read-only review of host code (layers, format contract, serial on
+  Windows, device text as data, TUI event loop, tests without a TTY).
 
 ## [0.2.0] - 2026-11-06
 
