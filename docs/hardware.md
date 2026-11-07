@@ -40,8 +40,19 @@ Saída do console: o IDF manda o console para a UART0 e, como secundário, para 
 ```sh
 cd firmware
 pio run -e esp32c3 -t upload --upload-port COM5   # ou a porta nativa (COM6): as duas gravam
-pio device monitor --port COM5 -b 115200
 ```
+
+Para acompanhar a placa, use a ferramenta do projeto, que já trata as armadilhas abaixo
+(abre com DTR/RTS soltos, normaliza CRLF, reconecta e acha a placa se a COM mudar):
+
+```sh
+host/.venv/Scripts/esp-logcat ports                    # lista as portas e marca a nativa
+host/.venv/Scripts/esp-logcat stream                   # nativa, se houver só uma
+host/.venv/Scripts/esp-logcat stream --port COM5 --reset --time
+```
+
+O stdout recebe só as linhas da placa; avisos (conexão, lacunas, reinício) e o resumo vão
+para o stderr. `pio device monitor --port COM5 -b 115200` continua funcionando.
 
 `scripts/serial_capture.py` reinicia a placa e grava o boot das duas portas ao mesmo tempo,
 sem interação (útil para registrar evidências):
@@ -71,8 +82,8 @@ Sequência de reset normal: `DTR` solto, `RTS` ligado por 200 ms, `RTS` solto.
 
 **3. A porta nativa guarda saída enquanto ninguém lê**
 
-Ao abrir a COM da USB-Serial-JTAG, os primeiros bytes podem ser **restos do boot anterior**
-(um pedaço de linha). O host deve tolerar isso: o parser classifica como linha "raw".
+Ao abrir a COM da USB-Serial-JTAG, os primeiros bytes podem ser **restos de antes** (um
+pedaço de linha). Como eles chegam, e como o host trata isso: item 7.
 
 **4. Ponte CH340K: cuidado ao abrir a porta**
 
@@ -96,6 +107,26 @@ A porta pode voltar com outro número de COM.
 
 O boot mostra `RTCRAM` (~7 KiB em `0x50000024`) entregue ao heap. O buffer de último suspiro
 (M6, `RTC_NOINIT`) ocupa parte dessa memória e o heap cede o espaço: orçamento de ~2 KB (#31).
+
+**7. A porta nativa guarda o começo de uma linha e o gruda na próxima**
+
+Medido em 07/nov: com ninguém lendo a USB nativa, os primeiros **64 bytes** da linha corrente
+ficam presos na FIFO de hardware da USB-Serial-JTAG, e o resto da linha (e as seguintes) é
+descartado pelo driver. Esses 64 bytes **não chegam ao abrir a porta**: só saem junto com a
+próxima escrita da placa, colados nela, sem `\n` entre os dois. Exemplo real:
+
+```
+0000:000034 0000029110 I HEARTBEAT: tick 29, capture 12566 cycle0000:000051 0000046160 I HEARTB...
+```
+
+O resultado cabe em 170 bytes e é imprimível: passaria como uma `LogLine` válida, com
+mensagem falsa e uma "lacuna" de 17 linhas. Depois de um reset, o pedaço gruda no `ESP-ROM:`.
+A FIFO guarda os primeiros 64 bytes escritos: com linhas curtas, pode ser uma linha inteira e
+o começo da seguinte. O host trata isso (`pipeline.split_glued`): nas linhas que começam nos
+primeiros 64 bytes depois de conectar, corta onde começa outro cabeçalho ou o `ESP-ROM:`, e o
+pedaço vira linha rasgada; uma lacuna logo depois de uma dessas linhas conta como "não
+recebida antes da conexão", não como perda. No firmware, o `UsbJtagSink` (#12) pode evitar o
+problema na origem.
 
 ## Boot capturado (06/nov, reset pela USB nativa, trecho)
 
