@@ -25,8 +25,11 @@ Opções de TUI avaliadas:
    `parser`, `filters`, `transport`, `session` e `stats` não importam `rich` nem `textual`;
    `render` importa só `rich`; só o pacote `tui/` importa `textual`.
 2. O renderer devolve `rich.text.Text`, montado com estilos explícitos: o texto da placa é
-   dado, nunca markup, e caracteres de controle viram símbolos visíveis. O mesmo objeto serve
-   ao `stream` (impresso num `Console`) e ao TUI (num `RichLog`).
+   dado, nunca markup, e caracteres de controle e de formatação (categorias Unicode `Cc`,
+   `Cf`, `Zl`, `Zp` e surrogates soltos, `Cs`) viram escapes ASCII
+   (`\x1b`, `\u202E`). ASCII, e não símbolos como `␛`:
+   no Windows, um stdout em pipe usa cp1252, onde esses símbolos geram `UnicodeEncodeError`.
+   O mesmo objeto serve ao `stream` (impresso num `Console`) e ao TUI (num `RichLog`).
 3. O TUI é um comando a mais, `esp-logcat tui` (PRD H7), feito com Textual (`>=8.2,<9`, como
    dependência normal). `stream` e `replay` continuam texto puro em stdout.
 

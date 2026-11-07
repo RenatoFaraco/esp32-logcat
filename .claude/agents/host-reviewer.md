@@ -50,12 +50,18 @@ transport (bytes) → parser (Line) → stats/filters → render (rich Text) →
 1. **Texto da placa é dado, nunca markup.** Construir `rich.text.Text` (`Text(...)`,
    `append(texto, style=...)`), nunca `console.print(f"[red]{msg}")` nem `Text.from_markup`
    com conteúdo da placa: um `[bold]` na mensagem não pode virar estilo nem quebrar a
-   renderização. Caracteres de controle e restos de escape ANSI viram símbolos visíveis
-   (ex.: `\x1b` → `␛`), para a placa não mexer no terminal.
+   renderização. Caracteres de controle e de formatação (`Cc`, `Cf`, `Zl`, `Zp`, `Cs`:
+   ESC solto,
+   C1, bidi como U+202E) viram escapes **ASCII** (`\x1b`, `\u202E`), para a placa não mexer
+   no terminal. Nada de símbolos Unicode como `␛`: no Windows, stdout em pipe é cp1252.
 2. **Renderer:** função pura `Line → Text`, testada pelo texto (`.plain`) e pelos estilos
-   (`.spans`), sem TTY. Cor por nível consistente entre `LogLine` e `IdfLine`; `RawLine`
-   apagada; `InvalidLine` em destaque com o motivo.
-3. **TUI (Textual):**
+   (`.spans`), sem TTY. O `.plain` é a linha original sem o `\n`. Cor por nível consistente
+   entre `LogLine` e `IdfLine`; `RawLine` apagada; `InvalidLine` em destaque com o motivo.
+3. **Saída do `stream`/`replay`:** `Console` com `soft_wrap=True` (senão quebra a linha em 80
+   colunas fora do terminal) e `color_system` automático (um valor explícito força cor em
+   pipe); stdout reconfigurado para não estourar `UnicodeEncodeError` com texto fora do
+   cp1252 (ex.: `U+FFFD` de UTF-8 inválido da placa).
+4. **TUI (Textual):**
    - nunca bloquear o event loop: a leitura da serial roda numa thread worker
      (`@work(thread=True)`) e entrega linhas via `call_from_thread`/mensagens;
    - agrupar as linhas (a placa pode mandar ~1 kHz): uma atualização da UI por lote, não por
@@ -63,7 +69,7 @@ transport (bytes) → parser (Line) → stats/filters → render (rich Text) →
    - scrollback com limite (`RichLog(max_lines=...)`); contadores e estado da conexão
      atualizados sem varrer o histórico;
    - ao sair, parar a worker e fechar a porta; erro na serial aparece na UI, não derruba o app.
-4. **Windows:** funciona no Windows Terminal e no terminal do VS Code; nada de `curses` ou
+5. **Windows:** funciona no Windows Terminal e no terminal do VS Code; nada de `curses` ou
    APIs só de POSIX.
 
 ## Geral
