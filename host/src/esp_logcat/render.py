@@ -24,6 +24,7 @@ from typing import assert_never
 
 from rich.text import Text
 
+from esp_logcat.events import Notice, NoticeKind
 from esp_logcat.parser import (
     TRUNCATION_MARKER,
     CommandReply,
@@ -95,6 +96,37 @@ def render(line: Line, *, pc_time: datetime | None = None) -> Text:
             text.append(f"#END {line.crc32:08x}", style=DUMP_STYLE)
         case _:
             assert_never(line)
+    return text
+
+
+_NOTICE_STYLES: dict[NoticeKind, str] = {
+    NoticeKind.CONNECTED: "dim",
+    NoticeKind.WAITING: "dim",
+    NoticeKind.MISSED: "dim",
+    NoticeKind.DISCONNECTED: "yellow",
+    NoticeKind.GAP: "yellow",
+    NoticeKind.REORDER: "dim yellow",
+    NoticeKind.RESTART: "yellow",
+    NoticeKind.UPTIME_BACK: "yellow",
+    NoticeKind.SEQ_BACK: "yellow",
+    NoticeKind.OVERFLOW: "yellow",
+}
+
+
+def device_text(data: str, style: str = "") -> Text:
+    """Any text that did not come from this program (device, OS), escaped like a line."""
+    text = Text()
+    _append(text, data, style)
+    return text
+
+
+def render_notice(notice: Notice) -> Text:
+    """A notice about the stream (connection, continuity), as ``-- text --``."""
+    style = _NOTICE_STYLES.get(notice.kind, "dim")
+    text = Text()
+    text.append("-- ", style=style)
+    _append(text, notice.text, style)  # may quote exception text from the OS
+    text.append(" --", style=style)
     return text
 
 

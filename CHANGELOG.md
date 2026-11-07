@@ -17,6 +17,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   firmware parser, same rejection reasons), `InvalidLine`, ESP-IDF native `IdfLine`,
   `CommandReply`, dump markers or `RawLine`. Pure functions; never raises on any input. Tested
   against a real boot capture from the board (CRLF line endings included).
+- Host `esp-logcat stream` (no filters yet) and `esp-logcat ports`. Device lines go to stdout
+  exactly as written (pipe and grep friendly); notices and a final summary go to stderr.
+  - `transport.py`: opens with DTR/RTS released, resets with the DTR rewrite usbser.sys
+    needs, normalizes CRLF, never wraps or grows without bound (1024-byte line cap), waits
+    for an absent or busy port and reconnects, finding the board again under a new COM
+    number (serial number on the native port, USB location on the CH340K).
+  - `stats.py`: seq continuity per connection — lines lost (undone if the line arrives late,
+    within the queue depth), reordered, device restarts (also via the `ESP-ROM:` banner, so a
+    boot loop is visible while boot stays 0), uptime or seq going back (a corrupted line is
+    never ~1e6 lost lines), plus counters per line kind and invalid reason.
+  - Ends quietly when the reader of a pipe goes away (`stream | head`), closes the port on
+    every path (including Ctrl+C during a reset, which also releases RTS), and reports a busy
+    port in any Windows language.
+  - `pipeline.py`: bytes → lines → parser → stats, shared with the future replay and TUI.
+    Splits the 64-byte fragment the native port keeps in its FIFO, which otherwise glues onto
+    the first live line as a false but valid-looking line (docs/hardware.md, item 7).
 - Host `render.py`: each parsed line becomes a `rich.text.Text` colored by level (adb logcat
   palette, bright blue for Debug), whose plain text is the original line. ESP-IDF lines in the
   level color without bold, raw lines dimmed, invalid lines labeled with their reason and raw
