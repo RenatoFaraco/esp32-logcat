@@ -1,3 +1,11 @@
 {
-    "cmake.sourceDirectory": "${workspaceFolder}/firmware"
+    "cmake.sourceDirectory": "${workspaceFolder}/firmware",
+    // The workspace root is the repository, not the PlatformIO project (firmware/), so the
+    // PlatformIO extension does not generate c_cpp_properties.json here. IntelliSense reads the
+    // compile database instead: `pio run -d firmware -e esp32c3 -t compiledb` (see README).
+    "C_Cpp.default.compileCommands": "${workspaceFolder}/firmware/compile_commands.json",
+    // That database names the compiler without a path, so IntelliSense cannot run it to learn
+    // the target's built-in macros (__riscv...) and headers like stdio.h break ("_REENT is
+    // undefined"). An explicit compilerPath replaces it and keeps the database's arguments.
+    "C_Cpp.default.compilerPath": "${env:PLATFORMIO_CORE_DIR}/packages/toolchain-riscv32-esp/bin/riscv32-esp-elf-g++.exe"
 }

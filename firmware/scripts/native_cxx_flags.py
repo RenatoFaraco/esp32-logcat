@@ -5,6 +5,10 @@
 # 2. Sanitizers, selected per env with `custom_sanitizers = address,undefined` or `thread`.
 #    They must go to the compiler (C and C++) AND the linker: build_flags only passes -f... to
 #    the compiler, and a binary linked without -fsanitize lacks the sanitizer runtime.
+#
+# SCons runs this file with `Import` and `env` already defined; static checkers do not know
+# that: `noqa` silences ruff, the pyright line below silences Pylance (VS Code).
+# pyright: reportUndefinedVariable=false
 Import("env")  # noqa: F821  (injected by SCons)
 
 env.Append(CXXFLAGS=["-std=c++17", "-fno-exceptions", "-fno-rtti"])  # noqa: F821

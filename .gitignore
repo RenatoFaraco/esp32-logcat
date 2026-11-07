@@ -40,3 +40,6 @@ desktop.ini
 
 # --- Claude Code: personal overrides stay local ---
 .claude/settings.local.json
+
+# PlatformIO compile database for VS Code IntelliSense (machine-specific paths, regenerated)
+firmware/compile_commands.json
