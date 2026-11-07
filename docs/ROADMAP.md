@@ -107,11 +107,30 @@ Os blocos 🖥️ (M3, M4a, M5a) podem ser adiantados sempre que o trabalho com 
 
 ## Depois da v1
 
-| Versão | Ideia | Ponte com |
-|--------|-------|-----------|
-| v1.1 | Core dump, comando `log grep` no dispositivo | — |
-| v2 | Envio via MQTT (Wi-Fi), telemetria e métricas (heap, uptime, resets) | **MLOps**: base para monitorar drift de sensores em campo |
-| v2 | Formato binário/tokenizado | Banda e flash |
-| v2 | Componente reutilizável publicado (PlatformIO Registry / IDF Component Registry) | Portfólio |
-| v3 | Assinatura/encadeamento por hash dos logs | Valor probatório em perícia |
-| — | Versão mínima para CH32V003 (só ring buffer + UART) | Estudo de RISC-V bare metal |
+Combinado em 07/nov/2026. O projeto é open source e pensado para o público em geral: quem
+adota adapta ao seu produto. A ordem segue as dependências: multichip primeiro, porque a
+telemetria vira só mais um `Sink` sobre ele. Os ADRs 009–011 estão como **proposta** e viram
+"aceita" quando a versão começar.
+
+| Versão | Ideia | Por quê | Decisão |
+|--------|-------|---------|---------|
+| v1.1 | Core dump, comando `log grep` no dispositivo | — | — |
+| v2 | Componente ESP-IDF multichip (família Espressif) publicado no IDF Component Registry | O chip muda de produto para produto | ADR-009 |
+| v2.x | Host em Go (CLI + TUI), binário único por SO, validado por suíte de conformidade | Instalar sem Python nem `.venv` | ADR-010 |
+| v3 | Crate Rust `no_std` (`esp-hal`) com o mesmo formato de linha | Logcat para firmware em Rust; prova que o formato independe da linguagem | ADR-011 |
+| v3 | Envio via MQTT (Wi-Fi), telemetria e métricas (heap, uptime, resets) + formato binário/tokenizado | **MLOps**: monitorar drift de sensores em campo; o binário economiza banda | — |
+| v4 | Outros fabricantes (STM32, RP2040, nRF…) e versão mínima para CH32V003 (só ring buffer + UART) | Multichip além da Espressif; pode exigir renomear o projeto | — |
+| backlog | Assinatura/encadeamento por hash dos logs | Valor probatório em perícia (ADR-007) | — |
+
+### Placas da v2 (ADR-009)
+
+| Chip | O que traz para o teste | Situação |
+|------|--------------------------|----------|
+| ESP32-C3 | RISC-V single-core sem atômicos nativos, USB-Serial-JTAG | DevKitM-1 em uso (`hardware.md`) |
+| ESP32 | Dual-core Xtensa, só UART (sem USB nativa), memória RTC | disponível, sem bring-up |
+| ESP32-S3 | Dual-core Xtensa, USB-Serial-JTAG + USB-OTG, PSRAM | a comprar |
+| ESP32-C6 | RISC-V com atômicos nativos, LP RAM, Wi-Fi 6 | a comprar |
+| ESP32-P4 | Dual-core RISC-V, USB-OTG HS, sem rádio | a comprar (confirmar a revisão suportada pelo IDF) |
+
+Fora: ESP32-S2 e modelos mais antigos. Chips novos entram um de cada vez, cada um com seu
+bring-up.

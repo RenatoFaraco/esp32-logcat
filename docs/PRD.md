@@ -11,12 +11,15 @@ some no reset e não diz *por que* a placa reiniciou.
 
 ## 2. Objetivo
 
-Um componente de logging reutilizável em todo produto (FSI-TECH e projetos pessoais) que:
+Um componente de logging open source, reutilizável em qualquer produto, que:
 
 - registra eventos com nível, tag, timestamp e contexto de boot;
 - **sobrevive a reset e falta de energia** (persistência em flash);
 - registra **por que** o dispositivo reiniciou;
 - tem uma ferramenta no PC para **ver, filtrar e baixar** os logs, como o `adb logcat`.
+
+O projeto é pensado para o público em geral, não para um produto ou empresa específica: quem
+adota adapta o componente à sua realidade.
 
 ## 3. Escopo v1
 
@@ -77,11 +80,17 @@ Sem checksum por linha na v1 (ADR-007). Ordem cronológica = posição no arquiv
 
 ## 4. Fora do escopo v1 (backlog)
 
-- Envio para nuvem via MQTT (v2 — base de telemetria/monitoramento de drift, ponte com MLOps)
-- Formato binário/tokenizado (v2)
+Plano completo e motivos em `ROADMAP.md`, "Depois da v1".
+
 - Core dump completo em flash (v1.1)
-- Criptografia/assinatura dos logs (relevante para valor probatório, v3)
-- Port para CH32V003 (RAM/flash insuficientes para esta arquitetura; avaliar versão mínima)
+- Componente multichip (família Espressif) publicado no IDF Component Registry (v2, ADR-009)
+- Host em Go, binário único (v2.x, ADR-010)
+- Firmware em Rust, crate `no_std` com o mesmo formato (v3, ADR-011)
+- Envio para nuvem via MQTT (v3 — base de telemetria/monitoramento de drift, ponte com MLOps)
+- Formato binário/tokenizado (v3, junto com o MQTT)
+- Outros fabricantes; port para CH32V003 (RAM/flash insuficientes para esta arquitetura;
+  avaliar versão mínima) (v4)
+- Criptografia/assinatura dos logs (relevante para valor probatório; backlog, sem versão)
 
 ## 5. Restrições e decisões
 

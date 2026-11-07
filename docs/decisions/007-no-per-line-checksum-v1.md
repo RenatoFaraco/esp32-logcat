@@ -34,6 +34,6 @@ O que **passa** (registrado pela auditoria da #5):
 ## Consequências
 - Linha curta e legível em qualquer terminal; parser e formatter mais simples.
 - Corrupção dentro de uma linha válida não é detectada.
-- Reavaliar na v3 (assinatura/encadeamento por hash para valor probatório, PRD §4), quando
-  integridade passa a ser requisito. Adicionar checksum é mudança de formato: formatter,
+- Reavaliar quando a assinatura/encadeamento por hash (valor probatório, PRD §4, hoje no
+  backlog) entrar no plano e a integridade passar a ser requisito. Adicionar checksum é mudança de formato: formatter,
   parsers e testes dos dois lados no mesmo commit, e este ADR é substituído.

@@ -14,7 +14,7 @@ para testes no PC, CI simples). Versão da plataforma fixada em `platformio.ini`
 `firmware/sdkconfig.defaults`.
 
 ## Consequências
-- Acesso total às APIs do IDF e a `menuconfig`; o mesmo código serve a produtos da FSI-TECH.
+- Acesso total às APIs do IDF e a `menuconfig`; o mesmo código serve a qualquer produto com ESP-IDF.
 - Build do IDF via CMake: `firmware/CMakeLists.txt` e `src/CMakeLists.txt` precisam ser mantidos.
 - Menos exemplos prontos que no Arduino; curva de aprendizado maior (assumida de propósito).
 - Atualizar a plataforma é uma decisão explícita (troca da versão fixada), não um efeito colateral.
