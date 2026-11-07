@@ -99,6 +99,13 @@ compile database instead; generate it once, and again after adding source files:
 pio run -d firmware -e esp32c3 -t compiledb   # writes firmware/compile_commands.json (ignored)
 ```
 
+The database names the compiler without a path, so `.vscode/settings.json` also sets
+`C_Cpp.default.compilerPath` from the `PLATFORMIO_CORE_DIR` environment variable
+(`<core>/packages/toolchain-riscv32-esp/bin/riscv32-esp-elf-g++.exe`): without it, IntelliSense
+cannot query the RISC-V compiler and reports errors such as `identifier "_REENT" is undefined`.
+If PlatformIO lives in its default place (`%USERPROFILE%\.platformio`), set that variable or
+adjust the path in your user settings.
+
 Then run *C/C++: Reset IntelliSense Database* from the command palette if the errors stay.
 
 The CI also runs the core tests under sanitizers: `native_asan` (AddressSanitizer +
