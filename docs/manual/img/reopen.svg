@@ -1,0 +1,101 @@
+<svg class="rich-terminal" viewBox="0 0 1726 294.0" xmlns="http://www.w3.org/2000/svg">
+    <!-- Generated with Rich https://www.textualize.io -->
+    <style>
+
+    @font-face {
+        font-family: "Fira Code";
+        src: local("FiraCode-Regular"),
+                url("https://cdnjs.cloudflare.com/ajax/libs/firacode/6.2.0/woff2/FiraCode-Regular.woff2") format("woff2"),
+                url("https://cdnjs.cloudflare.com/ajax/libs/firacode/6.2.0/woff/FiraCode-Regular.woff") format("woff");
+        font-style: normal;
+        font-weight: 400;
+    }
+    @font-face {
+        font-family: "Fira Code";
+        src: local("FiraCode-Bold"),
+                url("https://cdnjs.cloudflare.com/ajax/libs/firacode/6.2.0/woff2/FiraCode-Bold.woff2") format("woff2"),
+                url("https://cdnjs.cloudflare.com/ajax/libs/firacode/6.2.0/woff/FiraCode-Bold.woff") format("woff");
+        font-style: bold;
+        font-weight: 700;
+    }
+
+    .terminal-3295719006-matrix {
+        font-family: Fira Code, monospace;
+        font-size: 20px;
+        line-height: 24.4px;
+        font-variant-east-asian: full-width;
+    }
+
+    .terminal-3295719006-title {
+        font-size: 18px;
+        font-weight: bold;
+        font-family: arial;
+    }
+
+    .terminal-3295719006-r1 { fill: #9d65ff;font-weight: bold }
+.terminal-3295719006-r2 { fill: #d9d9d9 }
+.terminal-3295719006-r3 { fill: #878787 }
+.terminal-3295719006-r4 { fill: #98e024;font-weight: bold }
+.terminal-3295719006-r5 { fill: #98e024 }
+.terminal-3295719006-r6 { fill: #fd971f;font-weight: bold }
+.terminal-3295719006-r7 { fill: #fd971f }
+.terminal-3295719006-r8 { fill: #d9d9d9;font-weight: bold }
+    </style>
+
+    <defs>
+    <clipPath id="terminal-3295719006-clip-terminal">
+      <rect x="0" y="0" width="1707.0" height="243.0" />
+    </clipPath>
+    <clipPath id="terminal-3295719006-line-0">
+    <rect x="0" y="1.5" width="1708" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-3295719006-line-1">
+    <rect x="0" y="25.9" width="1708" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-3295719006-line-2">
+    <rect x="0" y="50.3" width="1708" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-3295719006-line-3">
+    <rect x="0" y="74.7" width="1708" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-3295719006-line-4">
+    <rect x="0" y="99.1" width="1708" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-3295719006-line-5">
+    <rect x="0" y="123.5" width="1708" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-3295719006-line-6">
+    <rect x="0" y="147.9" width="1708" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-3295719006-line-7">
+    <rect x="0" y="172.3" width="1708" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-3295719006-line-8">
+    <rect x="0" y="196.7" width="1708" height="24.65"/>
+            </clipPath>
+    </defs>
+
+    <rect fill="#0c0c0c" stroke="rgba(255,255,255,0.35)" stroke-width="1" x="1" y="1" width="1724" height="292" rx="8"/><text class="terminal-3295719006-title" fill="#d9d9d9" text-anchor="middle" x="862" y="27">porta&#160;reaberta</text>
+            <g transform="translate(26,22)">
+            <circle cx="0" cy="0" r="7" fill="#ff5f57"/>
+            <circle cx="22" cy="0" r="7" fill="#febc2e"/>
+            <circle cx="44" cy="0" r="7" fill="#28c840"/>
+            </g>
+        
+    <g transform="translate(9, 41)" clip-path="url(#terminal-3295719006-clip-terminal)">
+    
+    <g class="terminal-3295719006-matrix">
+    <text class="terminal-3295719006-r1" x="0" y="20" textLength="292.8" clip-path="url(#terminal-3295719006-line-0)">PS&#160;C:\dev\esp32-logcat&gt;&#160;</text><text class="terminal-3295719006-r1" x="292.8" y="20" textLength="207.4" clip-path="url(#terminal-3295719006-line-0)">esp-logcat&#160;stream</text><text class="terminal-3295719006-r2" x="1708" y="20" textLength="12.2" clip-path="url(#terminal-3295719006-line-0)">
+</text><text class="terminal-3295719006-r3" x="0" y="44.4" textLength="36.6" clip-path="url(#terminal-3295719006-line-1)">--&#160;</text><text class="terminal-3295719006-r3" x="36.6" y="44.4" textLength="207.4" clip-path="url(#terminal-3295719006-line-1)">connected&#160;to&#160;COM6</text><text class="terminal-3295719006-r3" x="244" y="44.4" textLength="36.6" clip-path="url(#terminal-3295719006-line-1)">&#160;--</text><text class="terminal-3295719006-r2" x="1708" y="44.4" textLength="12.2" clip-path="url(#terminal-3295719006-line-1)">
+</text><text class="terminal-3295719006-r3" x="0" y="68.8" textLength="280.6" clip-path="url(#terminal-3295719006-line-2)">0000:000171&#160;0000065030&#160;</text><text class="terminal-3295719006-r4" x="280.6" y="68.8" textLength="12.2" clip-path="url(#terminal-3295719006-line-2)">I</text><text class="terminal-3295719006-r4" x="305" y="68.8" textLength="109.8" clip-path="url(#terminal-3295719006-line-2)">HEARTBEAT</text><text class="terminal-3295719006-r5" x="414.8" y="68.8" textLength="24.4" clip-path="url(#terminal-3295719006-line-2)">:&#160;</text><text class="terminal-3295719006-r5" x="439.2" y="68.8" textLength="927.2" clip-path="url(#terminal-3295719006-line-2)">tick&#160;65,&#160;capture&#160;24351&#160;cycles&#160;(max&#160;181321),&#160;stack&#160;free&#160;2228&#160;B,&#160;writer&#160;2948&#160;B</text><text class="terminal-3295719006-r2" x="1708" y="68.8" textLength="12.2" clip-path="url(#terminal-3295719006-line-2)">
+</text><text class="terminal-3295719006-r3" x="0" y="93.2" textLength="280.6" clip-path="url(#terminal-3295719006-line-3)">0000:000172&#160;0000065033&#160;</text><text class="terminal-3295719006-r6" x="280.6" y="93.2" textLength="12.2" clip-path="url(#terminal-3295719006-line-3)">W</text><text class="terminal-3295719006-r6" x="305" y="93.2" textLength="73.2" clip-path="url(#terminal-3295719006-line-3)">LOGCAT</text><text class="terminal-3295719006-r7" x="378.2" y="93.2" textLength="24.4" clip-path="url(#terminal-3295719006-line-3)">:&#160;</text><text class="terminal-3295719006-r7" x="402.6" y="93.2" textLength="427" clip-path="url(#terminal-3295719006-line-3)">39&#160;lines&#160;not&#160;sent&#160;to&#160;usb:&#160;no&#160;reader</text><text class="terminal-3295719006-r2" x="1708" y="93.2" textLength="12.2" clip-path="url(#terminal-3295719006-line-3)">
+</text><text class="terminal-3295719006-r3" x="0" y="117.6" textLength="280.6" clip-path="url(#terminal-3295719006-line-4)">0000:000173&#160;0000066030&#160;</text><text class="terminal-3295719006-r4" x="280.6" y="117.6" textLength="12.2" clip-path="url(#terminal-3295719006-line-4)">I</text><text class="terminal-3295719006-r4" x="305" y="117.6" textLength="109.8" clip-path="url(#terminal-3295719006-line-4)">HEARTBEAT</text><text class="terminal-3295719006-r5" x="414.8" y="117.6" textLength="24.4" clip-path="url(#terminal-3295719006-line-4)">:&#160;</text><text class="terminal-3295719006-r5" x="439.2" y="117.6" textLength="927.2" clip-path="url(#terminal-3295719006-line-4)">tick&#160;66,&#160;capture&#160;25260&#160;cycles&#160;(max&#160;181321),&#160;stack&#160;free&#160;2228&#160;B,&#160;writer&#160;2948&#160;B</text><text class="terminal-3295719006-r2" x="1708" y="117.6" textLength="12.2" clip-path="url(#terminal-3295719006-line-4)">
+</text><text class="terminal-3295719006-r3" x="0" y="142" textLength="280.6" clip-path="url(#terminal-3295719006-line-5)">0000:000174&#160;0000067030&#160;</text><text class="terminal-3295719006-r4" x="280.6" y="142" textLength="12.2" clip-path="url(#terminal-3295719006-line-5)">I</text><text class="terminal-3295719006-r4" x="305" y="142" textLength="109.8" clip-path="url(#terminal-3295719006-line-5)">HEARTBEAT</text><text class="terminal-3295719006-r5" x="414.8" y="142" textLength="24.4" clip-path="url(#terminal-3295719006-line-5)">:&#160;</text><text class="terminal-3295719006-r5" x="439.2" y="142" textLength="927.2" clip-path="url(#terminal-3295719006-line-5)">tick&#160;67,&#160;capture&#160;26117&#160;cycles&#160;(max&#160;181321),&#160;stack&#160;free&#160;2228&#160;B,&#160;writer&#160;2948&#160;B</text><text class="terminal-3295719006-r2" x="1708" y="142" textLength="12.2" clip-path="url(#terminal-3295719006-line-5)">
+</text><text class="terminal-3295719006-r3" x="0" y="166.4" textLength="280.6" clip-path="url(#terminal-3295719006-line-6)">0000:000175&#160;0000068030&#160;</text><text class="terminal-3295719006-r4" x="280.6" y="166.4" textLength="12.2" clip-path="url(#terminal-3295719006-line-6)">I</text><text class="terminal-3295719006-r4" x="305" y="166.4" textLength="109.8" clip-path="url(#terminal-3295719006-line-6)">HEARTBEAT</text><text class="terminal-3295719006-r5" x="414.8" y="166.4" textLength="24.4" clip-path="url(#terminal-3295719006-line-6)">:&#160;</text><text class="terminal-3295719006-r5" x="439.2" y="166.4" textLength="927.2" clip-path="url(#terminal-3295719006-line-6)">tick&#160;68,&#160;capture&#160;24500&#160;cycles&#160;(max&#160;181321),&#160;stack&#160;free&#160;2228&#160;B,&#160;writer&#160;2948&#160;B</text><text class="terminal-3295719006-r2" x="1708" y="166.4" textLength="12.2" clip-path="url(#terminal-3295719006-line-6)">
+</text><text class="terminal-3295719006-r8" x="0" y="190.8" textLength="24.4" clip-path="url(#terminal-3295719006-line-7)">^C</text><text class="terminal-3295719006-r2" x="1708" y="190.8" textLength="12.2" clip-path="url(#terminal-3295719006-line-7)">
+</text><text class="terminal-3295719006-r3" x="0" y="215.2" textLength="1634.8" clip-path="url(#terminal-3295719006-line-8)">5&#160;lines,&#160;5&#160;log,&#160;0&#160;esp-idf,&#160;0&#160;raw,&#160;0&#160;invalid&#160;|&#160;lost&#160;0,&#160;missed&#160;before&#160;connecting&#160;0,&#160;reordered&#160;0,&#160;restarts&#160;0,&#160;uptime&#160;back&#160;0,&#160;seq&#160;back&#160;0,&#160;</text><text class="terminal-3295719006-r2" x="1708" y="215.2" textLength="12.2" clip-path="url(#terminal-3295719006-line-8)">
+</text><text class="terminal-3295719006-r3" x="0" y="239.6" textLength="305" clip-path="url(#terminal-3295719006-line-9)">reconnects&#160;0,&#160;overflows&#160;0</text><text class="terminal-3295719006-r2" x="1708" y="239.6" textLength="12.2" clip-path="url(#terminal-3295719006-line-9)">
+</text>
+    </g>
+    </g>
+</svg>

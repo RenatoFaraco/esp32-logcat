@@ -1,0 +1,44 @@
+{
+ "port": "COM6",
+ "started": "2026-11-07T04:47:12.211",
+ "items": [
+  {
+   "t": 0.015,
+   "notice": "waiting",
+   "text": "waiting for COM6: port busy (is a serial monitor open?)"
+  },
+  {
+   "t": 2.531,
+   "notice": "connected",
+   "text": "connected to COM6"
+  },
+  {
+   "t": 3.375,
+   "data": "MA=="
+  },
+  {
+   "t": 3.375,
+   "data": "MDAwOjAwMDE4MCAwMDAwMDczMDMwIEkgSEVBUlRCRUFUOiB0aWNrIDczLCBjYXB0dXJlIDI1MDAzIGN5Y2xlcyAobWF4IDE4MTMyMSksIHN0YWNrIGZyZWUgMjIyOCBCLCB3cml0ZXIgMjk0OCBCCg=="
+  },
+  {
+   "t": 4.375,
+   "data": "MA=="
+  },
+  {
+   "t": 4.375,
+   "data": "MDAwOjAwMDE4MSAwMDAwMDc0MDMwIEkgSEVBUlRCRUFUOiB0aWNrIDc0LCBjYXB0dXJlIDI0NTAwIGN5Y2xlcyAobWF4IDE4MTMyMSksIHN0YWNrIGZyZWUgMjIyOCBCLCB3cml0ZXIgMjk0OCBCCg=="
+  },
+  {
+   "t": 5.375,
+   "data": "MA=="
+  },
+  {
+   "t": 5.375,
+   "data": "MDAwOjAwMDE4MiAwMDAwMDc1MDMwIEkgSEVBUlRCRUFUOiB0aWNrIDc1LCBjYXB0dXJlIDI1MDAzIGN5Y2xlcyAobWF4IDE4MTMyMSksIHN0YWNrIGZyZWUgMjIyOCBCLCB3cml0ZXIgMjk0OCBCCg=="
+  },
+  {
+   "t": 6.375,
+   "data": "MA=="
+  }
+ ]
+}

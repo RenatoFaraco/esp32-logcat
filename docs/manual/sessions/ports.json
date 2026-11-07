@@ -1,0 +1,18 @@
+[
+ {
+  "device": "COM5",
+  "vid": 6790,
+  "pid": 29986,
+  "serial_number": null,
+  "location": "1-3.1",
+  "description": "USB-SERIAL CH340K (COM5)"
+ },
+ {
+  "device": "COM6",
+  "vid": 12346,
+  "pid": 4097,
+  "serial_number": "80:53:E0:0A:5D:AC",
+  "location": null,
+  "description": "Dispositivo Serial USB (COM6)"
+ }
+]

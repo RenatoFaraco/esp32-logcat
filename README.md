@@ -2,7 +2,11 @@
 
 Persistent, `adb logcat`-style logging for embedded firmware.
 
-> **Status:** early development (milestone M0 — project foundation). Nothing here is usable yet.
+> **Status:** early development. On the ESP32-C3 every `ESP_LOGx` already goes through the
+> core and a non-blocking queue to the native USB port, and `esp-logcat stream` shows it live
+> (milestones M2/M3). Persistence in flash, the console and crash recovery are next.
+>
+> **User manual (Portuguese), with real terminal output:** [docs/MANUAL.md](docs/MANUAL.md)
 
 ## What it is
 

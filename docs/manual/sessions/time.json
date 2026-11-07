@@ -1,0 +1,55 @@
+{
+ "port": "COM6",
+ "started": "2026-11-07T04:46:13.862",
+ "items": [
+  {
+   "t": 0.015,
+   "notice": "connected",
+   "text": "connected to COM6"
+  },
+  {
+   "t": 0.719,
+   "data": "MA=="
+  },
+  {
+   "t": 0.719,
+   "data": "MDAwOjAwMDExOCAwMDAwMDEyMDMwIEkgSEVB"
+  },
+  {
+   "t": 0.719,
+   "data": "Ug=="
+  },
+  {
+   "t": 0.719,
+   "data": "VEJFQVQ6IHRpY2sgMTIsIGNhcHR1cmUgMjUyNjAgY3ljbGVzIChtYXggMTgxMzIxKSwgc3RhY2sgZnJlZSAyMjI4IEIsIHdyaXRlciAyOTQ4IEIK"
+  },
+  {
+   "t": 1.719,
+   "data": "MA=="
+  },
+  {
+   "t": 1.719,
+   "data": "MDAwOjAwMDExOSAwMDAwMDEzMDMwIEkgSEVBUlRCRUFUOiB0aWNrIDEzLCBjYXB0dXJlIDI0MzUxIGN5Y2xlcyAobWF4IDE4MTMyMSksIHN0YWNrIGZyZWUgMjIyOCBCLCB3cml0ZXIgMjk0OCBCCg=="
+  },
+  {
+   "t": 2.719,
+   "data": "MA=="
+  },
+  {
+   "t": 2.719,
+   "data": "MDAwOjAwMDEyMCAwMDAwMDE0MDMwIEkgSEVBUlRCRUFUOiB0aWNrIDE0LCBjYXB0dXJlIDI1MjYwIGN5Y2xlcyAobWF4IDE4MTMyMSksIHN0YWNrIGZyZWUgMjIyOCBCLCB3cml0ZXIgMjk0OCBCCg=="
+  },
+  {
+   "t": 3.719,
+   "data": "MA=="
+  },
+  {
+   "t": 3.719,
+   "data": "MDAwOjAwMDEyMSAwMDAwMDE1MDMwIEkgSEVBUlRCRUFUOiB0aWNrIDE1LCBjYXB0dXJlIDI0MzUxIGN5Y2xlcyAobWF4IDE4MTMyMSksIHN0YWNrIGZyZWUgMjIyOCBCLCB3cml0ZXIgMjk0OCBCCg=="
+  },
+  {
+   "t": 4.719,
+   "data": "MA=="
+  }
+ ]
+}

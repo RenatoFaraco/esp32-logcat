@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- User manual (`docs/MANUAL.md`, Portuguese): from zero to the logcat running, how to read the
+  output, what happens in each situation, pipes and files, both ports, troubleshooting. Its
+  terminal pictures are real board sessions (`scripts/record_session.py`) rendered by the same
+  code as `esp-logcat stream` (`scripts/manual_screenshots.py`), so they can be regenerated.
+
 - Firmware log pipeline: callers never wait for I/O (ADR-004). The hook only formats the
   message, filters, numbers and enqueues with zero timeout; a full queue drops and counts.
   - Core `Writer` (native-tested) with the `Sink` and `Clock` interfaces: formats each record
