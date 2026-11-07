@@ -8,6 +8,36 @@ As imagens do terminal deste manual são **saídas reais da placa**: sessões gr
 `scripts/record_session.py` e desenhadas pelo mesmo código do `esp-logcat stream`
 (`scripts/manual_screenshots.py`, ver [o fim do manual](#como-as-imagens-foram-feitas)).
 
+> English version: [MANUAL.en.md](MANUAL.en.md)
+
+## Comece aqui
+
+Com o firmware gravado e a placa ligada pela USB-C da porta nativa, abra um terminal
+(**PowerShell** ou **Prompt de Comando**, o `cmd`; no VS Code: menu *Terminal → New Terminal*)
+e digite:
+
+**PowerShell**
+
+```powershell
+cd C:\dev\esp32-logcat
+host\.venv\Scripts\Activate.ps1
+esp-logcat ports
+esp-logcat stream --reset
+```
+
+**Prompt de Comando (cmd)**
+
+```bat
+cd /d C:\dev\esp32-logcat
+host\.venv\Scripts\activate.bat
+esp-logcat ports
+esp-logcat stream --reset
+```
+
+`Ctrl+C` encerra. Os comandos do `esp-logcat` são os mesmos nos dois terminais; o que muda
+é só a ativação do ambiente (2ª linha) e alguns truques de pipe (seção 4). Primeira vez na
+máquina, sem o ambiente criado ou sem firmware gravado: seção 1.
+
 ## Sumário
 
 1. [Do zero ao logcat funcionando](#1-do-zero-ao-logcat-funcionando)
@@ -25,8 +55,9 @@ As imagens do terminal deste manual são **saídas reais da placa**: sessões gr
 ### 1.1 O que você precisa
 
 - Placa ESP32-C3 com as duas USB-C (a usada aqui: `hardware.md`).
-- Windows com PlatformIO (`C:\.platformio`) e Python 3.12. Os comandos abaixo usam o
-  PowerShell, a partir da raiz do repositório (`C:\dev\esp32-logcat`).
+- Windows com PlatformIO (`C:\.platformio`) e Python 3.12. Os comandos funcionam no
+  **PowerShell** e no **Prompt de Comando (cmd)**, a partir da raiz do repositório
+  (`C:\dev\esp32-logcat`); onde os dois diferem, o manual mostra as duas formas.
 - **Um cabo na USB-C da porta nativa (USB-Serial-JTAG)**, ligado **direto numa porta do PC**,
   sem hub: atrás de hub, um reset pelo pino EN às vezes faz o Windows perder a porta
   (`hardware.md`, item 5). A outra USB-C (ponte CH340K) é opcional: é o console completo.
@@ -40,9 +71,21 @@ py -3.12 -m venv .venv
 cd ..
 ```
 
-Isso cria o comando `host\.venv\Scripts\esp-logcat.exe`. Para não digitar o caminho, ative o
-ambiente na sessão do PowerShell (`host\.venv\Scripts\Activate.ps1`) e use só `esp-logcat`,
-como no resto deste manual.
+(No cmd, os mesmos comandos funcionam; troque `cd ..` por `cd /d C:\dev\esp32-logcat`.)
+
+Isso cria o comando `host\.venv\Scripts\esp-logcat.exe`. Para não digitar o caminho, **ative o
+ambiente** em cada terminal que abrir e use só `esp-logcat`, como no resto deste manual:
+
+| Terminal | Ativar | Sinal de que deu certo |
+|----------|--------|------------------------|
+| PowerShell | `host\.venv\Scripts\Activate.ps1` | o prompt passa a começar com `(.venv)` |
+| cmd | `host\.venv\Scripts\activate.bat` | idem |
+
+Sem ativar, use o caminho completo: `host\.venv\Scripts\esp-logcat.exe stream`.
+
+Se o PowerShell disser que "a execução de scripts foi desabilitada neste sistema", libere os
+scripts locais para o seu usuário (uma vez) com
+`Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`, ou use o cmd, ou o caminho completo.
 
 ### 1.3 Gravar o firmware
 
@@ -246,6 +289,8 @@ outros registros. O uptime da placa continua na linha.
 O stdout recebe **só as linhas da placa, exatamente como ela as escreveu** — sem cores, sem
 avisos. Os avisos e o resumo vão para o stderr. Isso permite:
 
+**PowerShell**
+
 ```powershell
 # filtrar ao vivo
 esp-logcat stream | Select-String "HEARTBEAT"
@@ -262,6 +307,22 @@ cmd /c "esp-logcat stream > sessao.log 2> avisos.log"
 > **UTF-16**, não com os bytes da placa. Use o `cmd /c` acima (ou o PowerShell 7, cujo `>`
 > grava UTF-8). Num pipe, o PowerShell mostra "exit code 255" quando encerra o processo no fim
 > do pipeline (`Select-Object -First`): é o PowerShell parando o `stream`, não um erro dele.
+
+**Prompt de Comando (cmd)**
+
+```bat
+:: salvar a sessão (bytes exatos da placa) e os avisos em outro arquivo
+esp-logcat stream > sessao.log 2> avisos.log
+
+:: depois, filtrar o arquivo salvo
+findstr HEARTBEAT sessao.log
+findstr /C:" W " /C:" E " sessao.log
+```
+
+> No cmd, o `findstr` **não serve para filtrar ao vivo**: num pipe (`stream | findstr ...`) ele
+> guarda a saída em buffer e não mostra nada até o fim (testado). Para filtrar ao vivo, use o
+> PowerShell (`Select-String`) ou espere os filtros próprios da ferramenta (#17). O `>` do cmd
+> grava os bytes exatos.
 
 Filtros por tag e nível no estilo do logcat (`"*:W" "PRESSURE:D"`) chegam com a issue #17.
 
@@ -289,6 +350,7 @@ Use a **nativa** para o logcat. Use a **COM5** quando precisar do console comple
 | `cannot choose a port (found: ...); use --port` | nenhuma porta nativa, ou mais de uma | rode `esp-logcat ports` e passe `--port COMx` |
 | `waiting for COM6: port busy` | outro programa com a porta aberta | feche o monitor serial (VS Code, PlatformIO, outro terminal) |
 | `waiting for COM6: not available` sem fim | placa desligada, cabo só de energia, ou a porta mudou de número e a placa ainda não tinha sido vista nesta sessão | confira o cabo; rode `esp-logcat ports` |
+| `esp-logcat` não é reconhecido como comando | o ambiente não está ativado neste terminal | ative (seção 1.2) ou use `host\.venv\Scripts\esp-logcat.exe` |
 | A porta nativa sumiu depois de um reset pela CH340K; o Windows mostra "Dispositivo USB Desconhecido" | placa atrás de um hub (`hardware.md`, item 5) | desconecte e reconecte o cabo; ligue a nativa direto no PC |
 | Muitos `lines lost` com tráfego alto | a aplicação loga mais de ~70 linhas/s (limite do espelho na UART) | esperado: as perdas são contadas, nunca travam a aplicação. O app de 1 kHz (#13) vai desligar o espelho |
 | `W LOGCAT: N lines not sent to usb` | a porta nativa ficou fechada | normal: são as linhas do período em que ninguém lia |
@@ -322,6 +384,8 @@ Ainda não implementados: filtros (#17), `replay` de arquivo salvo (#19), `dump`
 2. `scripts/manual_screenshots.py` passa cada gravação pelo mesmo pipeline e pelo mesmo
    renderer do `esp-logcat stream` e exporta a janela de terminal em SVG para
    `docs/manual/img/`. Cortes em sessões longas aparecem como `...`.
+3. `scripts/readme_cover.py` desenha a capa do README (`docs/img/cover.svg`) com saída real
+   das mesmas gravações.
 
-Quando a saída mudar, grave de novo e rode `manual_screenshots.py`: as imagens sempre mostram
-o que a ferramenta realmente faz.
+Quando a saída mudar, grave de novo e rode os scripts: as imagens sempre mostram o que a
+ferramenta realmente faz.

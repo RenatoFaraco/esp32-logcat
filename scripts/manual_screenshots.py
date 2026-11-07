@@ -156,14 +156,14 @@ SHOTS = [
     ),
     Shot(
         "burst",
-        "esp-logcat stream --reset (rajada)",
+        "esp-logcat stream --reset",
         "esp-logcat stream --reset",
         "boot",
         keep=[(60, 66), (85, 96)],
     ),
     Shot("time", "esp-logcat stream --time", "esp-logcat stream --time", "time", show_time=True),
-    Shot("reopen", "porta reaberta", "esp-logcat stream", "reopen"),
-    Shot("busy", "porta ocupada", "esp-logcat stream", "busy"),
+    Shot("reopen", "esp-logcat stream", "esp-logcat stream", "reopen"),
+    Shot("busy", "esp-logcat stream", "esp-logcat stream", "busy"),
 ]
 
 
