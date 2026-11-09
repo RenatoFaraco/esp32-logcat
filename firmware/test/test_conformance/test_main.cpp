@@ -116,14 +116,21 @@ std::string check_case(const std::vector<std::string>& f) {
         return "";
     }
     std::string why;
-    if (parsed.boot != std::strtoul(f[3].c_str(), nullptr, 10)) why += " boot";
-    if (parsed.seq != std::strtoul(f[4].c_str(), nullptr, 10)) why += " seq";
-    if (parsed.uptime_ms != std::strtoul(f[5].c_str(), nullptr, 10)) why += " uptime";
-    if (logcat::level_to_char(parsed.level) != f[6][0]) why += " level";
-    if (f[7] != parsed.tag) why += " tag";
+    if (parsed.boot != std::strtoul(f[3].c_str(), nullptr, 10))
+        why += " boot";
+    if (parsed.seq != std::strtoul(f[4].c_str(), nullptr, 10))
+        why += " seq";
+    if (parsed.uptime_ms != std::strtoul(f[5].c_str(), nullptr, 10))
+        why += " uptime";
+    if (logcat::level_to_char(parsed.level) != f[6][0])
+        why += " level";
+    if (f[7] != parsed.tag)
+        why += " tag";
     const std::vector<char> msg = from_hex(f[8]);
-    if (std::string(msg.begin(), msg.end()) != parsed.msg) why += " msg";
-    if (parsed.truncated != (f[9] == "1")) why += " truncated";
+    if (std::string(msg.begin(), msg.end()) != parsed.msg)
+        why += " msg";
+    if (parsed.truncated != (f[9] == "1"))
+        why += " truncated";
     char formatted[logcat::kLineBufferSize];
     const size_t length = logcat::format_line(parsed, formatted);
     if (length != line.size() || std::memcmp(formatted, line.data(), length) != 0) {
