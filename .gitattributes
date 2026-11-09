@@ -17,3 +17,6 @@
 
 # Device captures: keep the exact bytes (the ESP-IDF console sends CRLF)
 host/tests/fixtures/*.log binary
+
+# Shared line-format cases (conformance suite): LF on every OS
+conformance/*.tsv text eol=lf

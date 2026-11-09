@@ -32,6 +32,7 @@ esp32-logcat/
 ├── .github/
 │   ├── workflows/ci.yml      testes native + pytest + validação dos templates
 │   └── ISSUE_TEMPLATE/       formulários de issue
+├── conformance/              casos do formato de linha lidos pelo C++ e pelo Python (#20)
 ├── scripts/                  github_bootstrap.py (GitHub), serial_capture.py (boot nas 2 portas)
 ├── docs/
 │   ├── PRD.md
@@ -59,7 +60,8 @@ esp32-logcat/
 - Nada de alocação dinâmica no caminho de log depois da inicialização.
 - C++17, sem exceções nem RTTI no firmware.
 - Formato de linha definido no PRD §3 — mudança de formato exige atualizar o parser
-  do host e os testes dos dois lados no mesmo commit.
+  do host e os testes dos dois lados no mesmo commit, a começar pelos casos compartilhados
+  (`conformance/make_line_cases.py` → `line_cases.tsv`, lidos pelas duas suítes).
 
 ## Fluxo de trabalho
 1. Plano antes de editar (modo de planejamento) para qualquer coisa além de ajuste trivial.

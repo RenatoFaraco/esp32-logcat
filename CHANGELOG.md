@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Shared line-format cases (`conformance/line_cases.tsv`, generated from hand-written
+  expectations by `conformance/make_line_cases.py`): the C++ parser and formatter
+  (`test_conformance`) and the Python parser (`test_conformance.py`) are checked against the same
+  45 cases, so the two sides cannot drift apart; the Go host (ADR-010) will read it too.
+
 - Host filters in `adb logcat` syntax: `esp-logcat stream "*:W" "PRESSURE:D"` (`filters.py`).
   `TAG:L` with levels `V D I W E` and `S`/`N` to silence, `*:L` for every other tag, the exact
   tag beats `*`. Lines without a tag always pass. Display only: gaps and the summary still count
