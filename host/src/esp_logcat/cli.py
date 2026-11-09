@@ -15,6 +15,7 @@ from esp_logcat.events import Notice, Received
 from esp_logcat.filters import FilterSpecError, LogFilter
 from esp_logcat.pipeline import events, visible
 from esp_logcat.render import device_text, render, render_notice
+from esp_logcat.session import SessionWriter
 from esp_logcat.stats import StreamStats
 from esp_logcat.transport import (
     FileTransport,
@@ -37,6 +38,11 @@ pipeline as stream: colors, filters, gap and restart notices, summary. Files sav
 Windows PowerShell 5.1 (UTF-16) are read too.
 
 """
+
+SAVE_HELP = (
+    "save the whole session (every line, unfiltered, with the PC time) to FILE; replay reads"
+    " it back"
+)
 
 FILTER_HELP = """\
 filters (like adb logcat; quote them in bash so * is not expanded):
@@ -73,6 +79,11 @@ def build_parser() -> argparse.ArgumentParser:
     )
     stream.add_argument("--reset", action="store_true", help="reset the device after opening")
     stream.add_argument("--time", action="store_true", help="add the PC time to each line")
+    stream.add_argument(
+        "--save",
+        metavar="FILE",
+        help=SAVE_HELP,
+    )
     stream.set_defaults(command_parser=stream)
 
     replay = subparsers.add_parser(
@@ -92,6 +103,12 @@ def build_parser() -> argparse.ArgumentParser:
         "--lenient",
         action="store_true",
         help='accept "TAG:" without the space of an empty message (hand-edited files)',
+    )
+    replay.add_argument("--time", action="store_true", help="show the PC time saved with each line")
+    replay.add_argument(
+        "--save",
+        metavar="FILE",
+        help=SAVE_HELP,
     )
     replay.set_defaults(command_parser=replay)
 
@@ -162,7 +179,13 @@ def stream_command(args: argparse.Namespace) -> int:
     except PortSelectionError as exc:
         err.print(f"esp-logcat: {exc}", markup=False)
         return 2
-    transport = SerialTransport(port, args.baud, reset=args.reset)
+    recorder = _open_session(args)
+    try:
+        transport = SerialTransport(port, args.baud, reset=args.reset)
+    except BaseException:
+        if recorder is not None:
+            recorder.close()
+        raise
     try:
         return run_stream(
             transport.chunks(),
@@ -170,9 +193,12 @@ def stream_command(args: argparse.Namespace) -> int:
             sys.stderr,
             show_time=args.time,
             line_filter=args.line_filter,
+            recorder=recorder,
         )
     finally:
         transport.close()
+        if recorder is not None:
+            recorder.close()
 
 
 def replay_command(args: argparse.Namespace) -> int:
@@ -184,6 +210,11 @@ def replay_command(args: argparse.Namespace) -> int:
             message += " (the file comes first: esp-logcat replay FILE [TAG:L ...])"
         args.command_parser.error(message)
     try:
+        recorder = _open_session(args)
+    except BaseException:  # argparse exits with SystemExit: release the input first
+        transport.close()
+        raise
+    try:
         code = run_stream(
             transport.chunks(),
             sys.stdout,
@@ -191,10 +222,33 @@ def replay_command(args: argparse.Namespace) -> int:
             line_filter=args.line_filter,
             lenient=args.lenient,
             saved_file=True,
+            show_time=args.time,
+            recorder=recorder,
         )
     finally:
         transport.close()
+        if recorder is not None:
+            recorder.close()
     return 1 if transport.failed else code  # a read error must not look like a full replay
+
+
+def _open_session(args: argparse.Namespace) -> SessionWriter | None:
+    """The --save file, opened (and truncated) before streaming starts."""
+    if not args.save:
+        return None
+    source = getattr(args, "file", None)
+    if _same_file(args.save, source):
+        args.command_parser.error(f"--save {args.save} is the file being replayed")
+    try:
+        return SessionWriter(open(args.save, "wb"))  # noqa: SIM115 (closed by caller)
+    except OSError as exc:
+        args.command_parser.error(f"cannot write {args.save}: {exc.strerror or exc}")
+
+
+def _same_file(first: str, second: str | None) -> bool:
+    if second in (None, "-") or not (os.path.exists(first) and os.path.exists(second)):
+        return False
+    return os.path.samefile(first, second)
 
 
 def _file_after_filters(args: argparse.Namespace) -> bool:
@@ -223,6 +277,7 @@ def run_stream(
     line_filter: LogFilter | None = None,
     lenient: bool = False,
     saved_file: bool = False,
+    recorder: SessionWriter | None = None,
 ) -> int:
     """Device lines go to `out`, exactly as the device wrote them (pipe and grep friendly);
     notices about the stream and the final summary go to `err`, like adb's "waiting for
@@ -233,7 +288,7 @@ def run_stream(
     out_console = _console(out)
     err_console = _console(err)
     stats = StreamStats()
-    parsed = events(chunks, stats, lenient=lenient, saved_file=saved_file)
+    parsed = events(chunks, stats, lenient=lenient, saved_file=saved_file, recorder=recorder)
     source = visible(parsed, stats, line_filter)
     try:
         for event in source:

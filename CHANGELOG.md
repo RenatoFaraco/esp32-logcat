@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `--save FILE` on `stream` and `replay` (PRD H6): the whole session, unfiltered, each
+  line with the PC date and time, plus the transport notices, in a readable text file
+  (`session.py`). Replaying it shows exactly what was seen live; `replay --time` shows
+  the saved time. Manual section 3.10 (en/pt).
+
 - Shared line-format cases (`conformance/line_cases.tsv`, generated from hand-written
   expectations by `conformance/make_line_cases.py`): the C++ parser and formatter
   (`test_conformance`) and the Python parser (`test_conformance.py`) are checked against the same
