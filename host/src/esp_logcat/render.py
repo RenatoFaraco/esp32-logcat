@@ -110,6 +110,7 @@ _NOTICE_STYLES: dict[NoticeKind, str] = {
     NoticeKind.UPTIME_BACK: "yellow",
     NoticeKind.SEQ_BACK: "yellow",
     NoticeKind.OVERFLOW: "yellow",
+    NoticeKind.FILTER: "dim",
 }
 
 

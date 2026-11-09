@@ -9,6 +9,7 @@ from collections.abc import Callable, Iterable, Iterator
 from datetime import datetime
 
 from esp_logcat.events import Event, Notice, NoticeKind, Received
+from esp_logcat.filters import LogFilter
 from esp_logcat.parser import parse_line
 from esp_logcat.stats import StreamStats
 from esp_logcat.transport import MAX_PENDING, LineSplitter
@@ -35,6 +36,28 @@ def split_glued(raw: bytes) -> list[bytes]:
     if match is None:
         return [raw]
     return [raw[: match.start()], raw[match.start() :]]
+
+
+def visible(
+    source: Iterable[Event], stats: StreamStats, line_filter: LogFilter | None
+) -> Iterator[Event]:
+    """The display filter over events(), shared by stream, replay and the TUI.
+
+    Announces the active filter with a FILTER notice, drops the device lines it rejects and
+    counts them in `stats.hidden`. events() has already updated the statistics, so hidden lines
+    still count for gaps, restarts and the summary: hiding a tag never looks like lost lines.
+    Notices are never filtered.
+    """
+    if line_filter is None or line_filter.is_trivial:
+        yield from source
+        return
+    stats.filtering = True
+    yield Notice(NoticeKind.FILTER, f"filter: {line_filter.describe()}")
+    for event in source:
+        if isinstance(event, Received) and not line_filter.accepts(event.line):
+            stats.hidden += 1
+            continue
+        yield event
 
 
 def events(

@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Host filters in `adb logcat` syntax: `esp-logcat stream "*:W" "PRESSURE:D"` (`filters.py`).
+  `TAG:L` with levels `V D I W E` and `S`/`N` to silence, `*:L` for every other tag, the exact
+  tag beats `*`. Lines without a tag always pass. Display only: gaps and the summary still count
+  every line, and the summary says how many were hidden. Manual section 3.8 (en/pt).
+
 - User manual in English (`docs/MANUAL.en.md`) and Portuguese (`docs/MANUAL.md`): a "start
   here" for PowerShell and cmd, from zero to the logcat running, how to read the output, what
   happens in each situation, pipes and files in both shells, both ports, troubleshooting. Its

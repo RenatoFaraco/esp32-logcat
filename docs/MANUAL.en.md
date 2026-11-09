@@ -282,6 +282,43 @@ esp-logcat stream --time
 The first column is the PC time at which the line arrived (`HH:MM:SS.mmm`), handy to match
 other records. The board's uptime stays in the line.
 
+### 3.8 Filters: only what matters
+
+Filters follow `adb logcat` syntax: each argument is `TAG:LEVEL`, and a line shows up when its
+level is **as severe or more severe** than its tag's.
+
+```powershell
+esp-logcat stream "*:W"                         # warnings and errors only, every tag
+esp-logcat stream "*:S" "PRESSURE:D"            # only the PRESSURE tag, down to debug
+esp-logcat stream "*:W" "HEARTBEAT:I"           # warnings and errors, plus the heartbeat
+esp-logcat stream --reset "*:S" "HEARTBEAT:I" "LOGCAT:W"
+```
+
+![esp-logcat stream with a filter](manual/img/filter.svg)
+
+| Part | Meaning |
+|------|---------|
+| `TAG:L` | tag `TAG` at level `L` or more severe. Levels, most severe first: `E` `W` `I` `D` `V` |
+| `TAG:S` or `TAG:N` | silences the tag (`S` is adb's "silent", `N` the firmware's `None`) |
+| `TAG` | same as `TAG:V` (everything from that tag) |
+| `*:L` | the level of **every other tag**. Without `*:`, other tags stay visible |
+
+- A tag's rule beats `*`, in any order. The same tag twice: the last one wins.
+- Tags are case-sensitive (`HEARTBEAT` ≠ `heartbeat`); levels are not.
+- Lines without a tag (ROM text, `!! torn`) **always show up**.
+- **Filters only hide:** `seq` gaps and the summary still count every line, and the summary
+  says how many were hidden (`N hidden by filter`). Hiding a tag never turns into "lines lost".
+  stderr starts with `-- filter: ... --` as a reminder of what is active.
+- `seq` notices (`lines lost`, `arrived after`) refer to **every** line, hidden ones included:
+  they may name a `seq` you are not seeing. When silencing everything with `*:S`, keep
+  `"LOGCAT:W"`, or you miss the lines in which the board itself explains its losses.
+- Several filters may share one argument (`"*:S HEARTBEAT:I"`), but they cannot be split by an
+  option: `stream "*:S" --time "APP:D"` is an error. Put options before or after them.
+- An invalid filter (`APP:F`, `APP:X`) exits with an error message explaining what is allowed.
+
+**Quotes:** in PowerShell and cmd, `"*:W"` works with or without quotes. In bash (Git Bash,
+Linux), quote it, or `*` turns into file names.
+
 ---
 
 ## 4. Pipes, grep and files
@@ -322,7 +359,10 @@ findstr /C:" W " /C:" E " session.log
 
 > In cmd, `findstr` **cannot filter live**: in a pipe (`stream | findstr ...`) it buffers its
 > output and shows nothing until the end (tested). To filter live, use PowerShell
-> (`Select-String`) or wait for the tool's own filters (#17). cmd's `>` writes the exact bytes.
+> (`Select-String`) or the tool's own filters (section 3.8), which work the same in both
+> terminals. cmd's `>` writes the exact bytes.
+
+The tool's filters combine with all of this: `esp-logcat stream "*:W" > warnings-and-errors.log`.
 
 ---
 
@@ -361,7 +401,8 @@ Use the **native** port for the logcat. Use **COM5** when you need the full cons
 
 ```
 esp-logcat ports                         list the ports and mark the native one
-esp-logcat stream [options]              live logs
+esp-logcat stream [options] [TAG:L ...]  live logs, with optional filters (section 3.8)
+    "*:W"  "*:S" "TAG:D"  ...            logcat filters: levels E W I D V, S/N silences
     --port COMx                          port (default: the native one, if there is exactly one)
     --baud N                             baud rate (default 115200; only matters on COM5)
     --reset                              restart the board when connecting
@@ -369,7 +410,7 @@ esp-logcat stream [options]              live logs
 esp-logcat --version
 ```
 
-Not implemented yet: filters (#17), `replay` of a saved file (#19), `dump` and `shell`
+Not implemented yet: `replay` of a saved file (#19), `dump` and `shell`
 (milestone M5), the interactive `esp-logcat tui` (#56).
 
 ---

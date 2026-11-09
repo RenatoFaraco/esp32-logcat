@@ -46,6 +46,9 @@ class StreamStats:
         self.seq_back = 0
         self.reconnects = 0
         self.overflows = 0
+        # Display filter (pipeline.visible): lines hidden from the output, still counted above.
+        self.filtering = False
+        self.hidden = 0
         self._connections = 0
         self._last: LogLine | None = None
         self._last_maybe_stale = False
@@ -170,7 +173,10 @@ class StreamStats:
             f"reconnects {self.reconnects}",
             f"overflows {self.overflows}",
         ]
-        return ", ".join(parts) + " | " + ", ".join(events)
+        summary = ", ".join(parts) + " | " + ", ".join(events)
+        if self.filtering:
+            summary += f" | {self.hidden} hidden by filter"
+        return summary
 
 
 def _uptime_went_back(previous: int, current: int) -> bool:

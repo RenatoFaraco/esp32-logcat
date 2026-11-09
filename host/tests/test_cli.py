@@ -6,6 +6,7 @@ import pytest
 from esp_logcat import __version__, cli
 from esp_logcat.cli import SUBCOMMANDS, main, prepare_output, run_stream
 from esp_logcat.events import Notice, NoticeKind
+from esp_logcat.filters import LogFilter
 from esp_logcat.transport import PortInfo
 
 LONG = b"0000:000002 0000000020 W PRESSURE: " + b"v" * 124 + b"...\r\n"
@@ -184,3 +185,91 @@ def test_ports_escapes_the_device_description(monkeypatch, capsys):
     out = capsys.readouterr().out
     assert "\x1b" not in out
     assert "board\\x1b]0;title\\x07" in out
+
+
+# ---------------------------------------------------------------- filters (#17)
+
+FILTERED = (
+    b"ESP-ROM:esp32c3-api1-20210207\r\n"
+    b"0000:000001 0000000010 I APP: hello\r\n"
+    b"0000:000002 0000000011 W APP: careful\r\n"
+    b"0000:000003 0000001000 I HEARTBEAT: tick 1\r\n"
+    b"0000:000009 0000002000 I HEARTBEAT: tick 2\r\n"
+)
+
+
+def test_filter_hides_lines_but_not_the_gaps():
+    line_filter = LogFilter.parse(["*:S", "HEARTBEAT:I"])
+    out, err, code = stream([FILTERED], line_filter=line_filter)
+    assert code == 0
+    assert out.splitlines() == [
+        "ESP-ROM:esp32c3-api1-20210207",  # no tag: always passes
+        "0000:000003 0000001000 I HEARTBEAT: tick 1",
+        "0000:000009 0000002000 I HEARTBEAT: tick 2",
+    ]
+    assert err.splitlines()[0] == "-- filter: *:S HEARTBEAT:I --"
+    assert "-- 5 lines lost before seq 000009 --" in err  # stats saw every line
+    assert err.rstrip().endswith("| 2 hidden by filter")
+
+
+def test_trivial_filter_prints_no_notice():
+    out, err, _ = stream([FILTERED], line_filter=LogFilter.parse(["*:V"]))
+    assert "filter" not in err
+    assert len(out.splitlines()) == 5
+
+
+def test_stream_filter_arguments_reach_the_stream(monkeypatch, capsys):
+    class FakeTransport:
+        def __init__(self, port: str, baudrate: int, *, reset: bool) -> None:
+            pass
+
+        def chunks(self) -> Iterator[bytes]:
+            yield FILTERED
+
+        def close(self) -> None:
+            pass
+
+    monkeypatch.setattr(cli, "SerialTransport", FakeTransport)
+    assert main(["stream", "--port", "COM6", "*:W"]) == 0
+    captured = capsys.readouterr()
+    assert captured.out.splitlines() == [
+        "ESP-ROM:esp32c3-api1-20210207",
+        "0000:000002 0000000011 W APP: careful",
+    ]
+    assert "-- filter: *:W --" in captured.err
+
+
+@pytest.mark.parametrize(("spec", "message"), [("APP:F", "use E"), ("APP:Q", "one of V D I")])
+def test_invalid_filter_is_a_usage_error(spec, message, capsys):
+    with pytest.raises(SystemExit) as exc:
+        main(["stream", spec])
+    assert exc.value.code == 2
+    assert message in capsys.readouterr().err
+
+
+def test_filters_split_by_an_option_are_a_usage_error(capsys):
+    with pytest.raises(SystemExit) as exc:
+        main(["stream", "*:S", "--time", "APP:D"])
+    assert exc.value.code == 2
+    assert "unrecognized arguments: APP:D" in capsys.readouterr().err
+
+
+def test_filter_error_shows_the_stream_usage(capsys):
+    with pytest.raises(SystemExit):
+        main(["stream", "APP:Q"])
+    assert "usage: esp-logcat stream" in capsys.readouterr().err
+
+
+def test_backend_modules_never_import_rich_or_textual():
+    # ADR-008 layers: only render (rich) and tui/ (textual) may import UI libraries.
+    import subprocess
+    import sys
+
+    code = (
+        "import sys\n"
+        "import esp_logcat.events, esp_logcat.filters, esp_logcat.parser\n"
+        "import esp_logcat.pipeline, esp_logcat.stats, esp_logcat.transport\n"
+        "bad = [m for m in ('rich', 'textual') if m in sys.modules]\n"
+        "assert not bad, bad\n"
+    )
+    subprocess.run([sys.executable, "-c", code], check=True)
