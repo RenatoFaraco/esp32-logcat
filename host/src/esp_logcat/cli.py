@@ -16,15 +16,27 @@ from esp_logcat.filters import FilterSpecError, LogFilter
 from esp_logcat.pipeline import events, visible
 from esp_logcat.render import device_text, render, render_notice
 from esp_logcat.stats import StreamStats
-from esp_logcat.transport import PortSelectionError, SerialTransport, find_port, list_ports
+from esp_logcat.transport import (
+    FileTransport,
+    PortSelectionError,
+    SerialTransport,
+    find_port,
+    list_ports,
+)
 
 # subcommand -> (help text, milestone that implements it)
 SUBCOMMANDS: dict[str, tuple[str, str]] = {
     "dump": ("download logs persisted in flash", "M5"),
     "shell": ("send console commands to the device", "M5"),
-    "replay": ("replay a saved log file with filters", "M3"),
 }
 
+
+REPLAY_HELP = """\
+replay reads a saved log (from `esp-logcat stream > file`, a dump, a capture) through the same
+pipeline as stream: colors, filters, gap and restart notices, summary. Files saved by
+Windows PowerShell 5.1 (UTF-16) are read too.
+
+"""
 
 FILTER_HELP = """\
 filters (like adb logcat; quote them in bash so * is not expanded):
@@ -33,8 +45,8 @@ filters (like adb logcat; quote them in bash so * is not expanded):
   esp-logcat stream "*:W" "HEARTBEAT:I"      warnings and errors, plus the heartbeat
 Without *:L every other tag stays visible (default *:V). Lines without a tag (ROM text,
 invalid lines) always pass. Filtering only hides lines: gaps and the summary count all of them.
-Keep the filters together (options before or after them, not in between). Keep "LOGCAT:W" when
-silencing everything: it shows the device's own loss reports.
+Filters and options may come in any order. Keep "LOGCAT:W" when silencing everything: it
+shows the device's own loss reports.
 """
 
 
@@ -61,7 +73,27 @@ def build_parser() -> argparse.ArgumentParser:
     )
     stream.add_argument("--reset", action="store_true", help="reset the device after opening")
     stream.add_argument("--time", action="store_true", help="add the PC time to each line")
-    stream.set_defaults(stream_parser=stream)
+    stream.set_defaults(command_parser=stream)
+
+    replay = subparsers.add_parser(
+        "replay",
+        help="replay a saved log file with filters",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog=REPLAY_HELP + FILTER_HELP,
+    )
+    replay.add_argument("file", help='log file to replay ("-" reads stdin)')
+    replay.add_argument(
+        "filterspecs",
+        nargs="*",
+        metavar="TAG:L",
+        help="logcat-style filter: L is V D I W E, or S/N to silence (default *:V)",
+    )
+    replay.add_argument(
+        "--lenient",
+        action="store_true",
+        help='accept "TAG:" without the space of an empty message (hand-edited files)',
+    )
+    replay.set_defaults(command_parser=replay)
 
     subparsers.add_parser("ports", help="list serial ports")
 
@@ -82,18 +114,32 @@ def _positive_int(value: str) -> int:
 
 def main(argv: Sequence[str] | None = None) -> int:
     parser = build_parser()
-    args = parser.parse_args(argv)
+    # parse_known_args: argparse cannot mix a nargs="*" positional with options (filters after
+    # an option are left over), so leftovers that are not options join the filters.
+    args, extras = parser.parse_known_args(argv)
+    if args.command in ("stream", "replay"):
+        options = [extra for extra in extras if extra.startswith("-")]
+        if options:
+            args.command_parser.error(f"unrecognized arguments: {' '.join(options)}")
+        args.filterspecs = [*args.filterspecs, *extras]
+    elif extras:
+        parser.error(f"unrecognized arguments: {' '.join(extras)}")
     if args.command is None:
         parser.print_help()
         return 2
     prepare_output(sys.stdout)
     prepare_output(sys.stderr)
-    if args.command == "stream":
+    if args.command in ("stream", "replay"):
+        if args.command == "replay" and _file_after_filters(args):
+            args.command_parser.error(
+                f"{args.file} looks like a filter: the file comes first "
+                "(esp-logcat replay FILE [TAG:L ...])"
+            )
         try:
             args.line_filter = LogFilter.parse(args.filterspecs)
         except FilterSpecError as exc:
-            args.stream_parser.error(str(exc))  # exit 2, with the stream usage line
-        return stream_command(args)
+            args.command_parser.error(str(exc))  # exit 2, with this command's usage line
+        return stream_command(args) if args.command == "stream" else replay_command(args)
     if args.command == "ports":
         return ports_command()
     milestone = SUBCOMMANDS[args.command][1]
@@ -129,6 +175,45 @@ def stream_command(args: argparse.Namespace) -> int:
         transport.close()
 
 
+def replay_command(args: argparse.Namespace) -> int:
+    try:
+        transport = FileTransport.open(args.file)
+    except OSError as exc:
+        message = f"cannot read {args.file}: {exc.strerror or exc}"
+        if ":" in args.file and not os.path.exists(args.file) and _is_filter(args.file):
+            message += " (the file comes first: esp-logcat replay FILE [TAG:L ...])"
+        args.command_parser.error(message)
+    try:
+        code = run_stream(
+            transport.chunks(),
+            sys.stdout,
+            sys.stderr,
+            line_filter=args.line_filter,
+            lenient=args.lenient,
+            saved_file=True,
+        )
+    finally:
+        transport.close()
+    return 1 if transport.failed else code  # a read error must not look like a full replay
+
+
+def _file_after_filters(args: argparse.Namespace) -> bool:
+    """`replay "*:W" session.log`: the "file" is a filter and a filter is an existing file."""
+    return (
+        not os.path.exists(args.file)
+        and _is_filter(args.file)
+        and any(os.path.isfile(spec) for spec in args.filterspecs)
+    )
+
+
+def _is_filter(text: str) -> bool:
+    try:
+        LogFilter.parse(text)
+    except FilterSpecError:
+        return False
+    return True
+
+
 def run_stream(
     chunks: Iterable[bytes | Notice],
     out: TextIO,
@@ -136,6 +221,8 @@ def run_stream(
     *,
     show_time: bool = False,
     line_filter: LogFilter | None = None,
+    lenient: bool = False,
+    saved_file: bool = False,
 ) -> int:
     """Device lines go to `out`, exactly as the device wrote them (pipe and grep friendly);
     notices about the stream and the final summary go to `err`, like adb's "waiting for
@@ -146,7 +233,7 @@ def run_stream(
     out_console = _console(out)
     err_console = _console(err)
     stats = StreamStats()
-    parsed = events(chunks, stats)
+    parsed = events(chunks, stats, lenient=lenient, saved_file=saved_file)
     source = visible(parsed, stats, line_filter)
     try:
         for event in source:

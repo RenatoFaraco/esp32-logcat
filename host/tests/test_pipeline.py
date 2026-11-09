@@ -214,3 +214,21 @@ def test_trivial_filter_changes_nothing():
         assert filtered == plain  # no FILTER notice, nothing dropped
         assert not stats.filtering
         assert "hidden" not in stats.summary()
+
+
+def test_lenient_is_passed_to_the_parser():
+    data = [b"0000:000001 0000000010 I APP:\n"]
+    strict = [e.line for e in events(data, StreamStats()) if isinstance(e, Received)]
+    lenient = [e.line for e in events(data, StreamStats(), lenient=True) if isinstance(e, Received)]
+    assert isinstance(strict[0], InvalidLine)
+    assert isinstance(lenient[0], LogLine) and lenient[0].msg == ""
+
+
+def test_saved_file_drops_the_pc_time_column_only_when_asked():
+    data = [b"10:00:00.001 0000:000001 0000000010 I APP: x\n"]
+    saved = [
+        e.line for e in events(data, StreamStats(), saved_file=True) if isinstance(e, Received)
+    ]
+    live = [e.line for e in events(data, StreamStats()) if isinstance(e, Received)]
+    assert isinstance(saved[0], LogLine)
+    assert isinstance(live[0], RawLine)  # a live device line is never rewritten

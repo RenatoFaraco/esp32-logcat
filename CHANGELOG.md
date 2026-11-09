@@ -12,7 +12,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Shared line-format cases (`conformance/line_cases.tsv`, generated from hand-written
   expectations by `conformance/make_line_cases.py`): the C++ parser and formatter
   (`test_conformance`) and the Python parser (`test_conformance.py`) are checked against the same
-  45 cases, so the two sides cannot drift apart; the Go host (ADR-010) will read it too.
+  87 cases, so the two sides cannot drift apart; the Go host (ADR-010) will read it too.
+
+- `esp-logcat replay FILE [filters]`: a saved log through the same pipeline as `stream` (colors,
+  filters, gap and restart notices, summary), with `-` for stdin and `--lenient` for hand-edited
+  files. `FileTransport` reads files saved by any shell (UTF-16 from PowerShell 5.1's `>`, with or
+  without BOM, UTF-8 with or without BOM) and files saved with `stream --time`; a read error ends
+  with a notice and exit status 1. New fixture: a real capture with two boots
+  (`two_boots_esp32c3.log`). Manual section 3.9 (en/pt).
+- `stream` and `replay` accept filters and options in any order.
 
 - Host filters in `adb logcat` syntax: `esp-logcat stream "*:W" "PRESSURE:D"` (`filters.py`).
   `TAG:L` with levels `V D I W E` and `S`/`N` to silence, `*:L` for every other tag, the exact
