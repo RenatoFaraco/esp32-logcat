@@ -167,4 +167,8 @@ A linha `0000:000000 0000000000 I APP: esp32-logcat hello` é a primeira linha g
 
 - [ ] Testar QIO (a flash XMC embutida provavelmente suporta): ganho pequeno de velocidade de
   leitura; só vale com medição.
-- [ ] Mapear quais GPIOs estão livres nesta placa para o pino de medição de jitter (#13/#14).
+- [x] Pinos de medição de tempo (#13/#14): **GPIO 4** (inverte no ISR do timer), **GPIO 5**
+  (inverte quando a tarefa crítica roda) e **GPIO 6** (N+1 pulsos no início da fase N), em
+  `firmware/src/app/pins.hpp`. Ficam fora dos strapping (2, 8, 9), da USB (18, 19), da UART0
+  (20, 21) e da flash embutida (11–17). Os mesmos números da serigrafia: conferir antes de
+  ligar o analisador.

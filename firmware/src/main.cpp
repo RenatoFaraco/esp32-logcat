@@ -6,6 +6,8 @@
 #include "adapters/log_queue.hpp"
 #include "adapters/usb_jtag_sink.hpp"
 #include "adapters/writer_task.hpp"
+#include "app/switchable_sink.hpp"
+#include "app/timing_sweep.hpp"
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -28,6 +30,8 @@ static logcat::EspClock uptime_clock;
 static logcat::Writer writer(sequencer, uptime_clock);
 static logcat::UsbJtagSink usb_sink;      // native USB port: the logcat stream
 static logcat::ConsoleSink console_sink;  // UART console (CH340K): mirror for monitors
+// The timing sweep turns the mirror off: the UART drains ~70 lines/s, the demo logs 1000/s.
+static app::SwitchableSink uart_mirror(console_sink);
 
 // Continuous output to follow in `esp-logcat stream`. Also shows the hook's cost in the caller
 // (capture + enqueue) and the stack left in this task and in the writer task.
@@ -55,7 +59,7 @@ extern "C" void app_main(void) {
     if (console_sink.begin() != ESP_OK) {
         ESP_LOGE(TAG, "uart driver install failed: console mirror busy-waits on the FIFO");
     }
-    writer.add_sink(console_sink);
+    writer.add_sink(uart_mirror);
     log_queue.begin();
     if (logcat::start_writer_task(writer, log_queue) == nullptr) {
         ESP_LOGE(TAG, "writer task not created: logs stay in the ESP-IDF format");
@@ -101,5 +105,11 @@ extern "C" void app_main(void) {
 
     if (xTaskCreate(heartbeat_task, "heartbeat", 3072, nullptr, 1, nullptr) != pdPASS) {
         ESP_LOGE(TAG, "heartbeat task not created (out of heap)");
+    }
+
+    // 1 kHz critical task + log load in phases, for the timing criterion (#13, #14).
+    vTaskDelay(pdMS_TO_TICKS(2000));  // let the burst drain and a host connect
+    if (!app::start_timing_sweep(uart_mirror)) {
+        ESP_LOGE(TAG, "timing sweep not started");
     }
 }

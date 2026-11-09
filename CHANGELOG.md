@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Timing demo (#13, PRD §7 criterion 3): a 1 kHz critical task woken by a hardware timer
+  (gptimer ISR toggles GPIO 4, the task toggles GPIO 5) measures, every period, the latency
+  from the alarm to the ISR and to the task (`LatencyStats`, a native-tested histogram in
+  `lib/logcat_demo`). A sweep task loops through 10 s phases (no log; 100, 500 and 1000
+  lines/s from another task; 1000 lines/s from the critical task itself; 1000 lines/s with the
+  UART mirror on), marks each phase with pulses on GPIO 6 and logs `TIMING` lines with p50,
+  p99, max, overruns, dropped lines and the critical task's stack. The UART mirror is now
+  switchable and off during the sweep.
+
 - `esp-logcat tui` (PRD H7, Textual): scroll, pause/follow, live filter that redraws
   the history, PC time column, port state in the header, counters and rate in a status
   line. Same backend as `stream` (`pipeline.events` in a worker thread, UI updated in
