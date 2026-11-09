@@ -350,7 +350,7 @@ resumo conta as perdas das duas rajadas (`lost 144`) e o reinício (`restarts 1`
   `-- arquivo: read error (...) --` e o comando sai com código 1: nunca um replay
   incompleto que parece completo.
 
-**O que pode diferir do que você viu ao vivo:**
+**O que pode diferir do que você viu ao vivo** (num log comum; uma sessão salva com `--save`, seção 3.10, volta idêntica):
 
 - Um arquivo salvo **com filtro** não tem as linhas escondidas: o `replay` mostra lacunas
   de `seq` onde elas estavam (`N lines lost`). Para analisar depois, salve sem filtro e
@@ -358,6 +358,35 @@ resumo conta as perdas das duas rajadas (`lost 144`) e o reinício (`restarts 1`
 - Linhas inválidas gravadas como `!! torn: ...` voltam como texto cru, não como inválidas.
 - O arquivo não sabe quando a porta foi reaberta: um salto de `seq` que ao vivo era
   "not received before the connection" aparece como `lines lost`.
+
+### 3.10 Salvar a sessão (`--save`)
+
+`--save ARQUIVO` grava **a sessão inteira**: todas as linhas que a placa mandou (mesmo as que o
+filtro esconde da tela), com a **data e a hora do PC** ao lado de cada uma, e os avisos de
+conexão. O `replay` desse arquivo mostra **exatamente** o que você viu ao vivo: as mesmas
+linhas, os mesmos avisos e o mesmo resumo.
+
+```powershell
+esp-logcat stream --save sessao.log "*:W"      # a tela só mostra W/E; o arquivo guarda tudo
+esp-logcat replay sessao.log --time            # a hora do PC gravada volta na tela
+esp-logcat replay sessao.log "*:S" "APP:D"     # filtre depois, do jeito que quiser
+```
+
+O arquivo é texto, abre no editor e aceita `findstr`/`Select-String`:
+
+```
+# esp-logcat session v1
+# 2026-11-08T22:38:38.743 notice connected connected to COM6
+2026-11-08T22:38:38.945 ESP-ROM:esp32c3-api1-20210207
+2026-11-08T22:38:39.011 0000:000001 0000000027 W APP: a warning, letter W
+```
+
+- Cada linha da placa: data e hora do PC (com milissegundos) + os bytes exatos que chegaram.
+- Linhas com `#` são do próprio arquivo: o cabeçalho, os avisos de conexão (`notice`) e os
+  linhas que um registro comum não guardaria intactas (`raw`, em hex): sem quebra de linha,
+  como a cortada por uma queda, ou com `\r`. Num log comum (sem o cabeçalho), `#` é texto da placa.
+- Ele é gravado linha a linha: um `Ctrl+C` ou uma queda do PC não perdem o que já chegou.
+- `--save` sobrescreve o arquivo. Também funciona no `replay` (para converter um log comum).
 
 ---
 
@@ -446,9 +475,12 @@ esp-logcat stream [opções] [TAG:L ...]   logs ao vivo, com filtros opcionais (
     --baud N                             baud rate (padrão 115200; só importa na COM5)
     --reset                              reinicia a placa ao conectar
     --time                               mostra a hora do PC em cada linha
+    --save ARQUIVO                       grava a sessão inteira (seção 3.10)
 esp-logcat replay ARQUIVO [TAG:L ...]   reproduz um log salvo, com filtros (seção 3.9)
     -                                    no lugar do arquivo: lê do stdin
     --lenient                            aceita linhas editadas à mão
+    --time                               mostra a hora gravada numa sessão
+    --save ARQUIVO                       grava de novo como sessão
 esp-logcat --version
 ```
 

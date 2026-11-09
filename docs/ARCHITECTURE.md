@@ -160,7 +160,8 @@ src/esp_logcat/
   stats.py        lacunas e reordenação de seq, uptime que regride, mudança de boot
   filters.py      sintaxe estilo logcat: "*:W" "PRESSURE:D"
   render.py       Line → rich.text.Text: cores por nível, timestamp do PC ao lado do uptime
-  session.py      grava a sessão em arquivo
+  session.py      sessão salva (--save): cada linha com a data/hora do PC, avisos do
+                  transporte; o replay a lê de volta e mostra o mesmo
   tui/            frontend interativo (Textual): log, filtro, contadores, estado da porta
 ```
 

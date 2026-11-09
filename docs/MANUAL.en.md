@@ -350,7 +350,7 @@ the summary counts the losses of both bursts (`lost 144`) and the restart (`rest
   as `-- file: read error (...) --` and the command exits with status 1: never a partial
   replay that looks complete.
 
-**What may differ from what you saw live:**
+**What may differ from what you saw live** (in a plain log; a session saved with `--save`, section 3.10, comes back identical):
 
 - A file saved **with a filter** lacks the hidden lines: `replay` shows `seq` gaps where
   they were (`N lines lost`). To study a session later, save it unfiltered and filter in
@@ -358,6 +358,35 @@ the summary counts the losses of both bursts (`lost 144`) and the restart (`rest
 - Invalid lines saved as `!! torn: ...` come back as raw text, not as invalid lines.
 - The file does not know when the port was reopened: a `seq` jump that was "not received
   before the connection" live shows up as `lines lost`.
+
+### 3.10 Saving the session (`--save`)
+
+`--save FILE` writes **the whole session**: every line the board sent (even the ones the
+filter hides from the screen), with the **PC date and time** next to each, and the connection
+notices. Replaying that file shows **exactly** what you saw live: the same lines, the same
+notices and the same summary.
+
+```powershell
+esp-logcat stream --save session.log "*:W"     # the screen shows W/E only; the file keeps all
+esp-logcat replay session.log --time           # the saved PC time comes back on screen
+esp-logcat replay session.log "*:S" "APP:D"    # filter later, any way you like
+```
+
+The file is text: it opens in an editor and works with `findstr`/`Select-String`:
+
+```
+# esp-logcat session v1
+# 2026-11-08T22:38:38.743 notice connected connected to COM6
+2026-11-08T22:38:38.945 ESP-ROM:esp32c3-api1-20210207
+2026-11-08T22:38:39.011 0000:000001 0000000027 W APP: a warning, letter W
+```
+
+- Each board line: the PC date and time (with milliseconds) + the exact bytes that arrived.
+- `#` lines belong to the file: the header, connection notices (`notice`) and lines a plain record
+  could not keep intact (`raw`, in hex): no line break, like one cut by a disconnection, or a
+  `\r`. In a plain log (no header), `#` is device text.
+- It is written line by line: Ctrl+C or a PC crash does not lose what already arrived.
+- `--save` overwrites the file. It also works with `replay` (to convert a plain log).
 
 ---
 
@@ -447,9 +476,12 @@ esp-logcat stream [options] [TAG:L ...]  live logs, with optional filters (secti
     --baud N                             baud rate (default 115200; only matters on COM5)
     --reset                              restart the board when connecting
     --time                               show the PC time on each line
+    --save FILE                          save the whole session (section 3.10)
 esp-logcat replay FILE [TAG:L ...]      replay a saved log, with filters (section 3.9)
     -                                    instead of FILE: read stdin
     --lenient                            accept hand-edited lines
+    --time                               show the PC time saved in a session
+    --save FILE                          save it again as a session
 esp-logcat --version
 ```
 

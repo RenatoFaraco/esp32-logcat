@@ -20,6 +20,7 @@ class NoticeKind(StrEnum):
     UPTIME_BACK = "uptime_back"  # seq continuous but uptime went back: corrupted line?
     SEQ_BACK = "seq_back"  # seq far behind with uptime going forward: corrupted seq?
     OVERFLOW = "overflow"  # no newline for too long: line cut, rest discarded
+    SAVE_FAILED = "save_failed"  # --save hit a write error; the stream goes on
     FILTER = "filter"  # the active display filter (first notice when one is set)
     SOURCE = "source"  # what a non-serial stream reads (a file in replay); not a connection
 
@@ -33,7 +34,7 @@ class Notice:
 @dataclass(frozen=True, slots=True)
 class Received:
     line: Line
-    pc_time: datetime
+    pc_time: datetime | None  # None: unknown (a plain log replayed)
 
 
 Event = Received | Notice
