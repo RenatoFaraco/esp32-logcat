@@ -312,12 +312,52 @@ esp-logcat stream --reset "*:S" "HEARTBEAT:I" "LOGCAT:W"
 - `seq` notices (`lines lost`, `arrived after`) refer to **every** line, hidden ones included:
   they may name a `seq` you are not seeing. When silencing everything with `*:S`, keep
   `"LOGCAT:W"`, or you miss the lines in which the board itself explains its losses.
-- Several filters may share one argument (`"*:S HEARTBEAT:I"`), but they cannot be split by an
-  option: `stream "*:S" --time "APP:D"` is an error. Put options before or after them.
+- Several filters may share one argument (`"*:S HEARTBEAT:I"`), and filters and options may
+  come in any order (`stream "*:S" --time "APP:D"`).
 - An invalid filter (`APP:F`, `APP:X`) exits with an error message explaining what is allowed.
 
 **Quotes:** in PowerShell and cmd, `"*:W"` works with or without quotes. In bash (Git Bash,
 Linux), quote it, or `*` turns into file names.
+
+### 3.9 Replaying a saved log (`replay`)
+
+`replay` reads a saved file and runs it **through the same path as `stream`**: same parser,
+same colors, same filters, the gap and restart notices and the summary. Use it to study a
+session later, without the board.
+
+```powershell
+esp-logcat replay session.log                         # everything, in color
+esp-logcat replay session.log "*:W"                   # warnings and errors only
+esp-logcat replay session.log "*:S" "HEARTBEAT:I" > heartbeat-only.log
+```
+
+![esp-logcat replay with a filter](manual/img/replay.svg)
+
+The picture is the `replay` of a real capture with **two boots** (the fixture
+`host/tests/fixtures/two_boots_esp32c3.log`): the `device restarted` notice separates them, and
+the summary counts the losses of both bursts (`lost 144`) and the restart (`restarts 1`).
+
+- The file may come from `esp-logcat stream > file` (in PowerShell 5.1 that writes UTF-16, and
+  `replay` reads it anyway), from `cmd /c "... > file"`, from a serial capture or, once it
+  exists, from the flash `dump` (M5).
+- `-` instead of a file reads stdin: `type session.log | esp-logcat replay - "*:W"`.
+- The file is read in one go, without the original pace. A file saved with `stream --time`
+  is read too: the time column is dropped (showing it again comes with #21).
+- `--lenient` accepts hand-edited lines: an empty message that lost its space (`TAG:` at the
+  end of the line) and a last line without a line break. Without it, `replay` is as strict
+  as the board.
+- A read error in the middle of the file (drive removed, network share dropped) shows up
+  as `-- file: read error (...) --` and the command exits with status 1: never a partial
+  replay that looks complete.
+
+**What may differ from what you saw live:**
+
+- A file saved **with a filter** lacks the hidden lines: `replay` shows `seq` gaps where
+  they were (`N lines lost`). To study a session later, save it unfiltered and filter in
+  `replay`.
+- Invalid lines saved as `!! torn: ...` come back as raw text, not as invalid lines.
+- The file does not know when the port was reopened: a `seq` jump that was "not received
+  before the connection" live shows up as `lines lost`.
 
 ---
 
@@ -407,10 +447,13 @@ esp-logcat stream [options] [TAG:L ...]  live logs, with optional filters (secti
     --baud N                             baud rate (default 115200; only matters on COM5)
     --reset                              restart the board when connecting
     --time                               show the PC time on each line
+esp-logcat replay FILE [TAG:L ...]      replay a saved log, with filters (section 3.9)
+    -                                    instead of FILE: read stdin
+    --lenient                            accept hand-edited lines
 esp-logcat --version
 ```
 
-Not implemented yet: `replay` of a saved file (#19), `dump` and `shell`
+Not implemented yet: `dump` and `shell`
 (milestone M5), the interactive `esp-logcat tui` (#56).
 
 ---

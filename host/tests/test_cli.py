@@ -1,5 +1,9 @@
+import codecs
+import errno
 import io
+import sys
 from collections.abc import Iterator
+from pathlib import Path
 
 import pytest
 
@@ -247,11 +251,36 @@ def test_invalid_filter_is_a_usage_error(spec, message, capsys):
     assert message in capsys.readouterr().err
 
 
-def test_filters_split_by_an_option_are_a_usage_error(capsys):
+def test_filters_and_options_in_any_order(monkeypatch, capsys):
+    seen = {}
+
+    class FakeTransport:
+        def __init__(self, port: str, baudrate: int, *, reset: bool) -> None:
+            pass
+
+        def chunks(self) -> Iterator[bytes]:
+            yield FILTERED
+
+        def close(self) -> None:
+            pass
+
+    real_run_stream = cli.run_stream
+
+    def spy(*args, **kwargs):
+        seen["filter"] = kwargs["line_filter"].describe()
+        return real_run_stream(*args, **kwargs)
+
+    monkeypatch.setattr(cli, "SerialTransport", FakeTransport)
+    monkeypatch.setattr(cli, "run_stream", spy)
+    assert main(["stream", "*:S", "--port", "COM6", "APP:D", "--time"]) == 0
+    assert seen["filter"] == "*:S APP:D"
+
+
+def test_unknown_option_is_still_an_error(capsys):
     with pytest.raises(SystemExit) as exc:
-        main(["stream", "*:S", "--time", "APP:D"])
+        main(["stream", "*:W", "--bogus"])
     assert exc.value.code == 2
-    assert "unrecognized arguments: APP:D" in capsys.readouterr().err
+    assert "unrecognized arguments: --bogus" in capsys.readouterr().err
 
 
 def test_filter_error_shows_the_stream_usage(capsys):
@@ -273,3 +302,146 @@ def test_backend_modules_never_import_rich_or_textual():
         "assert not bad, bad\n"
     )
     subprocess.run([sys.executable, "-c", code], check=True)
+
+
+# ---------------------------------------------------------------- replay (#19)
+
+TWO_BOOTS = Path(__file__).parent / "fixtures" / "two_boots_esp32c3.log"
+
+
+def replay(argv: list[str], capsys) -> tuple[str, str, int]:
+    code = main(["replay", *argv])
+    captured = capsys.readouterr()
+    return captured.out, captured.err, code
+
+
+def test_replay_prints_the_file_like_stream_does(capsys):
+    out, err, code = replay([str(TWO_BOOTS)], capsys)
+    assert code == 0
+    assert out == TWO_BOOTS.read_bytes().replace(b"\r\n", b"\n").decode()
+    assert err.splitlines()[0] == f"-- replaying {TWO_BOOTS} --"
+    assert "-- device restarted (boot 0000 seq 000110 -> boot 0000 seq 000000) --" in err
+    summary = err.splitlines()[-1]
+    assert "189 lines, 77 log, 92 esp-idf, 20 raw, 0 invalid" in summary
+    assert "lost 144" in summary and "restarts 1" in summary
+
+
+def test_replay_filters(capsys):
+    out, err, _ = replay([str(TWO_BOOTS), "*:W"], capsys)
+    logcat_lines = [line for line in out.splitlines() if line[:4].isdigit()]
+    assert {line.split()[2] for line in logcat_lines} == {"W", "E"}
+    assert "0000:000106 0000000182 W LOGCAT: dropped 72 lines: log queue full" in logcat_lines
+    assert "-- filter: *:W --" in err
+    assert err.rstrip().endswith("hidden by filter")
+
+
+def test_replay_colors_on_a_terminal(capsys, monkeypatch):
+    def terminal(file):
+        return cli._Console(file=file, force_terminal=True, color_system="standard", soft_wrap=True)
+
+    monkeypatch.setattr(cli, "_console", terminal)
+    out, _, _ = replay([str(TWO_BOOTS), "*:S", "APP:W"], capsys)
+    error = next(line for line in out.splitlines() if "an error, letter E" in line)
+    warning = next(line for line in out.splitlines() if "a warning, letter W" in line)
+    assert "\x1b[1;31m" in error  # bold red: E
+    assert "\x1b[1;33m" in warning  # bold yellow: W
+
+
+def test_replay_missing_file_is_a_usage_error(capsys, tmp_path):
+    with pytest.raises(SystemExit) as exc:
+        main(["replay", str(tmp_path / "nope.log")])
+    assert exc.value.code == 2
+    err = capsys.readouterr().err
+    assert "usage: esp-logcat replay" in err and "cannot read" in err
+
+
+def test_replay_strict_by_default_lenient_on_request(capsys, tmp_path):
+    path = tmp_path / "edited.log"
+    path.write_bytes(b"0000:000001 0000000010 I APP:\n")  # empty message lost its space
+    out, err, _ = replay([str(path)], capsys)
+    assert out.startswith("!! bad_header:")
+    out, err, _ = replay([str(path), "--lenient"], capsys)
+    assert out == "0000:000001 0000000010 I APP: \n"
+    assert "0 invalid" in err
+
+
+def test_replay_reads_stdin(capsys, monkeypatch):
+    stdin = io.TextIOWrapper(io.BytesIO(b"0000:000001 0000000010 E APP: piped\n"))
+    monkeypatch.setattr(sys, "stdin", stdin)
+    out, err, code = replay(["-"], capsys)
+    assert code == 0
+    assert out == "0000:000001 0000000010 E APP: piped\n"
+    assert "-- replaying stdin --" in err
+
+
+def test_replay_reads_a_powershell_utf16_file(capsys, tmp_path):
+    path = tmp_path / "saved-by-powershell.log"
+    text = TWO_BOOTS.read_bytes().decode("ascii")
+    path.write_bytes(codecs.BOM_UTF16_LE + text.encode("utf-16-le"))
+    out, _, _ = replay([str(path)], capsys)
+    assert out == text.replace("\r\n", "\n")
+
+
+def test_replay_filters_after_an_option(capsys):
+    out, err, code = replay([str(TWO_BOOTS), "--lenient", "*:S", "LOGCAT:W"], capsys)
+    assert code == 0
+    assert "-- filter: *:S LOGCAT:W --" in err
+    assert out.count("W LOGCAT: dropped 72 lines") == 2
+
+
+def test_replay_of_a_file_saved_with_time(capsys, tmp_path):
+    path = tmp_path / "timed.log"
+    path.write_bytes(
+        b"10:00:00.001 0000:000001 0000000010 E APP: boom\n"
+        b"10:00:00.002 0000:000002 0000000011 I APP: fine\n"
+    )
+    out, err, _ = replay([str(path), "*:E"], capsys)
+    assert out == "0000:000001 0000000010 E APP: boom\n"  # parsed, filtered, time dropped
+    assert "2 lines, 2 log" in err
+
+
+def test_replay_lenient_accepts_a_missing_final_newline(capsys, tmp_path):
+    path = tmp_path / "edited.log"
+    path.write_bytes(b"0000:000001 0000000010 I APP: last line")
+    out, _, _ = replay([str(path)], capsys)
+    assert out.startswith("!! torn:")  # strict: an unterminated line is torn
+    out, _, _ = replay([str(path), "--lenient"], capsys)
+    assert out == "0000:000001 0000000010 I APP: last line\n"
+
+
+def test_replay_read_error_exits_non_zero(capsys, monkeypatch):
+    class Failing(io.RawIOBase):
+        def readable(self) -> bool:
+            return True
+
+        def read(self, n: int = -1) -> bytes:
+            raise OSError(errno.EINVAL, "Invalid argument")
+
+    monkeypatch.setattr(
+        cli.FileTransport, "open", classmethod(lambda cls, path: cls(Failing(), path))
+    )
+    out, err, code = replay(["lost-drive.log"], capsys)
+    assert code == 1
+    assert "-- lost-drive.log: read error (Invalid argument) --" in err
+
+
+def test_replay_directory_error(capsys, tmp_path):
+    with pytest.raises(SystemExit) as exc:
+        main(["replay", str(tmp_path)])
+    assert exc.value.code == 2
+    assert "is a directory" in capsys.readouterr().err
+
+
+def test_replay_filter_before_file_gets_a_hint(capsys):
+    with pytest.raises(SystemExit):
+        main(["replay", "*:W", str(TWO_BOOTS)])
+    err = capsys.readouterr().err
+    assert "the file comes first" in err
+    assert "*:W looks like a filter" in err
+
+
+def test_replay_missing_file_shows_the_path_as_typed(capsys, tmp_path):
+    missing = tmp_path / "sub" / "x.log"
+    with pytest.raises(SystemExit):
+        main(["replay", str(missing)])
+    assert f"cannot read {missing}:" in capsys.readouterr().err  # not repr()-escaped

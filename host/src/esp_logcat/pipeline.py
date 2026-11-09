@@ -16,6 +16,8 @@ from esp_logcat.transport import MAX_PENDING, LineSplitter
 
 # Where a new line visibly starts: an esp32-logcat header, or the ROM banner of a boot.
 _LINE_START = re.compile(rb"\d{4}:\d{6} \d{10} [EWIDV] |ESP-ROM:")
+# The PC time column of `stream --time` (render's HH:MM:SS.mmm prefix), in a saved file.
+_PC_TIME = re.compile(rb"\d{2}:\d{2}:\d{2}\.\d{3} ")
 
 
 # Bytes the native USB-Serial-JTAG FIFO keeps while nobody reads (docs/hardware.md, item 7).
@@ -65,7 +67,13 @@ def events(
     stats: StreamStats,
     *,
     clock: Callable[[], datetime] = datetime.now,
+    lenient: bool = False,
+    saved_file: bool = False,
 ) -> Iterator[Event]:
+    """``lenient`` is passed to parse_line: only for files edited by hand (replay --lenient);
+    device data is always parsed strictly. ``saved_file`` (replay) drops the PC time column
+    a file saved with `stream --time` carries, and with ``lenient`` accepts a last line
+    without its newline."""
     splitter = LineSplitter()
     # Bytes since the last CONNECTED; None before any (a file has no FIFO).
     since_connect: int | None = None
@@ -73,6 +81,8 @@ def events(
     def received(raw_lines: list[bytes]) -> Iterator[Event]:
         nonlocal since_connect
         for raw in raw_lines:
+            if saved_file and _PC_TIME.match(raw):
+                raw = raw[13:]  # saved by `stream --time`: the PC time is not device data
             in_fifo = since_connect is not None and since_connect < FIFO_BYTES
             if since_connect is not None:
                 since_connect += len(raw)
@@ -82,7 +92,7 @@ def events(
                 head, *tail = split_glued(raw)
                 pieces = [(head, True)] + [(piece, False) for piece in tail]  # tail is live
             for piece, maybe_stale in pieces:
-                line = parse_line(piece)
+                line = parse_line(piece, lenient=lenient)
                 # Continuity notices describe what happened before this line: emit them first.
                 yield from stats.observe(line, maybe_stale=maybe_stale)
                 yield Received(line=line, pc_time=clock())
@@ -105,4 +115,8 @@ def events(
                 f"over {MAX_PENDING} bytes without a newline: line cut, rest discarded",
             )
         yield from received(lines)
-    yield from received(splitter.flush())
+    tail = splitter.flush()
+    if lenient and saved_file:
+        # A file edited by hand often ends without a final newline: not a torn line.
+        tail = [line + b"\n" for line in tail]
+    yield from received(tail)

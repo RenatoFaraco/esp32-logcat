@@ -11,11 +11,15 @@ Board facts this relies on are in docs/hardware.md ("Comportamentos que importam
   the next write (handled by pipeline.split_glued, not here).
 """
 
+import codecs
 import contextlib
+import errno
+import os
+import sys
 import time
 from collections.abc import Callable, Generator, Iterator, Sequence
 from dataclasses import dataclass
-from typing import Protocol
+from typing import BinaryIO, Protocol
 
 import serial
 from serial.tools import list_ports as _pyserial_list_ports
@@ -310,3 +314,117 @@ def _open_failure(exc: BaseException) -> str:
 def _close_quietly(link: SerialLike) -> None:
     with contextlib.suppress(serial.SerialException, OSError):
         link.close()
+
+
+class FileTransport:
+    """Reads a saved log for `esp-logcat replay`: the same chunks as SerialTransport, from a file.
+
+    Yields a SOURCE notice first (not CONNECTED: that would turn on the native port's FIFO
+    handling, meaningless for a file), then the file's bytes as they become available (read1:
+    a pipe from a running program is shown as it arrives, not every 64 KiB).
+
+    Encoding: a byte order mark (UTF-8, UTF-16 LE/BE) is honored and removed, and UTF-16
+    without a BOM is recognized by its NUL bytes; UTF-16 is passed on as UTF-8. So a file saved
+    with `>` in Windows PowerShell 5.1 (UTF-16) replays like one saved by cmd. Device lines are
+    ASCII; non-ASCII text may already have been mangled by the shell that saved it.
+
+    A read error (removed drive, dropped network share) ends the replay with a DISCONNECTED
+    notice and sets `failed`, so the command exits non-zero: never a silently short replay.
+    """
+
+    CHUNK_SIZE = 64 * 1024
+    _SNIFF_BYTES = 64  # enough to recognize UTF-16 without a BOM
+
+    def __init__(self, file: BinaryIO, name: str, *, close: bool = True) -> None:
+        self.name = name
+        self.failed = False
+        self._file = file
+        self._close_file = close
+        self._closed = False
+        self._started = False
+
+    @classmethod
+    def open(cls, path: str) -> "FileTransport":
+        """Opens `path` ("-" reads stdin). Raises OSError if it cannot be read."""
+        if path == "-":
+            return cls(sys.stdin.buffer, "stdin", close=False)
+        if os.path.isdir(path):  # Windows reports a directory as "Permission denied"
+            raise IsADirectoryError(errno.EISDIR, "is a directory", path)
+        return cls(open(path, "rb"), path)  # noqa: SIM115 (closed by chunks() or close())
+
+    def close(self) -> None:
+        """Stops the replay. Safe from another thread: the reading generator closes the file
+        itself (closing it under a running read would raise ValueError there)."""
+        self._closed = True
+        if not self._started:
+            self._release()
+
+    def _release(self) -> None:
+        if self._close_file and not self._file.closed:
+            self._file.close()
+
+    def _read(self) -> bytes:
+        read1 = getattr(self._file, "read1", None)
+        return read1(self.CHUNK_SIZE) if read1 is not None else self._file.read(self.CHUNK_SIZE)
+
+    def chunks(self) -> Iterator[bytes | Notice]:
+        self._started = True
+        try:
+            text = f"replaying {self.name}"
+            if self.name == "stdin" and _is_terminal(self._file):
+                text += " from the terminal (end with Ctrl+Z, Enter; or pipe a file in)"
+            yield Notice(NoticeKind.SOURCE, text)
+            head = b""  # first bytes, kept until the encoding is known
+            decoder: codecs.IncrementalDecoder | None = None
+            sniffed = False
+            while not self._closed:
+                try:
+                    chunk = self._read()
+                except OSError as exc:
+                    self.failed = True
+                    reason = exc.strerror or exc
+                    yield Notice(NoticeKind.DISCONNECTED, f"{self.name}: read error ({reason})")
+                    return
+                eof = not chunk
+                if not sniffed:
+                    head += chunk
+                    if not eof and len(head) < self._SNIFF_BYTES:
+                        continue
+                    sniffed = True
+                    decoder, chunk = _detect_encoding(head)
+                if decoder is not None:
+                    chunk = decoder.decode(chunk, final=eof).encode("utf-8", "replace")
+                if chunk:
+                    yield chunk
+                if eof:
+                    return
+        finally:
+            self._release()
+
+
+_UTF16_BOMS = {codecs.BOM_UTF16_LE: "utf-16-le", codecs.BOM_UTF16_BE: "utf-16-be"}
+
+
+def _detect_encoding(head: bytes) -> tuple[codecs.IncrementalDecoder | None, bytes]:
+    """Returns the decoder for the file (None: pass bytes through) and `head` without its BOM."""
+    if head.startswith(codecs.BOM_UTF8):
+        return None, head[len(codecs.BOM_UTF8) :]
+    for bom, encoding in _UTF16_BOMS.items():
+        if head.startswith(bom):
+            return codecs.getincrementaldecoder(encoding)("replace"), head[len(bom) :]
+    # UTF-16 without a BOM: ASCII text has a NUL in every other byte. Device logs never contain
+    # NUL bytes, so a mostly-NUL half is a reliable sign.
+    even, odd = head[0::2], head[1::2]
+    if len(head) >= 4:
+        if odd.count(0) > len(odd) * 0.4 and even.count(0) < len(even) * 0.1:
+            return codecs.getincrementaldecoder("utf-16-le")("replace"), head
+        if even.count(0) > len(even) * 0.4 and odd.count(0) < len(odd) * 0.1:
+            return codecs.getincrementaldecoder("utf-16-be")("replace"), head
+    return None, head
+
+
+def _is_terminal(file: BinaryIO) -> bool:
+    try:
+        return file.isatty()
+    except (OSError, ValueError):
+        return False
