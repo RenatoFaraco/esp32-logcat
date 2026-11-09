@@ -13,7 +13,12 @@ against the last one accepted:
 - seq more than 32 behind → restart if uptime went back at all, else a corrupted seq (a bad
   digit, ADR-007): reported, never counted as a loss of ~1e6 lines;
 - otherwise seq jumped ahead → that many lines lost.
-Each connection starts continuity over. A jump right after a line that may have been sitting
+Each connection starts continuity over: lines the device wrote while no one was reading were
+never sent (the firmware reports them itself), so a jump across a reconnect is not a loss. The
+first line of a new connection is still compared with the last one before it, only to catch a
+restart: on the native USB the reset button drops the port, and the ROM banner is printed before
+the host can reopen it. Boot changed, uptime went back or seq did not move forward → restart.
+A jump right after a line that may have been sitting
 in the native port's FIFO (``maybe_stale``, decided by the pipeline) is "missed before the
 connection", not "lost" (docs/hardware.md, item 7).
 """
@@ -51,6 +56,7 @@ class StreamStats:
         self.hidden = 0
         self._connections = 0
         self._last: LogLine | None = None
+        self._before_reconnect: LogLine | None = None  # last line of the previous connection
         self._last_maybe_stale = False
         self._booted = False  # a ROM banner since the last LogLine
         # Seqs recently reported lost: a late arrival (reorder) undoes the loss.
@@ -60,6 +66,8 @@ class StreamStats:
         self._connections += 1
         if self._connections > 1:
             self.reconnects += 1
+        if self._last is not None:
+            self._before_reconnect = self._last
         self._last = None
         self._recent_lost.clear()
 
@@ -80,6 +88,9 @@ class StreamStats:
         self._last, self._last_maybe_stale = line, maybe_stale
         booted, self._booted = self._booted, False
         if last is None:
+            before, self._before_reconnect = self._before_reconnect, None
+            if before is not None and (booted or _restarted_meanwhile(before, line)):
+                return [self._restart(before, line)]
             return []
         if booted:
             return [self._restart(last, line)]
@@ -177,6 +188,17 @@ class StreamStats:
         if self.filtering:
             summary += f" | {self.hidden} hidden by filter"
         return summary
+
+
+def _restarted_meanwhile(before: LogLine, line: LogLine) -> bool:
+    """Across a reconnect: no reorder is possible (unsent lines are dropped, not kept)."""
+    ahead = (line.seq - before.seq) % SEQ_MODULO
+    return (
+        line.boot != before.boot
+        or _uptime_went_back(before.uptime_ms, line.uptime_ms)
+        or ahead == 0
+        or ahead > SEQ_MODULO // 2
+    )
 
 
 def _uptime_went_back(previous: int, current: int) -> bool:

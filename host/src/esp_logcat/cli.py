@@ -44,6 +44,12 @@ SAVE_HELP = (
     " it back"
 )
 
+TUI_HELP = """\
+keys: space pause/follow · f edit the filter (Enter applies, Esc cancels) · t PC time column ·
+c clear · q or Ctrl+C quit. The summary is printed when the TUI closes.
+
+"""
+
 FILTER_HELP = """\
 filters (like adb logcat; quote them in bash so * is not expanded):
   esp-logcat stream "*:W"                    warnings and errors only
@@ -112,6 +118,28 @@ def build_parser() -> argparse.ArgumentParser:
     )
     replay.set_defaults(command_parser=replay)
 
+    tui = subparsers.add_parser(
+        "tui",
+        help="follow the device interactively (scroll, pause, live filter)",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog=TUI_HELP + FILTER_HELP,
+    )
+    tui.add_argument(
+        "filterspecs",
+        nargs="*",
+        metavar="TAG:L",
+        help="logcat-style filter: L is V D I W E, or S/N to silence (default *:V)",
+    )
+    tui.add_argument("--port", help="serial port (default: the native USB port, if unique)")
+    tui.add_argument(
+        "--baud", type=_positive_int, default=115200, help="baud rate (default: 115200)"
+    )
+    tui.add_argument("--reset", action="store_true", help="reset the device after opening")
+    tui.add_argument("--replay", metavar="FILE", help="show a saved log instead of the device")
+    tui.add_argument("--lenient", action="store_true", help="with --replay: hand-edited files")
+    tui.add_argument("--save", metavar="FILE", help=SAVE_HELP)
+    tui.set_defaults(command_parser=tui)
+
     subparsers.add_parser("ports", help="list serial ports")
 
     for name, (help_text, _) in SUBCOMMANDS.items():
@@ -134,7 +162,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     # parse_known_args: argparse cannot mix a nargs="*" positional with options (filters after
     # an option are left over), so leftovers that are not options join the filters.
     args, extras = parser.parse_known_args(argv)
-    if args.command in ("stream", "replay"):
+    if args.command in ("stream", "replay", "tui"):
         options = [extra for extra in extras if extra.startswith("-")]
         if options:
             args.command_parser.error(f"unrecognized arguments: {' '.join(options)}")
@@ -146,7 +174,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 2
     prepare_output(sys.stdout)
     prepare_output(sys.stderr)
-    if args.command in ("stream", "replay"):
+    if args.command in ("stream", "replay", "tui"):
         if args.command == "replay" and _file_after_filters(args):
             args.command_parser.error(
                 f"{args.file} looks like a filter: the file comes first "
@@ -156,6 +184,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             args.line_filter = LogFilter.parse(args.filterspecs)
         except FilterSpecError as exc:
             args.command_parser.error(str(exc))  # exit 2, with this command's usage line
+        if args.command == "tui":
+            return tui_command(args)
         return stream_command(args) if args.command == "stream" else replay_command(args)
     if args.command == "ports":
         return ports_command()
@@ -232,11 +262,57 @@ def replay_command(args: argparse.Namespace) -> int:
     return 1 if transport.failed else code  # a read error must not look like a full replay
 
 
+def tui_command(args: argparse.Namespace) -> int:
+    from esp_logcat.tui.app import LogcatApp  # textual is imported only for the TUI
+
+    failed = lambda: False  # noqa: E731
+    if args.replay == "-":
+        # The TUI reads the keyboard from the console: a piped log would compete with it.
+        args.command_parser.error("tui cannot replay stdin; use: esp-logcat replay -")
+    if args.replay:
+        try:
+            file_transport = FileTransport.open(args.replay)
+        except OSError as exc:
+            args.command_parser.error(f"cannot read {args.replay}: {exc.strerror or exc}")
+        transport: FileTransport | SerialTransport = file_transport
+        label = f"replay {args.replay}"
+        failed = lambda: file_transport.failed  # noqa: E731
+    else:
+        try:
+            port = args.port or find_port(list_ports())
+        except PortSelectionError as exc:
+            args.command_parser.error(str(exc))
+        transport = SerialTransport(port, args.baud, reset=args.reset)
+        label = port
+    try:
+        recorder = _open_session(args)
+    except BaseException:
+        transport.close()
+        raise
+    app = LogcatApp(
+        transport.chunks(),
+        transport.close,
+        label=label,
+        line_filter=args.line_filter,
+        recorder=recorder,
+        saved_file=bool(args.replay),
+        lenient=args.lenient,
+    )
+    try:
+        app.run()
+    finally:
+        transport.close()
+        if recorder is not None:
+            recorder.close()
+    _console(sys.stderr).print(app.stats.summary(), markup=False, style="dim")
+    return app.return_code or (1 if failed() else 0)
+
+
 def _open_session(args: argparse.Namespace) -> SessionWriter | None:
     """The --save file, opened (and truncated) before streaming starts."""
     if not args.save:
         return None
-    source = getattr(args, "file", None)
+    source = getattr(args, "file", None) or getattr(args, "replay", None)
     if _same_file(args.save, source):
         args.command_parser.error(f"--save {args.save} is the file being replayed")
     try:

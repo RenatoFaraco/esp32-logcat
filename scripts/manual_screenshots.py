@@ -208,6 +208,38 @@ def main() -> None:
         return
     for shot in SHOTS:
         save(shot, ports_lines() if shot.name == "ports" else stream_lines(shot))
+    tui_shot()
+
+
+def tui_shot() -> None:
+    """img/tui.svg: the real TUI (Textual's own screenshot) replaying the two-boot fixture."""
+    import asyncio
+
+    from esp_logcat.tui.app import LogcatApp
+
+    async def capture() -> None:
+        transport = FileTransport(
+            (ROOT / "host/tests/fixtures/two_boots_esp32c3.log").open("rb"), "two_boots_esp32c3.log"
+        )
+        app = LogcatApp(
+            transport.chunks(),
+            transport.close,
+            label="replay two_boots_esp32c3.log",
+            saved_file=True,
+            line_filter=LogFilter.parse(["*:W", "HEARTBEAT:I"]),
+        )
+        async with app.run_test(size=(118, 30)) as pilot:
+            for _ in range(100):
+                await pilot.pause(0.05)
+                if app.finished:
+                    break
+            await pilot.pause(0.2)
+            svg = app.export_screenshot(title="esp-logcat tui")
+            (IMAGES / "tui.svg").write_text(svg, encoding="utf-8", newline="\n")
+            await pilot.press("q")
+
+    asyncio.run(capture())
+    print("img/tui.svg")
 
 
 if __name__ == "__main__":

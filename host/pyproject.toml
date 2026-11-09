@@ -12,6 +12,7 @@ dynamic = ["version"]
 dependencies = [
     "pyserial>=3.5",
     "rich>=13.7",
+    "textual>=8.2,<9",  # the TUI only (ADR-008); breaking API changes between majors
 ]
 
 [project.optional-dependencies]

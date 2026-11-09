@@ -160,6 +160,54 @@ def test_reconnect_resets_continuity():
     assert stats.lost == 0
 
 
+def test_reset_while_disconnected_is_a_restart():
+    # Reset button on the native USB: the port drops and the ROM banner is gone before the
+    # host reopens it. The board seen on the screen: seq 110 at 4030 ms, then seq 107 at 1030.
+    stats = StreamStats()
+    stats.connected()
+    feed(stats, log(109, uptime=3030), log(110, uptime=4030))
+    stats.connected()
+    assert feed(stats, log(107, uptime=1030), log(108, uptime=1034)) == [NoticeKind.RESTART]
+    assert stats.restarts == 1
+    assert stats.lost == 0
+
+
+@pytest.mark.parametrize(
+    "first",
+    [
+        log(5, uptime=900_000),  # seq went back, uptime forward: the new boot ran longer
+        log(150, uptime=2_000),  # seq ahead, uptime back: a boot that logged more early
+        log(111, uptime=9_000, boot=1),  # boot counter changed (M4)
+        log(110, uptime=9_000),  # the same seq again: the new boot reached it
+    ],
+)
+def test_other_restarts_across_a_reconnect(first):
+    stats = StreamStats()
+    stats.connected()
+    feed(stats, log(110, uptime=4030))
+    stats.connected()
+    assert feed(stats, first) == [NoticeKind.RESTART]
+
+
+def test_cable_out_and_back_is_not_a_restart():
+    stats = StreamStats()
+    stats.connected()
+    feed(stats, log(110, uptime=4030))
+    stats.connected()
+    assert feed(stats, log(140, uptime=34_030), log(141, uptime=35_030)) == []
+    assert stats.restarts == 0 and stats.lost == 0  # not received != lost (no reader)
+
+
+def test_only_the_first_line_after_a_reconnect_is_compared():
+    stats = StreamStats()
+    stats.connected()
+    feed(stats, log(110, uptime=4030))
+    stats.connected()
+    stats.connected()  # dropped again before any line: still compared with seq 110
+    assert feed(stats, log(3, uptime=27)) == [NoticeKind.RESTART]
+    assert feed(stats, log(4, uptime=27)) == []
+
+
 def test_first_jump_after_connecting_is_missed_not_lost():
     stats = StreamStats()
     stats.connected()
