@@ -20,6 +20,7 @@ class NoticeKind(StrEnum):
     UPTIME_BACK = "uptime_back"  # seq continuous but uptime went back: corrupted line?
     SEQ_BACK = "seq_back"  # seq far behind with uptime going forward: corrupted seq?
     OVERFLOW = "overflow"  # no newline for too long: line cut, rest discarded
+    FILTER = "filter"  # the active display filter (first notice when one is set)
 
 
 @dataclass(frozen=True, slots=True)

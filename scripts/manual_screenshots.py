@@ -21,8 +21,9 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 from esp_logcat.events import Notice, NoticeKind, Received
+from esp_logcat.filters import LogFilter
 from esp_logcat.parser import InvalidLine, InvalidReason
-from esp_logcat.pipeline import events
+from esp_logcat.pipeline import events, visible
 from esp_logcat.render import device_text, render, render_notice
 from esp_logcat.stats import StreamStats
 from esp_logcat.transport import PortInfo
@@ -48,6 +49,7 @@ class Shot:
     # a dim "..." line marks what was left out. Empty = everything.
     keep: list[tuple[int, int]] = field(default_factory=list)
     summary: bool = True
+    filters: list[str] = field(default_factory=list)  # logcat-style specs, as on the command line
 
 
 def replay(path: Path) -> tuple[Iterator[bytes | Notice], datetime, list[float]]:
@@ -73,9 +75,11 @@ def stream_lines(shot: Shot) -> list[Text]:
     def clock() -> datetime:
         return started + timedelta(seconds=offsets[-1] if offsets else 0)
 
+    # The same pipeline as cli.run_stream: events() then the display filter, visible().
+    line_filter = LogFilter.parse(shot.filters)
     lines: list[Text] = []
     last = None
-    for event in events(source, stats, clock=clock):
+    for event in visible(events(source, stats, clock=clock), stats, line_filter):
         last = event
         if isinstance(event, Received):
             lines.append(render(event.line, pc_time=event.pc_time if shot.show_time else None))
@@ -140,7 +144,9 @@ def save(shot: Shot, lines: list[Text]) -> None:
     for line in lines:
         console.print(line)  # wraps at WIDTH, like a terminal of that width would
     IMAGES.mkdir(parents=True, exist_ok=True)
-    console.save_svg(str(IMAGES / f"{shot.name}.svg"), title=shot.title, theme=MONOKAI)
+    svg = console.export_svg(title=shot.title, theme=MONOKAI)
+    # LF on every OS (save_svg would write CRLF on Windows and show up as a diff in git)
+    (IMAGES / f"{shot.name}.svg").write_text(svg, encoding="utf-8", newline="\n")
     print(f"img/{shot.name}.svg: {len(lines)} lines")
 
 
@@ -164,6 +170,14 @@ SHOTS = [
     Shot("time", "esp-logcat stream --time", "esp-logcat stream --time", "time", show_time=True),
     Shot("reopen", "esp-logcat stream", "esp-logcat stream", "reopen"),
     Shot("busy", "esp-logcat stream", "esp-logcat stream", "busy"),
+    Shot(
+        "filter",
+        'esp-logcat stream --reset "*:S" "HEARTBEAT:I" "LOGCAT:W"',
+        'esp-logcat stream --reset "*:S" "HEARTBEAT:I" "LOGCAT:W"',
+        "boot",
+        filters=["*:S", "HEARTBEAT:I", "LOGCAT:W"],
+        keep=[(0, 3), (12, 19)],
+    ),
 ]
 
 

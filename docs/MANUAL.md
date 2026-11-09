@@ -282,6 +282,43 @@ esp-logcat stream --time
 A primeira coluna é a hora do PC em que a linha chegou (`HH:MM:SS.mmm`), útil para cruzar com
 outros registros. O uptime da placa continua na linha.
 
+### 3.8 Filtros: só o que interessa
+
+Os filtros seguem a sintaxe do `adb logcat`: cada argumento é `TAG:NÍVEL`, e uma linha aparece
+se o nível dela for **igual ou mais grave** que o da sua tag.
+
+```powershell
+esp-logcat stream "*:W"                         # só avisos e erros, de todas as tags
+esp-logcat stream "*:S" "PRESSURE:D"            # só a tag PRESSURE, até debug
+esp-logcat stream "*:W" "HEARTBEAT:I"           # avisos e erros, mais o heartbeat
+esp-logcat stream --reset "*:S" "HEARTBEAT:I" "LOGCAT:W"
+```
+
+![esp-logcat stream com filtro](manual/img/filter.svg)
+
+| Parte | Significado |
+|-------|-------------|
+| `TAG:L` | a tag `TAG` no nível `L` ou mais grave. Níveis, do mais grave ao menos: `E` `W` `I` `D` `V` |
+| `TAG:S` ou `TAG:N` | silencia a tag (`S` é o "silent" do adb, `N` o `None` do firmware) |
+| `TAG` | o mesmo que `TAG:V` (tudo da tag) |
+| `*:L` | o nível de **todas as outras tags**. Sem `*:`, as outras continuam aparecendo |
+
+- A regra da tag vence a do `*`, em qualquer ordem. A mesma tag duas vezes: vale a última.
+- A tag diferencia maiúsculas de minúsculas (`HEARTBEAT` ≠ `heartbeat`); o nível, não.
+- Linhas sem tag (texto da ROM, `!! torn`) **sempre aparecem**.
+- **O filtro só esconde:** as lacunas de `seq` e o resumo continuam contando todas as linhas,
+  e o resumo diz quantas foram escondidas (`N hidden by filter`). Esconder uma tag nunca vira
+  "linhas perdidas". O stderr começa com `-- filter: ... --` para lembrar o que está ativo.
+- Os avisos de `seq` (`lines lost`, `arrived after`) valem para **todas** as linhas, inclusive as
+  escondidas: podem citar um `seq` que você não está vendo. Ao silenciar tudo com `*:S`, mantenha
+  `"LOGCAT:W"`, senão você não vê as linhas em que a própria placa explica as perdas.
+- Vários filtros podem vir num argumento só (`"*:S HEARTBEAT:I"`), mas não intercalados com
+  opções: `stream "*:S" --time "APP:D"` dá erro. Ponha as opções antes ou depois.
+- Filtro inválido (`APP:F`, `APP:X`) encerra com uma mensagem de erro explicando o que vale.
+
+**Aspas:** no PowerShell e no cmd, `"*:W"` funciona com ou sem aspas. No bash (Git Bash, Linux),
+use aspas, senão o `*` vira nome de arquivo.
+
 ---
 
 ## 4. Pipe, grep e arquivo
@@ -321,10 +358,10 @@ findstr /C:" W " /C:" E " sessao.log
 
 > No cmd, o `findstr` **não serve para filtrar ao vivo**: num pipe (`stream | findstr ...`) ele
 > guarda a saída em buffer e não mostra nada até o fim (testado). Para filtrar ao vivo, use o
-> PowerShell (`Select-String`) ou espere os filtros próprios da ferramenta (#17). O `>` do cmd
-> grava os bytes exatos.
+> PowerShell (`Select-String`) ou os filtros da própria ferramenta (seção 3.8), que funcionam
+> igual nos dois terminais. O `>` do cmd grava os bytes exatos.
 
-Filtros por tag e nível no estilo do logcat (`"*:W" "PRESSURE:D"`) chegam com a issue #17.
+Os filtros da ferramenta combinam com tudo isto: `esp-logcat stream "*:W" > avisos-e-erros.log`.
 
 ---
 
@@ -363,7 +400,8 @@ Use a **nativa** para o logcat. Use a **COM5** quando precisar do console comple
 
 ```
 esp-logcat ports                         lista as portas e marca a nativa
-esp-logcat stream [opções]               logs ao vivo
+esp-logcat stream [opções] [TAG:L ...]   logs ao vivo, com filtros opcionais (seção 3.8)
+    "*:W"  "*:S" "TAG:D"  ...            filtros do logcat: níveis E W I D V, S/N silencia
     --port COMx                          porta (padrão: a nativa, se houver só uma)
     --baud N                             baud rate (padrão 115200; só importa na COM5)
     --reset                              reinicia a placa ao conectar
@@ -371,7 +409,7 @@ esp-logcat stream [opções]               logs ao vivo
 esp-logcat --version
 ```
 
-Ainda não implementados: filtros (#17), `replay` de arquivo salvo (#19), `dump` e `shell`
+Ainda não implementados: `replay` de arquivo salvo (#19), `dump` e `shell`
 (marco M5), interface interativa `esp-logcat tui` (#56).
 
 ---

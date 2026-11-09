@@ -177,3 +177,40 @@ def test_tail_at_end_of_input_is_torn():
     out, _ = run([b"0000:000001 0000000010 I T: a\n0000:0000"])
     assert isinstance(out[-1], Received)
     assert out[-1].line == InvalidLine(reason=InvalidReason.TORN, raw=b"0000:0000")
+
+
+# ---------------------------------------------------------------- display filter (visible)
+
+
+def test_hidden_lines_still_count_for_gaps():
+    from esp_logcat.filters import LogFilter
+    from esp_logcat.pipeline import visible
+
+    chunks = [
+        b"0000:000003 0000001000 I HEARTBEAT: a\n"
+        b"0000:000004 0000001001 I APP: hidden in between\n"
+        b"0000:000005 0000002000 I HEARTBEAT: b\n"
+    ]
+    stats = StreamStats()
+    out = list(visible(events(chunks, stats), stats, LogFilter.parse("*:S HEARTBEAT:I")))
+    assert out[0] == Notice(NoticeKind.FILTER, "filter: *:S HEARTBEAT:I")
+    shown = [e.line.seq for e in out if isinstance(e, Received)]
+    assert shown == [3, 5]
+    assert not any(isinstance(e, Notice) and e.kind is NoticeKind.GAP for e in out)
+    assert stats.hidden == 1
+    assert stats.summary().startswith("3 lines, 3 log")
+    assert stats.summary().endswith("| 1 hidden by filter")
+
+
+def test_trivial_filter_changes_nothing():
+    from esp_logcat.filters import LogFilter
+    from esp_logcat.pipeline import visible
+
+    data = [b"0000:000001 0000000001 I APP: x\n", b"ROM text\n"]
+    for line_filter in (None, LogFilter.parse("*:V")):
+        stats = StreamStats()
+        filtered = list(visible(events(data, stats, clock=lambda: T0), stats, line_filter))
+        plain = list(events(data, StreamStats(), clock=lambda: T0))
+        assert filtered == plain  # no FILTER notice, nothing dropped
+        assert not stats.filtering
+        assert "hidden" not in stats.summary()

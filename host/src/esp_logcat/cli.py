@@ -12,7 +12,8 @@ from rich.console import Console
 
 from esp_logcat import __version__
 from esp_logcat.events import Notice, Received
-from esp_logcat.pipeline import events
+from esp_logcat.filters import FilterSpecError, LogFilter
+from esp_logcat.pipeline import events, visible
 from esp_logcat.render import device_text, render, render_notice
 from esp_logcat.stats import StreamStats
 from esp_logcat.transport import PortSelectionError, SerialTransport, find_port, list_ports
@@ -25,18 +26,42 @@ SUBCOMMANDS: dict[str, tuple[str, str]] = {
 }
 
 
+FILTER_HELP = """\
+filters (like adb logcat; quote them in bash so * is not expanded):
+  esp-logcat stream "*:W"                    warnings and errors only
+  esp-logcat stream "*:S" "PRESSURE:D"       only PRESSURE, down to debug
+  esp-logcat stream "*:W" "HEARTBEAT:I"      warnings and errors, plus the heartbeat
+Without *:L every other tag stays visible (default *:V). Lines without a tag (ROM text,
+invalid lines) always pass. Filtering only hides lines: gaps and the summary count all of them.
+Keep the filters together (options before or after them, not in between). Keep "LOGCAT:W" when
+silencing everything: it shows the device's own loss reports.
+"""
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="esp-logcat", description=__doc__)
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     subparsers = parser.add_subparsers(dest="command", metavar="<command>")
 
-    stream = subparsers.add_parser("stream", help="stream live logs from the device")
+    stream = subparsers.add_parser(
+        "stream",
+        help="stream live logs from the device",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog=FILTER_HELP,
+    )
+    stream.add_argument(
+        "filterspecs",
+        nargs="*",
+        metavar="TAG:L",
+        help="logcat-style filter: L is V D I W E, or S/N to silence (default *:V)",
+    )
     stream.add_argument("--port", help="serial port (default: the native USB port, if unique)")
     stream.add_argument(
         "--baud", type=_positive_int, default=115200, help="baud rate (default: 115200)"
     )
     stream.add_argument("--reset", action="store_true", help="reset the device after opening")
     stream.add_argument("--time", action="store_true", help="add the PC time to each line")
+    stream.set_defaults(stream_parser=stream)
 
     subparsers.add_parser("ports", help="list serial ports")
 
@@ -64,6 +89,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     prepare_output(sys.stdout)
     prepare_output(sys.stderr)
     if args.command == "stream":
+        try:
+            args.line_filter = LogFilter.parse(args.filterspecs)
+        except FilterSpecError as exc:
+            args.stream_parser.error(str(exc))  # exit 2, with the stream usage line
         return stream_command(args)
     if args.command == "ports":
         return ports_command()
@@ -89,7 +118,13 @@ def stream_command(args: argparse.Namespace) -> int:
         return 2
     transport = SerialTransport(port, args.baud, reset=args.reset)
     try:
-        return run_stream(transport.chunks(), sys.stdout, sys.stderr, show_time=args.time)
+        return run_stream(
+            transport.chunks(),
+            sys.stdout,
+            sys.stderr,
+            show_time=args.time,
+            line_filter=args.line_filter,
+        )
     finally:
         transport.close()
 
@@ -100,14 +135,19 @@ def run_stream(
     err: TextIO,
     *,
     show_time: bool = False,
+    line_filter: LogFilter | None = None,
 ) -> int:
     """Device lines go to `out`, exactly as the device wrote them (pipe and grep friendly);
     notices about the stream and the final summary go to `err`, like adb's "waiting for
-    device". Stops on Ctrl+C or when the input ends."""
+    device". Stops on Ctrl+C or when the input ends.
+
+    `line_filter` only decides what is printed: the statistics see every line, so a hidden
+    tag never shows up as lost lines."""
     out_console = _console(out)
     err_console = _console(err)
     stats = StreamStats()
-    source = events(chunks, stats)
+    parsed = events(chunks, stats)
+    source = visible(parsed, stats, line_filter)
     try:
         for event in source:
             match event:
@@ -126,6 +166,7 @@ def run_stream(
         # Close the generators now, not at garbage collection: closing the transport's
         # generator closes the serial port.
         source.close()
+        parsed.close()
         close_chunks = getattr(chunks, "close", None)
         if close_chunks is not None:
             close_chunks()
