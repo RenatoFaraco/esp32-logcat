@@ -67,7 +67,7 @@ Os blocos 🖥️ (M3, M4a, M5a) podem ser adiantados sempre que o trabalho com 
 - [x] `render.py` com cores, devolvendo `rich.text.Text` (#18)
 - [ ] `esp-logcat tui` com Textual, depois dos filtros (H7, ADR-008)
 - [x] `esp-logcat replay <arquivo>` + fixtures em `tests/fixtures/` (#19)
-- [ ] Testes de compatibilidade: as mesmas linhas de exemplo validadas pelo parser C++ e pelo Python
+- [x] Testes de compatibilidade: as mesmas linhas de exemplo validadas pelo parser C++ e pelo Python (#20, `conformance/`)
 - **Pronto quando:** `replay` de um log de exemplo filtra e colore corretamente.
 
 ### M2 · Captura e escrita 🔌 — parte 2

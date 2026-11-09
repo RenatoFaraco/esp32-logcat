@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Shared line-format cases (`conformance/line_cases.tsv`, generated from hand-written
+  expectations by `conformance/make_line_cases.py`): the C++ parser and formatter
+  (`test_conformance`) and the Python parser (`test_conformance.py`) are checked against the same
+  87 cases, so the two sides cannot drift apart; the Go host (ADR-010) will read it too.
+
 - `esp-logcat replay FILE [filters]`: a saved log through the same pipeline as `stream` (colors,
   filters, gap and restart notices, summary), with `-` for stdin and `--lenient` for hand-edited
   files. `FileTransport` reads files saved by any shell (UTF-16 from PowerShell 5.1's `>`, with or
