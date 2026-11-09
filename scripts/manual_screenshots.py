@@ -26,7 +26,7 @@ from esp_logcat.parser import InvalidLine, InvalidReason
 from esp_logcat.pipeline import events, visible
 from esp_logcat.render import device_text, render, render_notice
 from esp_logcat.stats import StreamStats
-from esp_logcat.transport import PortInfo
+from esp_logcat.transport import FileTransport, PortInfo
 from rich.console import Console
 from rich.terminal_theme import MONOKAI
 from rich.text import Text
@@ -50,6 +50,9 @@ class Shot:
     keep: list[tuple[int, int]] = field(default_factory=list)
     summary: bool = True
     filters: list[str] = field(default_factory=list)  # logcat-style specs, as on the command line
+    # A saved log replayed with FileTransport (path relative to the repository), instead of a
+    # recorded session: the picture of `esp-logcat replay`.
+    file: str = ""
 
 
 def replay(path: Path) -> tuple[Iterator[bytes | Notice], datetime, list[float]]:
@@ -69,7 +72,11 @@ def replay(path: Path) -> tuple[Iterator[bytes | Notice], datetime, list[float]]
 
 
 def stream_lines(shot: Shot) -> list[Text]:
-    source, started, offsets = replay(SESSIONS / f"{shot.session}.json")
+    if shot.file:
+        transport = FileTransport((ROOT / shot.file).open("rb"), shot.file.replace("/", "\\"))
+        source, started, offsets = transport.chunks(), datetime(2026, 11, 8), []
+    else:
+        source, started, offsets = replay(SESSIONS / f"{shot.session}.json")
     stats = StreamStats()
 
     def clock() -> datetime:
@@ -170,6 +177,14 @@ SHOTS = [
     Shot("time", "esp-logcat stream --time", "esp-logcat stream --time", "time", show_time=True),
     Shot("reopen", "esp-logcat stream", "esp-logcat stream", "reopen"),
     Shot("busy", "esp-logcat stream", "esp-logcat stream", "busy"),
+    Shot(
+        "replay",
+        r'esp-logcat replay host\tests\fixtures\two_boots_esp32c3.log "*:W"',
+        r'esp-logcat replay host\tests\fixtures\two_boots_esp32c3.log "*:W"',
+        file="host/tests/fixtures/two_boots_esp32c3.log",
+        filters=["*:W"],
+        keep=[(0, 2), (12, 17), (27, 32)],
+    ),
     Shot(
         "filter",
         'esp-logcat stream --reset "*:S" "HEARTBEAT:I" "LOGCAT:W"',

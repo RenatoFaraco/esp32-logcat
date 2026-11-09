@@ -312,12 +312,52 @@ esp-logcat stream --reset "*:S" "HEARTBEAT:I" "LOGCAT:W"
 - Os avisos de `seq` (`lines lost`, `arrived after`) valem para **todas** as linhas, inclusive as
   escondidas: podem citar um `seq` que você não está vendo. Ao silenciar tudo com `*:S`, mantenha
   `"LOGCAT:W"`, senão você não vê as linhas em que a própria placa explica as perdas.
-- Vários filtros podem vir num argumento só (`"*:S HEARTBEAT:I"`), mas não intercalados com
-  opções: `stream "*:S" --time "APP:D"` dá erro. Ponha as opções antes ou depois.
+- Vários filtros podem vir num argumento só (`"*:S HEARTBEAT:I"`), e filtros e opções podem
+  vir em qualquer ordem (`stream "*:S" --time "APP:D"`).
 - Filtro inválido (`APP:F`, `APP:X`) encerra com uma mensagem de erro explicando o que vale.
 
 **Aspas:** no PowerShell e no cmd, `"*:W"` funciona com ou sem aspas. No bash (Git Bash, Linux),
 use aspas, senão o `*` vira nome de arquivo.
+
+### 3.9 Reproduzir um log salvo (`replay`)
+
+O `replay` lê um arquivo salvo e o passa **pelo mesmo caminho do `stream`**: mesmo parser,
+mesmas cores, mesmos filtros, os avisos de lacuna e de reinício e o resumo. Serve para
+analisar uma sessão depois, sem a placa.
+
+```powershell
+esp-logcat replay sessao.log                          # tudo, colorido
+esp-logcat replay sessao.log "*:W"                    # só avisos e erros
+esp-logcat replay sessao.log "*:S" "HEARTBEAT:I" > so-heartbeat.log
+```
+
+![esp-logcat replay com filtro](manual/img/replay.svg)
+
+A imagem é o `replay` de uma captura real com **dois boots** (a fixture
+`host/tests/fixtures/two_boots_esp32c3.log`): o aviso `device restarted` separa os dois, e o
+resumo conta as perdas das duas rajadas (`lost 144`) e o reinício (`restarts 1`).
+
+- O arquivo pode vir do `esp-logcat stream > arquivo` (no PowerShell 5.1 ele sai em UTF-16, e o
+  `replay` lê assim mesmo), de um `cmd /c "... > arquivo"`, de uma captura da serial ou,
+  quando existir, do `dump` da flash (M5).
+- `-` no lugar do arquivo lê do stdin: `type sessao.log | esp-logcat replay - "*:W"`.
+- O arquivo é lido de uma vez, sem o ritmo original. Um arquivo salvo com `stream --time`
+  também é lido: a coluna de hora é descartada (mostrá-la de volta chega com a #21).
+- `--lenient` aceita linhas editadas à mão: a mensagem vazia que perdeu o espaço (`TAG:`
+  no fim da linha) e a última linha sem quebra de linha. Sem ele, o `replay` é estrito como
+  a placa.
+- Um erro de leitura no meio do arquivo (pendrive removido, rede caiu) aparece como
+  `-- arquivo: read error (...) --` e o comando sai com código 1: nunca um replay
+  incompleto que parece completo.
+
+**O que pode diferir do que você viu ao vivo:**
+
+- Um arquivo salvo **com filtro** não tem as linhas escondidas: o `replay` mostra lacunas
+  de `seq` onde elas estavam (`N lines lost`). Para analisar depois, salve sem filtro e
+  filtre no `replay`.
+- Linhas inválidas gravadas como `!! torn: ...` voltam como texto cru, não como inválidas.
+- O arquivo não sabe quando a porta foi reaberta: um salto de `seq` que ao vivo era
+  "not received before the connection" aparece como `lines lost`.
 
 ---
 
@@ -406,10 +446,13 @@ esp-logcat stream [opções] [TAG:L ...]   logs ao vivo, com filtros opcionais (
     --baud N                             baud rate (padrão 115200; só importa na COM5)
     --reset                              reinicia a placa ao conectar
     --time                               mostra a hora do PC em cada linha
+esp-logcat replay ARQUIVO [TAG:L ...]   reproduz um log salvo, com filtros (seção 3.9)
+    -                                    no lugar do arquivo: lê do stdin
+    --lenient                            aceita linhas editadas à mão
 esp-logcat --version
 ```
 
-Ainda não implementados: `replay` de arquivo salvo (#19), `dump` e `shell`
+Ainda não implementados: `dump` e `shell`
 (marco M5), interface interativa `esp-logcat tui` (#56).
 
 ---

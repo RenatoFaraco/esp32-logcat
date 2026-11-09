@@ -21,6 +21,7 @@ class NoticeKind(StrEnum):
     SEQ_BACK = "seq_back"  # seq far behind with uptime going forward: corrupted seq?
     OVERFLOW = "overflow"  # no newline for too long: line cut, rest discarded
     FILTER = "filter"  # the active display filter (first notice when one is set)
+    SOURCE = "source"  # what a non-serial stream reads (a file in replay); not a connection
 
 
 @dataclass(frozen=True, slots=True)

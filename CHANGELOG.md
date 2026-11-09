@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `esp-logcat replay FILE [filters]`: a saved log through the same pipeline as `stream` (colors,
+  filters, gap and restart notices, summary), with `-` for stdin and `--lenient` for hand-edited
+  files. `FileTransport` reads files saved by any shell (UTF-16 from PowerShell 5.1's `>`, with or
+  without BOM, UTF-8 with or without BOM) and files saved with `stream --time`; a read error ends
+  with a notice and exit status 1. New fixture: a real capture with two boots
+  (`two_boots_esp32c3.log`). Manual section 3.9 (en/pt).
+- `stream` and `replay` accept filters and options in any order.
+
 - Host filters in `adb logcat` syntax: `esp-logcat stream "*:W" "PRESSURE:D"` (`filters.py`).
   `TAG:L` with levels `V D I W E` and `S`/`N` to silence, `*:L` for every other tag, the exact
   tag beats `*`. Lines without a tag always pass. Display only: gaps and the summary still count

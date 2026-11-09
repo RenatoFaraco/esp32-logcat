@@ -1,4 +1,8 @@
+import codecs
+import errno
+import io
 import random
+import sys
 from collections.abc import Iterator
 from pathlib import Path
 
@@ -8,6 +12,7 @@ from serial import SerialException
 from esp_logcat.events import Notice, NoticeKind
 from esp_logcat.transport import (
     MAX_PENDING,
+    FileTransport,
     LineSplitter,
     PortInfo,
     PortSelectionError,
@@ -463,3 +468,176 @@ def test_consumer_stopping_at_connected_closes_the_port():
     assert next(chunks).kind is NoticeKind.CONNECTED
     chunks.close()
     assert bus.links[0].closed
+
+
+# ---------------------------------------------------------------- FileTransport (replay)
+
+
+def replay_chunks(path) -> list[bytes | Notice]:
+    return list(FileTransport.open(str(path)).chunks())
+
+
+def test_file_transport_announces_the_source_then_yields_the_bytes(tmp_path):
+    path = tmp_path / "session.log"
+    data = (FIXTURES / "two_boots_esp32c3.log").read_bytes()
+    path.write_bytes(data)
+    items = replay_chunks(path)
+    assert items[0] == Notice(NoticeKind.SOURCE, f"replaying {path}")
+    assert b"".join(items[1:]) == data
+
+
+def test_file_transport_reads_large_files_in_chunks(tmp_path):
+    path = tmp_path / "big.log"
+    path.write_bytes(b"x" * (FileTransport.CHUNK_SIZE * 2 + 5))
+    sizes = [len(item) for item in replay_chunks(path)[1:]]
+    assert sizes == [FileTransport.CHUNK_SIZE, FileTransport.CHUNK_SIZE, 5]
+
+
+@pytest.mark.parametrize(
+    "encode",
+    [
+        lambda text: codecs.BOM_UTF16_LE + text.encode("utf-16-le"),  # PowerShell 5.1 ">"
+        lambda text: codecs.BOM_UTF16_BE + text.encode("utf-16-be"),
+        lambda text: codecs.BOM_UTF8 + text.encode("utf-8"),
+        lambda text: text.encode("utf-8"),
+    ],
+)
+def test_file_transport_reads_any_saved_encoding_as_the_same_bytes(tmp_path, encode):
+    text = "0000:000001 0000000010 I APP: hello\r\n" * 3000  # spans several chunks
+    path = tmp_path / "saved.log"
+    path.write_bytes(encode(text))
+    assert b"".join(replay_chunks(path)[1:]) == text.encode("ascii")
+
+
+def test_file_transport_empty_file(tmp_path):
+    path = tmp_path / "empty.log"
+    path.write_bytes(b"")
+    assert kinds(replay_chunks(path)) == [NoticeKind.SOURCE]
+
+
+def test_file_transport_reads_stdin(monkeypatch):
+    stdin = io.TextIOWrapper(io.BytesIO(b"from a pipe\n"))
+    monkeypatch.setattr(sys, "stdin", stdin)
+    transport = FileTransport.open("-")
+    items = list(transport.chunks())
+    assert items == [Notice(NoticeKind.SOURCE, "replaying stdin"), b"from a pipe\n"]
+    assert not stdin.closed  # never closes the process's stdin
+
+
+def test_file_transport_closes_the_file(tmp_path):
+    path = tmp_path / "a.log"
+    path.write_bytes(b"a\nb\n")
+    transport = FileTransport.open(str(path))
+    chunks = transport.chunks()
+    next(chunks)
+    chunks.close()  # consumer stops early (Ctrl+C, closed pipe)
+    assert transport._file.closed
+
+
+def test_file_transport_missing_file_raises(tmp_path):
+    with pytest.raises(OSError):
+        FileTransport.open(str(tmp_path / "nope.log"))
+
+
+def test_file_transport_truncated_utf16_ends_with_a_replacement_char(tmp_path):
+    # A UTF-16 file cut in the middle of a character: the last odd byte is not lost silently.
+    path = tmp_path / "cut.log"
+    path.write_bytes(codecs.BOM_UTF16_LE + "ok\n".encode("utf-16-le") + b"A")
+    assert b"".join(replay_chunks(path)[1:]) == b"ok\n" + "\ufffd".encode()
+
+
+class Dribble(io.RawIOBase):
+    """A binary stream that hands out `size` bytes per read, then optionally fails."""
+
+    def __init__(self, data: bytes, size: int, fail_after: int | None = None) -> None:
+        self._data = data
+        self._size = size
+        self._reads = 0
+        self._fail_after = fail_after
+
+    def readable(self) -> bool:
+        return True
+
+    def read(self, n: int = -1) -> bytes:
+        self._reads += 1
+        if self._fail_after is not None and self._reads > self._fail_after:
+            raise OSError(errno.EINVAL, "Invalid argument")  # what Windows reports for a lost drive
+        out, self._data = self._data[: self._size], self._data[self._size :]
+        return out
+
+
+def dribble_chunks(data: bytes, size: int, **kwargs: int) -> tuple[list, FileTransport]:
+    transport = FileTransport(Dribble(data, size, **kwargs), "dribble.log")  # type: ignore[arg-type]
+    return list(transport.chunks()), transport
+
+
+def test_utf16_split_across_reads_including_a_surrogate_pair():
+    text = "0000:000001 0000000010 I APP: emoji " + chr(0x1F600) + " end\n"
+    data = codecs.BOM_UTF16_LE + text.encode("utf-16-le")
+    for size in (1, 3, 5, 7):  # odd sizes split code units and the surrogate pair
+        items, _ = dribble_chunks(data, size)
+        assert b"".join(items[1:]) == text.encode("utf-8"), size
+
+
+def test_bom_arriving_one_byte_at_a_time_is_still_removed():
+    for bom in (codecs.BOM_UTF8, codecs.BOM_UTF16_LE):
+        encoding = "utf-8" if bom == codecs.BOM_UTF8 else "utf-16-le"
+        items, _ = dribble_chunks(bom + "ok\n".encode(encoding), 1)
+        assert b"".join(items[1:]) == b"ok\n"
+
+
+@pytest.mark.parametrize("encoding", ["utf-16-le", "utf-16-be"])
+def test_utf16_without_bom_is_recognized(tmp_path, encoding):
+    text = "0000:000001 0000000010 I APP: no bom here\r\n" * 4
+    path = tmp_path / "nobom.log"
+    path.write_bytes(text.encode(encoding))
+    assert b"".join(replay_chunks(path)[1:]) == text.encode("ascii")
+
+
+def test_plain_ascii_is_not_mistaken_for_utf16(tmp_path):
+    path = tmp_path / "a.log"
+    path.write_bytes(b"ab\ncd\n")  # short and NUL-free
+    assert b"".join(replay_chunks(path)[1:]) == b"ab\ncd\n"
+
+
+def test_read_error_ends_with_a_notice_and_marks_the_transport_failed():
+    items, transport = dribble_chunks(b"0000:000001 0000000010 I APP: a\n" * 10, 100, fail_after=1)
+    assert items[-1].kind is NoticeKind.DISCONNECTED
+    assert "read error" in items[-1].text
+    assert transport.failed
+
+
+def test_close_before_reading_releases_the_file(tmp_path):
+    path = tmp_path / "a.log"
+    path.write_bytes(b"x\n")
+    transport = FileTransport.open(str(path))
+    transport.close()
+    assert transport._file.closed
+
+
+def test_close_from_outside_stops_the_replay(tmp_path):
+    path = tmp_path / "a.log"
+    path.write_bytes(b"x" * (FileTransport.CHUNK_SIZE * 3))
+    transport = FileTransport.open(str(path))
+    chunks = transport.chunks()
+    next(chunks)  # SOURCE notice
+    next(chunks)  # first chunk
+    transport.close()  # e.g. the TUI's stop button, between two reads
+    assert list(chunks) == []
+    assert transport._file.closed
+
+
+def test_directory_is_reported_as_such(tmp_path):
+    with pytest.raises(IsADirectoryError):
+        FileTransport.open(str(tmp_path))
+
+
+def test_stdin_from_a_terminal_says_how_to_end(monkeypatch):
+    class Terminal(io.BytesIO):
+        def isatty(self) -> bool:
+            return True
+
+    stdin = io.TextIOWrapper(Terminal(b""))
+    monkeypatch.setattr(sys, "stdin", stdin)
+    notice = next(FileTransport.open("-").chunks())
+    assert "from the terminal" in notice.text and "Ctrl+Z" in notice.text
