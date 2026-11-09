@@ -27,6 +27,7 @@ from rich.text import Text
 from esp_logcat.events import Notice, NoticeKind
 from esp_logcat.parser import (
     TRUNCATION_MARKER,
+    CommandEnd,
     CommandReply,
     DumpBegin,
     DumpEnd,
@@ -52,6 +53,7 @@ MARKER_STYLE = "dim"
 PC_TIME_STYLE = "dim"
 RAW_STYLE = "dim"
 REPLY_STYLE = "cyan"
+REPLY_ERROR_STYLE = "bold red"
 DUMP_STYLE = "dim magenta"
 INVALID_STYLE = "red"
 INVALID_LABEL_STYLE = "bold red reverse"
@@ -87,13 +89,23 @@ def render(line: Line, *, pc_time: datetime | None = None) -> Text:
             _append(text, raw, INVALID_STYLE, ascii_only=True)
         case CommandReply():
             text.append("#> ", style=REPLY_STYLE)
-            _append(text, line.text, REPLY_STYLE)
+            fields = " ".join(f"{key}={value}" for key, value in line.fields)
+            _append(text, f"{line.id} {fields}", REPLY_STYLE)
+        case CommandEnd() if line.ok:
+            text.append("#. ", style=REPLY_STYLE)
+            _append(text, f"{line.id} ok", REPLY_STYLE)
+        case CommandEnd():
+            text.append("#! ", style=REPLY_ERROR_STYLE)
+            detail = f" {line.text}" if line.text else ""
+            _append(text, f"{line.id} {line.code}{detail}", REPLY_ERROR_STYLE)
         case DumpBegin():
             text.append("#BEGIN ", style=DUMP_STYLE)
-            _append(text, line.filename, DUMP_STYLE)
+            _append(text, f"{line.id} {line.filename}", DUMP_STYLE)
             text.append(f" {line.size}", style=DUMP_STYLE)
         case DumpEnd():
-            text.append(f"#END {line.crc32:08x}", style=DUMP_STYLE)
+            text.append("#END ", style=DUMP_STYLE)
+            _append(text, line.id, DUMP_STYLE)
+            text.append(f" {line.crc32:08x}", style=DUMP_STYLE)
         case _:
             assert_never(line)
     return text

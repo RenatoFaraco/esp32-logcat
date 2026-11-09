@@ -135,16 +135,26 @@ app_main()
 
 ## 6. Protocolo no fio (USB)
 
-Tudo é texto, linha a linha (`\n`). Três tipos de linha, distinguíveis pelo início:
+Tudo é texto, linha a linha (`\n`), ASCII imprimível, no máximo 170 bytes por linha. O host
+manda pedidos `<id> <comando> [args]` (id `1`–`9999`, ou `-` digitado à mão), e o
+dispositivo responde ecoando o id (ADR-012):
 
 | Tipo | Formato | Exemplo |
 |------|---------|---------|
 | Log | `<boot>:<seq> <uptime> <L> <TAG>: <msg>` | `0042:000137 0000123456 W PRESSURE: fora da faixa` |
-| Resposta de comando | `#> <texto>` | `#> boot=42 reason=PANIC fw=0.3.0` |
-| Bloco de dump | `#BEGIN <arquivo> <bytes>` … linhas … `#END <crc32>` | |
+| Resposta, dados | `#> <id> <chave=valor> ...` | `#> 7 fw=0.3.0 proto=1 uptime_ms=5123` |
+| Resposta, fim ok | `#. <id> ok` | `#. 7 ok` |
+| Resposta, fim com erro | `#! <id> <código> [texto]` | `#! 3 full tag table full (16 tags)` |
+| Bloco de dump | `#BEGIN <id> <nome> <bytes>` … `<bytes>` bytes do arquivo … `#END <id> <crc32>` | `#BEGIN 4 log_003.txt 4096` |
 
-O host separa os três tipos; linhas que não casam com nenhum são exibidas como "raw"
-(ex.: saída do bootloader).
+Toda resposta termina com exatamente um `#.` ou `#!`, e um bloco de dump vem antes dele. O
+conteúdo do bloco é o do arquivo byte a byte, inclusive lixo de flash e linhas rasgadas: o
+host o lê pela contagem de bytes, confere o CRC-32 e passa as linhas pelo parser de log. Com um
+bloco aberto, o log não vai para a USB (flash e RTC seguem). As respostas passam por uma fila
+própria, que a tarefa escritora atende antes da fila de log (alternando com ela), e nunca
+intercalam bytes com o log. Campo desconhecido é omitido, nunca zero. O host separa os
+tipos; linha de protocolo malformada, ou que não casa com nenhum tipo, é exibida como "raw"
+(ex.: saída do bootloader). Casos compartilhados: `conformance/reply_cases.tsv`.
 
 ## 7. Ferramenta host (`host/`)
 

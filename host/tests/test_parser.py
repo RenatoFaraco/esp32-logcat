@@ -4,6 +4,7 @@ from pathlib import Path
 import pytest
 
 from esp_logcat.parser import (
+    CommandEnd,
     CommandReply,
     DumpBegin,
     DumpEnd,
@@ -220,14 +221,28 @@ def test_esp_idf_line_with_ansi_colors():
 
 
 def test_command_reply():
-    assert parse_line(b"#> boot=42 reason=PANIC fw=0.3.0\n") == CommandReply(
-        text="boot=42 reason=PANIC fw=0.3.0"
+    # ADR-012; the full set of cases is in conformance/reply_cases.tsv.
+    assert parse_line(b"#> 7 boot=42 reason=PANIC fw=0.3.0\n") == CommandReply(
+        id="7", fields=(("boot", "42"), ("reason", "PANIC"), ("fw", "0.3.0"))
+    )
+    assert parse_line(b"#. 7 ok\n") == CommandEnd(id="7", code="ok")
+    assert parse_line(b"#! 3 full tag table full\n") == CommandEnd(
+        id="3", code="full", text="tag table full"
     )
 
 
+def test_command_reply_field_lookup():
+    reply = parse_line(b"#> 7 fw=0.3.0 not_sent.usb=0\n")
+    assert isinstance(reply, CommandReply)
+    assert reply.get("not_sent.usb") == "0"
+    assert reply.get("boot") is None  # not reported: unknown, never 0 (ADR-012)
+
+
 def test_dump_markers():
-    assert parse_line(b"#BEGIN log_003.txt 4096\n") == DumpBegin(filename="log_003.txt", size=4096)
-    assert parse_line(b"#END 1a2b3c4d\n") == DumpEnd(crc32=0x1A2B3C4D)
+    assert parse_line(b"#BEGIN 4 log_003.txt 4096\n") == DumpBegin(
+        id="4", filename="log_003.txt", size=4096
+    )
+    assert parse_line(b"#END 4 1a2b3c4d\n") == DumpEnd(id="4", crc32=0x1A2B3C4D)
 
 
 @pytest.mark.parametrize(
@@ -336,9 +351,10 @@ def test_random_bytes_of_every_shape_never_raise():
     seeds = [
         NOMINAL,
         b"I (253) APP: formatted 49 bytes\n",
-        b"#BEGIN log_003.txt 4096\n",
-        b"#END 1a2b3c4d\n",
-        b"#> boot=42\n",
+        b"#BEGIN 4 log_003.txt 4096\n",
+        b"#END 4 1a2b3c4d\n",
+        b"#> 7 boot=42\n",
+        b"#! 3 failed erase page 7 of 64\n",
         b"ESP-ROM:esp32c3-api1-20210207\n",
     ]
     for _ in range(5000):
@@ -359,7 +375,7 @@ def test_random_bytes_of_every_shape_never_raise():
 @pytest.mark.parametrize(
     "data",
     [
-        b"#BEGIN f " + b"9" * 5000 + b"\n",  # int() limit of 4300 digits
+        b"#BEGIN 4 f " + b"9" * 5000 + b"\n",  # int() limit of 4300 digits
         b"I (" + b"9" * 5000 + b") T: x\n",
     ],
     ids=["dump_size", "idf_timestamp"],
@@ -370,21 +386,30 @@ def test_huge_numbers_never_raise(data):
 
 @pytest.mark.parametrize(
     "data",
-    [b"#BEGIN log_003.txt 40", b"#END 1a2b3c4d", b"#> boot=4"],
+    [b"#BEGIN 4 log_003.txt 40", b"#END 4 1a2b3c4d", b"#> 7 boot=4", b"#. 7 ok"],
 )
 def test_protocol_lines_without_newline_are_raw(data):
-    # A torn "#BEGIN log_003.txt 4096" must not become a dump of 40 bytes.
+    # A torn "#BEGIN 4 log_003.txt 4096" must not become a dump of 40 bytes.
     assert isinstance(parse_line(data), RawLine)
+    assert not isinstance(parse_line(data + b"\n"), RawLine)  # the same line, complete
 
 
 @pytest.mark.parametrize("name", [b"../../x", b"/etc/x", b"..", b".hidden", b"a/b", b"C:x"])
 def test_dump_file_names_cannot_escape_the_output_directory(name):
-    assert isinstance(parse_line(b"#BEGIN " + name + b" 10\n"), RawLine)
+    assert isinstance(parse_line(b"#BEGIN 4 " + name + b" 10\n"), RawLine)
+    assert isinstance(parse_line(b"#BEGIN 4 safe_name 10\n"), DumpBegin)
 
 
 def test_ansi_codes_do_not_disguise_protocol_lines():
-    assert isinstance(parse_line(b"\x1b[0m#END 1a2b3c4d\n"), RawLine)
-    assert isinstance(parse_line(b"\x1b[0m#> hi\n"), RawLine)
+    assert isinstance(parse_line(b"\x1b[0m#END 4 1a2b3c4d\n"), RawLine)
+    assert isinstance(parse_line(b"\x1b[0m#> 7 a=1\n"), RawLine)
+
+
+def test_error_text_shaped_like_a_log_header_is_still_an_error():
+    # Spaces at 11, 22 and 24 used to pass the damaged-log-line heuristic (review of #69).
+    line = b"#! 3 failed erase page 7 of 64\n"
+    assert line[11:12] == line[22:23] == line[24:25] == b" "
+    assert parse_line(line) == CommandEnd(id="3", code="failed", text="erase page 7 of 64")
 
 
 @pytest.mark.parametrize("data", [b"12:34:56 sync\n", b"5: ok\n", b"42\n", b"2024: report\n"])

@@ -6,7 +6,8 @@ A line is one of:
 - ``InvalidLine``: looks like that format but must not be trusted (torn, garbage...).
 - ``IdfLine``: the ESP-IDF native log format (``I (253) TAG: msg``), used by the bootloader
   and by anything logged before the esp32-logcat hook is installed.
-- ``CommandReply`` / ``DumpBegin`` / ``DumpEnd``: console protocol (ARCHITECTURE §6).
+- ``CommandReply`` / ``CommandEnd`` / ``DumpBegin`` / ``DumpEnd``: console replies, with the
+  request id (ADR-012). Exact or nothing: a malformed protocol line is a ``RawLine``.
 - ``RawLine``: anything else (ROM messages, a stale fragment from the native USB port...).
 
 Input is the raw bytes of one line including its final ``\\n`` (absent only for an
@@ -40,9 +41,19 @@ _SEPARATORS = ((4, ord(":")), (11, ord(" ")), (22, ord(" ")), (24, ord(" ")))
 _JUNK_THEN_HEADER = re.compile(rb".{1,8}?\d{4}:\d{6} \d{10} . ", re.DOTALL)
 # Bounded digit counts: int() on thousands of digits raises (Python's 4300-digit limit).
 _IDF = re.compile(rb"([EWIDV]) \((\d{1,10})\) ([^:\n]+): (.*)", re.DOTALL)
-# File names from the device end up as local file names (M5 dump): no paths, no dot-files.
-_DUMP_BEGIN = re.compile(rb"#BEGIN ([A-Za-z0-9_][A-Za-z0-9._-]{0,63}) (\d{1,10})")
-_DUMP_END = re.compile(rb"#END ([0-9a-fA-F]{8})")
+# Console replies (ADR-012). The id is echoed from the request: 1-9999, or "-" when typed by hand.
+_ID = rb"(-|[1-9][0-9]{0,3})"
+_FIELD = rb"[a-z][a-z0-9_.]{0,31}=[\x21-\x7e]+"  # value: printable ASCII without space
+_REPLY_DATA = re.compile(rb"#> " + _ID + rb" (" + _FIELD + rb"(?: " + _FIELD + rb")*)")
+_REPLY_OK = re.compile(rb"#\. " + _ID + rb" ok")
+# Error text: optional, starts with a non-space (a trailing space after the code is malformed).
+_REPLY_ERROR = re.compile(rb"#! " + _ID + rb" ([a-z_]{1,32})(?: ([\x21-\x7e][\x20-\x7e]*))?")
+# A label, not a path: no separators, no dot-files. The dump (#29) still picks the local file
+# name itself (Windows reserves CON, NUL, COM1...).
+_DUMP_BEGIN = re.compile(
+    rb"#BEGIN " + _ID + rb" ([A-Za-z0-9_][A-Za-z0-9._-]{0,63}) (0|[1-9][0-9]{0,9})"
+)
+_DUMP_END = re.compile(rb"#END " + _ID + rb" ([0-9a-fA-F]{8})")
 _ANSI = re.compile(rb"\x1b\[[0-9;]*[A-Za-z]")
 
 
@@ -83,17 +94,42 @@ class IdfLine:
 
 @dataclass(frozen=True, slots=True)
 class CommandReply:
-    text: str
+    """``#> <id> <key=value ...>``: one data line of a console reply (ADR-012)."""
+
+    id: str
+    fields: tuple[tuple[str, str], ...]  # in wire order, each key once
+
+    def get(self, key: str) -> str | None:
+        """The value, or None when the device did not report it: unknown, never zero."""
+        for name, value in self.fields:
+            if name == key:
+                return value
+        return None
+
+
+@dataclass(frozen=True, slots=True)
+class CommandEnd:
+    """``#. <id> ok`` or ``#! <id> <code> [text]``: the end of a console reply (ADR-012)."""
+
+    id: str
+    code: str  # "ok" on success; an error code otherwise (unknown codes are kept as they are)
+    text: str = ""  # for people only: no tool decides anything from it
+
+    @property
+    def ok(self) -> bool:
+        return self.code == "ok"
 
 
 @dataclass(frozen=True, slots=True)
 class DumpBegin:
+    id: str
     filename: str
     size: int
 
 
 @dataclass(frozen=True, slots=True)
 class DumpEnd:
+    id: str
     crc32: int
 
 
@@ -102,13 +138,14 @@ class RawLine:
     text: str
 
 
-Line = LogLine | InvalidLine | IdfLine | CommandReply | DumpBegin | DumpEnd | RawLine
+Line = LogLine | InvalidLine | IdfLine | CommandReply | CommandEnd | DumpBegin | DumpEnd | RawLine
 
 
 def parse_line(data: bytes, *, lenient: bool = False, assume_log: bool = False) -> Line:
     """Classify one line. Never raises: unknown input becomes a RawLine.
 
-    ``assume_log``: every line is esp32-logcat (inside a dump block, a file read from flash, the
+    ``assume_log``: every line is esp32-logcat (the content of a dump block, which is read by
+    byte count so it never contains the closing marker (ADR-012), a file read from flash, the
     shared C++/Python fixture). No heuristics: the result is a LogLine or an InvalidLine with
     exactly the firmware's categories, so garbage is counted instead of shown as raw text.
 
@@ -116,18 +153,23 @@ def parse_line(data: bytes, *, lenient: bool = False, assume_log: bool = False) 
     fixtures edited by hand that lost the trailing space of an empty message. Device data must
     always be parsed strictly.
     """
-    if assume_log or _looks_like_log_line(data):
+    if assume_log:
         return _parse_log_line(data, lenient)
     complete = data.endswith(b"\n")
     body = data.removesuffix(b"\n")
-    # Protocol lines must be complete and exact: a torn "#BEGIN log.txt 4096" must not become
-    # a 40-byte dump, and ANSI codes must not disguise them.
-    if complete and body.startswith(b"#> "):
-        return CommandReply(text=_decode(body[3:]))
-    if complete and (match := _DUMP_BEGIN.fullmatch(body)):
-        return DumpBegin(filename=match[1].decode("ascii"), size=int(match[2]))
-    if complete and (match := _DUMP_END.fullmatch(body)):
-        return DumpEnd(crc32=int(match[1], 16))
+    # Protocol lines first: an error text with spaces in the right places would otherwise pass
+    # the damaged-log-line heuristic below, and a log line never starts with "#". They must be
+    # complete and exact: a torn "#BEGIN 4 log.txt 4096" must not become a 40-byte dump, and
+    # ANSI codes must not disguise them.
+    if (
+        complete
+        and len(data) <= MAX_LINE_LENGTH
+        and body.startswith(b"#")
+        and (reply := _parse_protocol_line(body)) is not None
+    ):
+        return reply
+    if _looks_like_log_line(data):
+        return _parse_log_line(data, lenient)
     plain = _ANSI.sub(b"", body)
     if complete and (match := _IDF.fullmatch(plain)):
         return IdfLine(
@@ -137,6 +179,29 @@ def parse_line(data: bytes, *, lenient: bool = False, assume_log: bool = False) 
             msg=_decode(match[4]),
         )
     return RawLine(text=_decode(plain))
+
+
+def _parse_protocol_line(body: bytes) -> Line | None:
+    """A console reply line (ADR-012), or None when it is not exactly one."""
+    if match := _REPLY_DATA.fullmatch(body):
+        # Already validated: single spaces between fields, the first "=" ends each key.
+        pairs = (item.partition(b"=") for item in match[2].split(b" "))
+        fields = tuple((key.decode("ascii"), value.decode("ascii")) for key, _, value in pairs)
+        if len({key for key, _ in fields}) != len(fields):
+            return None  # a repeated key: which value would be the right one?
+        return CommandReply(id=match[1].decode("ascii"), fields=fields)
+    if match := _REPLY_OK.fullmatch(body):
+        return CommandEnd(id=match[1].decode("ascii"), code="ok")
+    if (match := _REPLY_ERROR.fullmatch(body)) and match[2] != b"ok":  # "ok" only via "#."
+        text = match[3].decode("ascii") if match[3] is not None else ""
+        return CommandEnd(id=match[1].decode("ascii"), code=match[2].decode("ascii"), text=text)
+    if match := _DUMP_BEGIN.fullmatch(body):
+        return DumpBegin(
+            id=match[1].decode("ascii"), filename=match[2].decode("ascii"), size=int(match[3])
+        )
+    if match := _DUMP_END.fullmatch(body):
+        return DumpEnd(id=match[1].decode("ascii"), crc32=int(match[2], 16))
+    return None
 
 
 def _looks_like_log_line(data: bytes) -> bool:

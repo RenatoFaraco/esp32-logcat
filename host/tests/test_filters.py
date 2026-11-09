@@ -2,6 +2,7 @@ import pytest
 
 from esp_logcat.filters import FilterSpecError, LogFilter
 from esp_logcat.parser import (
+    CommandEnd,
     CommandReply,
     DumpBegin,
     DumpEnd,
@@ -71,9 +72,10 @@ def test_esp_idf_lines_follow_the_same_rules(specs, tag, expected):
     "line",
     [
         RawLine(text="ESP-ROM:esp32c3-api1-20210207"),
-        CommandReply(text="ok"),
-        DumpBegin(filename="log.0", size=1),
-        DumpEnd(crc32=0),
+        CommandReply(id="1", fields=(("a", "1"),)),
+        CommandEnd(id="1", code="ok"),
+        DumpBegin(id="1", filename="log.0", size=1),
+        DumpEnd(id="1", crc32=0),
         InvalidLine(reason=InvalidReason.TORN, raw=b"0000:00"),
     ],
 )

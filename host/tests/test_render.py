@@ -7,6 +7,7 @@ from rich.console import Console
 from rich.text import Span, Text
 
 from esp_logcat.parser import (
+    CommandEnd,
     CommandReply,
     DumpBegin,
     DumpEnd,
@@ -26,6 +27,7 @@ from esp_logcat.render import (
     MARKER_STYLE,
     PC_TIME_STYLE,
     RAW_STYLE,
+    REPLY_ERROR_STYLE,
     REPLY_STYLE,
     render,
 )
@@ -148,14 +150,22 @@ def test_raw_line_is_dimmed():
 
 
 def test_command_reply_and_dump_markers():
-    reply = render(CommandReply(text="level APP D ok"))
-    assert reply.plain == "#> level APP D ok"
-    assert REPLY_STYLE in styles_of(reply, "level APP D ok")
-    begin = render(DumpBegin(filename="log.0", size=4096))
-    assert begin.plain == "#BEGIN log.0 4096"
+    reply = render(CommandReply(id="7", fields=(("fw", "0.3.0"), ("proto", "1"))))
+    assert reply.plain == "#> 7 fw=0.3.0 proto=1"
+    assert REPLY_STYLE in styles_of(reply, "fw=0.3.0 proto=1")
+    ok = render(CommandEnd(id="7", code="ok"))
+    assert ok.plain == "#. 7 ok"
+    assert REPLY_STYLE in styles_of(ok, "ok")
+    error = render(CommandEnd(id="3", code="full", text="tag table full"))
+    assert error.plain == "#! 3 full tag table full"
+    assert REPLY_ERROR_STYLE in styles_of(error, "full tag table full")
+    no_text = render(CommandEnd(id="3", code="bad_args"))
+    assert no_text.plain == "#! 3 bad_args"
+    begin = render(DumpBegin(id="4", filename="log.0", size=4096))
+    assert begin.plain == "#BEGIN 4 log.0 4096"
     assert DUMP_STYLE in styles_of(begin, "log.0")
-    end = render(DumpEnd(crc32=0x00A1B2C3))
-    assert end.plain == "#END 00a1b2c3"
+    end = render(DumpEnd(id="4", crc32=0x00A1B2C3))
+    assert end.plain == "#END 4 00a1b2c3"
     assert DUMP_STYLE in styles_of(end, "00a1b2c3")
 
 
@@ -256,8 +266,12 @@ def test_lone_surrogate_can_be_printed():
 def test_escape_in_every_device_field():
     text = render(IdfLine(level="I", timestamp_ms=1, tag="t\x1b", msg="m\x1b"))
     assert text.plain == "I (1) t\\x1b: m\\x1b"
-    reply = render(CommandReply(text="ok\x1b[2J"))
-    assert reply.plain == "#> ok\\x1b[2J"
+    # The parser never builds these from device bytes (it only accepts printable ASCII), but
+    # render must stay safe for any value it is given.
+    reply = render(CommandReply(id="1", fields=(("k", "ok\x1b[2J"),)))
+    assert reply.plain == "#> 1 k=ok\\x1b[2J"
+    error = render(CommandEnd(id="1", code="failed", text="x\x1b[2J"))
+    assert error.plain == "#! 1 failed x\\x1b[2J"
 
 
 # ---------------------------------------------------------------- parse_line -> render
@@ -306,9 +320,10 @@ def test_ansi_codes_on_a_terminal():
         log_line(),
         InvalidLine(reason=InvalidReason.BAD_LEVEL, raw=b"x\n"),
         IdfLine(level="W", timestamp_ms=0, tag="T", msg=""),
-        CommandReply(text=""),
-        DumpBegin(filename="f", size=0),
-        DumpEnd(crc32=0),
+        CommandReply(id="1", fields=(("a", "1"),)),
+        CommandEnd(id="1", code="ok"),
+        DumpBegin(id="1", filename="f", size=0),
+        DumpEnd(id="1", crc32=0),
         RawLine(text=""),
     ],
 )
