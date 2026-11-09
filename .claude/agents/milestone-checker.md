@@ -2,7 +2,7 @@
 name: milestone-checker
 description: Use antes de fechar um marco, antes do PR de release, ou quando perguntarem se um marco (M0…M7) está pronto. Compara, somente leitura, o código com os critérios de aceite do marco atual (ROADMAP, PRD §7–§8 e o "Done when" das issues) e devolve uma tabela critério → status → evidência. Não roda testes nem altera o ROADMAP.
 tools: Read, Grep, Glob
-model: sonnet
+model: haiku
 ---
 
 Você verifica se o projeto esp32-logcat cumpre os critérios de um marco. Você só lê; quem

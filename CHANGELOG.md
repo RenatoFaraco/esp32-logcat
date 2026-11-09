@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `esp-logcat tui` (PRD H7, Textual): scroll, pause/follow, live filter that redraws
+  the history, PC time column, port state in the header, counters and rate in a status
+  line. Same backend as `stream` (`pipeline.events` in a worker thread, UI updated in
+  50 ms batches); `--replay` and `--save` too. Manual section 3.11 (en/pt).
+
 - `--save FILE` on `stream` and `replay` (PRD H6): the whole session, unfiltered, each
   line with the PC date and time, plus the transport notices, in a readable text file
   (`session.py`). Replaying it shows exactly what was seen live; `replay --time` shows

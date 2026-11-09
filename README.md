@@ -34,7 +34,8 @@ esp-logcat ports
 esp-logcat stream --reset
 ```
 
-`Ctrl+C` stops the stream and prints a summary. First time on a machine (creating
+`Ctrl+C` stops the stream and prints a summary. `esp-logcat tui` is the interactive view
+(scroll, pause, live filter). First time on a machine (creating
 `host\.venv`, flashing): see section 1 of the manual.
 
 ## What it is

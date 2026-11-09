@@ -390,6 +390,37 @@ O arquivo é texto, abre no editor e aceita `findstr`/`Select-String`:
 
 ---
 
+### 3.11 Interface interativa (`tui`)
+
+Para acompanhar a placa com mais controle que o `stream`: rolar o histórico, pausar, trocar o
+filtro sem reiniciar e ver os contadores o tempo todo.
+
+```powershell
+esp-logcat tui                                  # porta nativa, se houver só uma
+esp-logcat tui --reset "*:W" "HEARTBEAT:I"      # mesmos filtros do stream
+esp-logcat tui --replay sessao.log              # sem placa: um log salvo
+esp-logcat tui --save sessao.log                # grava a sessão (seção 3.10) enquanto mostra
+```
+
+![esp-logcat tui](manual/img/tui.svg)
+
+| Tecla | O que faz |
+|-------|-----------|
+| `espaço` | pausa a tela / volta a seguir. Pausado, as linhas continuam chegando (contadores e histórico); ao voltar, aparece tudo |
+| `f` | edita o filtro (`*:W HEARTBEAT:I`); `Enter` aplica e **redesenha o histórico**, `Esc` cancela. Filtro inválido: aviso, e o anterior continua |
+| `t` | liga ou desliga a hora do PC em cada linha |
+| `c` | limpa a tela (os contadores continuam) |
+| `q` ou `Ctrl+C` | sai; o resumo da sessão aparece no terminal |
+
+- O cabeçalho mostra a porta e o estado (`connected`, `waiting`, `disconnected`).
+- A linha de status mostra linhas, perdidas, `missed`, reinícios, inválidas, escondidas pelo
+  filtro e a taxa (linhas/s).
+- Rola com o mouse ou com `PgUp`/`PgDn`; o histórico guarda as últimas 10 mil linhas.
+- Funciona no Windows Terminal e no terminal do VS Code. O `stream` continua sendo o melhor
+  para pipe e arquivo; o `tui` é para olhar.
+
+---
+
 ## 4. Pipe, grep e arquivo
 
 O stdout recebe **só as linhas da placa, exatamente como ela as escreveu** — sem cores, sem
@@ -481,11 +512,13 @@ esp-logcat replay ARQUIVO [TAG:L ...]   reproduz um log salvo, com filtros (seç
     --lenient                            aceita linhas editadas à mão
     --time                               mostra a hora gravada numa sessão
     --save ARQUIVO                       grava de novo como sessão
+esp-logcat tui [opções] [TAG:L ...]     interface interativa (seção 3.11):
+    --port, --reset, --save, --replay ARQUIVO, --lenient
 esp-logcat --version
 ```
 
 Ainda não implementados: `dump` e `shell`
-(marco M5), interface interativa `esp-logcat tui` (#56).
+(marco M5).
 
 ---
 

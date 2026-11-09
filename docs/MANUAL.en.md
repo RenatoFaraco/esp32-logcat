@@ -390,6 +390,37 @@ The file is text: it opens in an editor and works with `findstr`/`Select-String`
 
 ---
 
+### 3.11 Interactive interface (`tui`)
+
+To follow the board with more control than `stream`: scroll the history, pause, change the
+filter without restarting and see the counters all the time.
+
+```powershell
+esp-logcat tui                                  # the native port, if there is exactly one
+esp-logcat tui --reset "*:W" "HEARTBEAT:I"      # the same filters as stream
+esp-logcat tui --replay session.log             # no board: a saved log
+esp-logcat tui --save session.log               # save the session (section 3.10) while showing
+```
+
+![esp-logcat tui](manual/img/tui.svg)
+
+| Key | What it does |
+|-----|--------------|
+| `space` | pause the screen / follow again. While paused, lines keep arriving (counters and history); resuming shows them all |
+| `f` | edit the filter (`*:W HEARTBEAT:I`); `Enter` applies it and **redraws the history**, `Esc` cancels. An invalid filter: a warning, and the previous one stays |
+| `t` | show or hide the PC time on each line |
+| `c` | clear the screen (the counters stay) |
+| `q` or `Ctrl+C` | quit; the session summary is printed in the terminal |
+
+- The header shows the port and its state (`connected`, `waiting`, `disconnected`).
+- The status line shows lines, lost, `missed`, restarts, invalid, hidden by the filter and the
+  rate (lines/s).
+- Scroll with the mouse or `PgUp`/`PgDn`; the history keeps the last 10 thousand lines.
+- Works in Windows Terminal and the VS Code terminal. `stream` is still the one for pipes and
+  files; `tui` is for watching.
+
+---
+
 ## 4. Pipes, grep and files
 
 stdout gets **only the board's lines, exactly as the board wrote them** — no colors, no
@@ -482,11 +513,13 @@ esp-logcat replay FILE [TAG:L ...]      replay a saved log, with filters (sectio
     --lenient                            accept hand-edited lines
     --time                               show the PC time saved in a session
     --save FILE                          save it again as a session
+esp-logcat tui [options] [TAG:L ...]    interactive interface (section 3.11):
+    --port, --reset, --save, --replay FILE, --lenient
 esp-logcat --version
 ```
 
 Not implemented yet: `dump` and `shell`
-(milestone M5), the interactive `esp-logcat tui` (#56).
+(milestone M5).
 
 ---
 
