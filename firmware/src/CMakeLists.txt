@@ -4,4 +4,6 @@ idf_component_register(SRCS "main.cpp"
                             "adapters/log_queue.cpp"
                             "adapters/usb_jtag_sink.cpp"
                             "adapters/writer_task.cpp"
+                            "app/critical_task.cpp"
+                            "app/timing_sweep.cpp"
                        INCLUDE_DIRS ".")

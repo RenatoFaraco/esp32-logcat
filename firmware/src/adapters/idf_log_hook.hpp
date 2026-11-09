@@ -17,6 +17,10 @@ namespace logcat {
 struct CaptureStats {
     uint32_t last_cycles;
     uint32_t max_cycles;
+    // Lines the full queue refused since boot (wraps at 2^32; readers take differences). The
+    // only read-modify-write here (fetch_add, emulated on the C3 with interrupts masked for a
+    // few cycles), and only on the drop path.
+    uint32_t dropped_total;
 };
 
 // Routes every ESP_LOGx (application and ESP-IDF) through the logcat core: the formatted line is

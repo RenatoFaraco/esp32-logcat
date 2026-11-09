@@ -72,7 +72,7 @@ Os blocos 🖥️ (M3, M4a, M5a) podem ser adiantados sempre que o trabalho com 
 
 ### M2 · Captura e escrita 🔌 — parte 2
 - [ ] `esp-logcat stream` funcionando com a placa
-- [ ] App de demo com tarefa crítica de 1 kHz alternando um GPIO
+- [x] App de demo com tarefa crítica de 1 kHz alternando um GPIO, e varredura de carga de log em fases (#13)
 - [ ] **Medição:** jitter com analisador lógico (PulseView) + `esp_timer` interno; definir o X do critério 3
 
 ### M4a · Persistência — lógica 🖥️

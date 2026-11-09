@@ -34,6 +34,7 @@ TagLevelFilter* filter_ptr = nullptr;
 FreeRtosLogQueue* queue_ptr = nullptr;
 std::atomic<uint32_t> last_cycles{0};
 std::atomic<uint32_t> max_cycles{0};
+std::atomic<uint32_t> dropped_total{0};  // never reset: readers take differences
 
 // Per-task recursion guard: if anything on the output path logs (a driver reporting an error),
 // that line is passed through raw instead of re-entering the hook. thread_local = one byte of
@@ -110,6 +111,7 @@ int hook(const char* format, va_list args) {
     // and the host sees the gap in seq (ADR-004). The caller never waits for I/O.
     if (!queue_ptr->try_send(record)) {
         sequencer_ptr->record_drop();
+        dropped_total.fetch_add(1, std::memory_order_relaxed);
     }
     record_cycles(esp_cpu_get_cycle_count() - start);
     return 0;
@@ -129,8 +131,8 @@ void install_idf_log_hook(Sequencer& sequencer, TagLevelFilter& filter, FreeRtos
 }
 
 CaptureStats idf_log_hook_stats() {
-    return {last_cycles.load(std::memory_order_relaxed),
-            max_cycles.load(std::memory_order_relaxed)};
+    return {last_cycles.load(std::memory_order_relaxed), max_cycles.load(std::memory_order_relaxed),
+            dropped_total.load(std::memory_order_relaxed)};
 }
 
 }  // namespace logcat
