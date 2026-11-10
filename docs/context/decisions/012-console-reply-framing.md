@@ -96,7 +96,7 @@ contado em bytes**:
 - `bytes`: decimal sem zero à esquerda, até 10 dígitos.
 - **O conteúdo é o do arquivo, byte a byte:**
   - dentro do bloco não valem as regras de ASCII nem de 170 bytes;
-  - o `DEL`+`\n` de uma linha rasgada (PRD §3), um `0xFF` de setor apagado ou uma sequência
+  - o `DEL`+`\n` de uma linha rasgada (wire-format §1), um `0xFF` de setor apagado ou uma sequência
     sem `\n` chegam como estão. O dump não sanitiza, porque trocar o `DEL` por `?`
     transformaria uma linha rasgada em registro válido;
   - o host passa as linhas do bloco pelo parser de log, que já classifica lixo, linha rasgada

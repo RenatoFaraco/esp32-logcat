@@ -1,6 +1,7 @@
 # ADR-011: Firmware em Rust na v3, como crate `no_std` paralelo
 - Status: proposta
 - Data: 2026-11-07
+- Requisitos: [PRD v3](../prd/v3-rust-telemetry.md) (rascunho)
 
 ## Contexto
 O ecossistema Rust para a família Espressif (`esp-hal`) já é multichip: um crate, uma *feature*
@@ -9,12 +10,12 @@ um logcat persistente com ferramenta de PC. O projeto também é um veículo de 
 autor, e Rust está entre as linguagens que ele quer aprender.
 
 Reescrever o componente C++ em Rust jogaria fora a v2 e deixaria sem logcat quem usa ESP-IDF
-em C/C++. Uma segunda implementação que fala **o mesmo formato** prova que o contrato (PRD §3)
+em C/C++. Uma segunda implementação que fala **o mesmo formato** prova que o contrato (wire-format §1)
 é independente de linguagem: a mesma ferramenta de PC lê firmware C++ e firmware Rust.
 
 ## Decisão
 1. A v3 inclui um crate Rust `no_std`, sobre `esp-hal`, que implementa o formato de linha do
-   PRD §3 e a mesma separação entre núcleo e adaptadores (ADR-003). É uma implementação
+   wire-format §1 e a mesma separação entre núcleo e adaptadores (ADR-003). É uma implementação
    paralela: o componente C++ continua.
 2. Escopo inicial mínimo: formatter, ring buffer, sink USB/UART e integração com a fachada
    `log` do Rust. Persistência, registro de boot e último suspiro vêm depois, nessa ordem.

@@ -19,8 +19,8 @@ enum class LogLevel : uint8_t {
     Verbose = 5,
 };
 
-// Letter used in the line format (PRD §3). None and out-of-range values map to '?', which the
-// parser rejects: a line can never carry them.
+// Letter used in the line format (wire-format §1). None and out-of-range values map to '?', which
+// the parser rejects: a line can never carry them.
 constexpr char level_to_char(LogLevel level) {
     switch (level) {
         case LogLevel::None:

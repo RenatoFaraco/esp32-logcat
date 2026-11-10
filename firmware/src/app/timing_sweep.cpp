@@ -66,7 +66,7 @@ void mark_phase(uint32_t index) {
 }
 
 void report(uint32_t index, const Phase& phase, const CriticalReport& r, uint32_t dropped) {
-    // Two lines: one would pass the 124-char message limit (PRD §3).
+    // Two lines: one would pass the 124-char message limit (wire-format §1).
     ESP_LOGI(TAG, "phase %lu %s: wake us p50 %lu p99 %lu max %lu, isr us p50 %lu p99 %lu max %lu",
              static_cast<unsigned long>(index), phase.name,
              static_cast<unsigned long>(r.wake.p50_us), static_cast<unsigned long>(r.wake.p99_us),

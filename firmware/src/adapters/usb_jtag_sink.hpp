@@ -16,7 +16,7 @@ namespace logcat {
 // write() copies the whole line into the driver's TX ring buffer or nothing (byte buffer,
 // zero timeout): never half a line, never a wait. With no host reading, the ring fills and
 // lines are refused whole; the Writer counts and reports them. Lines go out with '\n' only
-// (no VFS newline translation), as PRD §3 specifies.
+// (no VFS newline translation), as wire-format §1 specifies.
 class UsbJtagSink final : public Sink {
 public:
     static constexpr size_t kTxBufferSize = 1024;  // ~6 lines of burst while the host is slow

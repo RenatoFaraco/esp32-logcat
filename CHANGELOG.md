@@ -81,7 +81,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Firmware `IdfLogHook`: every `ESP_LOGx` (application and ESP-IDF) goes through the core —
   recognized by the new core `parse_idf_text`, filtered per tag, numbered and written in the
-  PRD §3 format. Output is still synchronous in the caller's context (queue and writer task
+  format of wire-format §1. Output is still synchronous in the caller's context (queue and writer task
   come in #11/#12). Demo app with a 1 s heartbeat showing capture cost and stack headroom.
 - Host `parser.py`: classifies each line as an esp32-logcat `LogLine` (validated exactly like the
   firmware parser, same rejection reasons), `InvalidLine`, ESP-IDF native `IdfLine`,
@@ -120,6 +120,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   pictures) and `docs/context/` holds what the system is and why (PRD, architecture, hardware,
   ADRs). `docs/README.md` is the index. Files moved unchanged; every path that cited them
   (README, CLAUDE.md, agents, templates, scripts, code comments) follows.
+- One PRD per version in `docs/context/prd/`: `v1.md` (the current one, numbering kept) and
+  drafts for v2 (multichip, ADR-009), v2.x (Go host, ADR-010) and v3 (Rust crate, ADR-011, and
+  MQTT telemetry), built only from what the ADRs and the ROADMAP already decide.
+- The wire contract moves to `docs/context/spec/wire-format.md`: the log line (§1, the former
+  PRD §3, unchanged), console replies (§2) and dump blocks (§3) from ADR-012, and the host
+  session file (§4). Citations of "PRD §3" in code, tests and docs now say "wire-format §1"
+  (except `scripts/github_bootstrap.py`, which mirrors the text of issues already published).
 
 ## [0.2.0] - 2026-11-06
 

@@ -35,7 +35,7 @@ feature requests:
 
 - **Logs are not encrypted or signed.** Anyone with physical access to the device or its flash
   can read and modify stored logs. Signing and hash chaining are planned for v3 (see
-  [`docs/context/PRD.md`](docs/context/PRD.md) §4).
+  [`docs/context/prd/v1.md`](docs/context/prd/v1.md) §4).
 - **No per-line checksum** ([ADR-007](docs/context/decisions/007-no-per-line-checksum-v1.md)): a
   corrupted byte inside an otherwise valid line can go undetected.
 - **The USB console has no authentication** (milestone M5): whoever is connected to the device

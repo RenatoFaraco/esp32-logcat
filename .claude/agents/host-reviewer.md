@@ -26,7 +26,7 @@ transport (bytes) → parser (Line) → stats/filters → render (rich Text) →
    nada de TUI, prompt ou cursor nesse caminho. Sem TTY (`isatty()` falso), sem cores.
 
 ## Backend
-1. **Contrato do formato (PRD §3, ADR-006/007):** o `parser.py` espelha o `LineParser` C++
+1. **Contrato do formato (wire-format §1, ADR-006/007):** o `parser.py` espelha o `LineParser` C++
    (mesmas categorias de `InvalidReason`, limite de 170 bytes, ASCII imprimível, sentinela
    `DEL` de linha rasgada). `parse_line` nunca lança exceção. Trabalhar com `bytes` até a
    decodificação. Mudança de formato exige mudar os dois lados e os testes no mesmo commit.

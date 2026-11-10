@@ -5,8 +5,8 @@
 
 namespace logcat {
 
-// seq is printed with 6 digits (PRD §3), so it wraps to 0 after 999999. The host detects gaps
-// with modular arithmetic.
+// seq is printed with 6 digits (wire-format §1), so it wraps to 0 after 999999. The host detects
+// gaps with modular arithmetic.
 inline constexpr uint32_t kSeqModulo = 1'000'000;
 
 // Per-boot line numbering and dropped-line counter.

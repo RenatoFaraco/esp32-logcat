@@ -32,7 +32,7 @@ def ln(text: str) -> bytes:
 
 KEY32 = "k" * 32
 # What a dump block may carry from flash: a good line, a torn one closed with DEL + newline
-# (PRD section 3), an erased-sector run (0xFF), a NUL and 200 bytes with no newline at all.
+# (wire-format section 1), an erased-sector run (0xFF), a NUL and 200 bytes with no newline at all.
 BLOCK_CONTENT = (
     ln("0042:000001 0000000010 I APP: ok")
     + b"0042:000002 0000000011 W APP: cut"

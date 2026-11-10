@@ -26,7 +26,7 @@ O núcleo é C++17 puro, compilado no PC (`env:native`) e no alvo. Verifique:
 3. **Buffers de tamanho fixo:** retorno de `snprintf`/`vsnprintf` checado (negativo e ≥ tamanho);
    `\0` garantido; `tag[16]` e `msg[N]` truncados marcam `truncated`; `memcpy`/`strncpy` com
    limite certo; nenhuma leitura além do fim ao fazer parse.
-4. **Inteiros:** `seq` e `boot` estourando a largura do campo no formato (PRD §3); `uptime_ms`
+4. **Inteiros:** `seq` e `boot` estourando a largura do campo no formato (wire-format §1); `uptime_ms`
    de 32 bits volta a zero após ~49,7 dias; mistura signed/unsigned em índices; promoções em
    `uint8_t`/`uint16_t`.
 5. **`RingBuffer<T, N>`:** off-by-one no wrap, cheio vs vazio, iteração do mais antigo ao mais

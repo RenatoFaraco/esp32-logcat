@@ -8,7 +8,7 @@
 
 namespace logcat {
 
-// Line format (PRD §3, ADR-006), one record per line, printable ASCII only:
+// Line format (wire-format §1, ADR-006), one record per line, printable ASCII only:
 //
 //   BBBB:SSSSSS UUUUUUUUUU L TAG: MSG\n
 //   0042:000137 0000123456 W PRESSURE: reading out of range (4.71 V)
@@ -27,7 +27,7 @@ inline constexpr size_t kTruncationMarkerLength = sizeof(kTruncationMarker) - 1;
 // Longest possible line, '\n' included: header, 15-char tag, ": ", 127-char message.
 inline constexpr size_t kMaxLineLength = kBootDigits + 1 + kSeqDigits + 1 + kUptimeDigits + 1 + 1 +
                                          1 + (kTagCapacity - 1) + 2 + (kMsgCapacity - 1) + 1;
-static_assert(kMaxLineLength == 170, "line format changed: update both parsers and PRD §3");
+static_assert(kMaxLineLength == 170, "line format changed: update both parsers and wire-format §1");
 inline constexpr size_t kLineBufferSize = kMaxLineLength + 1;  // + '\0'
 
 // Formats record as a single printable-ASCII line ending in '\n' and NUL-terminates out.
