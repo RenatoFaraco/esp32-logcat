@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- ADR-012, console reply framing (#69): requests carry an id (`1`–`9999`, or `-`) that every
+  reply line echoes; data lines `#> <id> key=value ...`, exactly one terminator
+  (`#. <id> ok` or `#! <id> <code> [text]`), dump blocks `#BEGIN <id> ...`/`#END <id> ...`,
+  `proto=1` in `info`, unknown fields omitted (never zero), replies on their own queue ahead
+  of the log queue. The host parser follows it exactly (`CommandReply` with fields,
+  `CommandEnd`); a malformed protocol line is raw. Shared cases in
+  `conformance/reply_cases.tsv` (78, plus CRC-32 check values for dump block content),
+  generated from hand-written expectations by `conformance/make_reply_cases.py`.
+
 - Timing demo (#13, PRD §7 criterion 3): a 1 kHz critical task woken by a hardware timer
   (gptimer ISR toggles GPIO 4, the task toggles GPIO 5) measures, every period, the latency
   from the alarm to the ISR and to the task (`LatencyStats`, a native-tested histogram in

@@ -35,7 +35,7 @@ adota adapta o componente à sua realidade.
 | F6 | Política de flush: periódica (ex.: 5 s) **+ imediata em ERROR** + manual via comando |
 | F7 | Registro de boot: contador de boots (NVS), motivo do reset (`esp_reset_reason`), versão do firmware |
 | F8 | "Último suspiro": últimas linhas em RAM `RTC_NOINIT` para recuperar o que aconteceu antes de um panic/watchdog |
-| F9 | Console via USB-Serial-JTAG com comandos: `info`, `log dump`, `log tail`, `log clear`, `log level <tag> <nível>`, `reboot`, `crash <panic\|wdt>` (teste) |
+| F9 | Console via USB-Serial-JTAG com comandos: `info`, `log dump`, `log tail`, `log clear`, `log level <tag> <nível>`, `reboot`, `crash <panic\|wdt>` (teste). Pedido, resposta e bloco de dump no fio: ADR-012 |
 
 ### Formato da linha (texto legível e parseável)
 
