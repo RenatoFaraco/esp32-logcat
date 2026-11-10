@@ -128,6 +128,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   session file (§4). Citations of "PRD §3" in code, tests and docs now say "wire-format §1"
   (except `scripts/github_bootstrap.py`, which mirrors the text of issues already published).
 
+### Fixed
+
+- `test_replay_colors_on_a_terminal` no longer fails in a terminal with `NO_COLOR` set (rich
+  honors it even on a forced terminal).
+- SECURITY: signing and hash chaining of logs are in the backlog with no version, as the PRD
+  and the ROADMAP say, not "planned for v3".
+
 ## [0.2.0] - 2026-11-06
 
 Milestone **M1 · Core**: the platform-independent logging core, tested on the PC and under
