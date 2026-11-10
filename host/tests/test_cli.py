@@ -340,6 +340,7 @@ def test_replay_colors_on_a_terminal(capsys, monkeypatch):
         return cli._Console(file=file, force_terminal=True, color_system="standard", soft_wrap=True)
 
     monkeypatch.setattr(cli, "_console", terminal)
+    monkeypatch.delenv("NO_COLOR", raising=False)  # rich honors it even on a forced terminal
     out, _, _ = replay([str(TWO_BOOTS), "*:S", "APP:W"], capsys)
     error = next(line for line in out.splitlines() if "an error, letter E" in line)
     warning = next(line for line in out.splitlines() if "a warning, letter W" in line)
