@@ -1,6 +1,6 @@
 """Serial input: bytes from the device split into lines, with reconnect. No rich, no UI.
 
-Board facts this relies on are in docs/hardware.md ("Comportamentos que importam"):
+Board facts this relies on are in docs/context/hardware.md ("Comportamentos que importam"):
 - the CH340K bridge drives EN (reset) with RTS and GPIO9 (download mode) with DTR, so the port
   is opened with both lines released;
 - Windows' usbser.sys (native USB-Serial-JTAG) only forwards the control lines when DTR is

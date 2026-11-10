@@ -1,4 +1,4 @@
-"""Draw the README cover (docs/img/cover.svg): project, board, real logcat output, stacks.
+"""Draw the README cover (docs/project/img/cover.svg): project, board, real logcat output, stacks.
 
 Usage (from the repository root, with the host venv):
     host/.venv/Scripts/python scripts/readme_cover.py
@@ -23,7 +23,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import manual_screenshots as shots  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
-OUT = ROOT / "docs" / "img" / "cover.svg"
+OUT = ROOT / "docs" / "project" / "img" / "cover.svg"
 WIDTH, HEIGHT = 1280, 640
 SANS = "Segoe UI, Helvetica, Arial, sans-serif"
 MONO = "Cascadia Code, Consolas, Menlo, monospace"

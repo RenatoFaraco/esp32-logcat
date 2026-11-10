@@ -1,7 +1,7 @@
 # esp32-logcat — contexto para o Claude
 
 Sistema de logs persistente para firmware embarcado, estilo `adb logcat`.
-Leia `docs/PRD.md` antes de qualquer tarefa de implementação.
+Leia `docs/context/PRD.md` antes de qualquer tarefa de implementação.
 
 ## Sobre o dono
 Renato: engenheiro eletricista, forte em Python/data science, aprendendo embarcados
@@ -14,7 +14,7 @@ commits em inglês.
 - PlatformIO no VS Code. Python 3.12 com `.venv` na pasta `host/`.
 - Placa alvo: ESP32-C3 rev v0.4 com 4 MB de flash embutida e duas USB-C: uma no
   USB-Serial-JTAG nativo, outra numa ponte CH340K na UART0. Hardware chegou em 06/nov/2026;
-  fatos, portas e armadilhas em `docs/hardware.md` (leia antes de mexer em gravação/serial).
+  fatos, portas e armadilhas em `docs/context/hardware.md` (leia antes de mexer em gravação/serial).
 - Portas neste PC: COM5 = CH340K (UART0), COM6 = USB-Serial-JTAG nativo (via hub). O número da
   COM muda de máquina para máquina: nunca fixar no `platformio.ini`.
 - Núcleo e host continuam testados no PC (`env:native`, pytest); a placa valida adaptadores.
@@ -34,10 +34,13 @@ esp32-logcat/
 │   └── ISSUE_TEMPLATE/       formulários de issue
 ├── conformance/              casos do formato de linha lidos pelo C++ e pelo Python (#20)
 ├── scripts/                  github_bootstrap.py (GitHub), serial_capture.py (boot nas 2 portas)
-├── docs/
-│   ├── PRD.md
-│   ├── hardware.md           placa real: chip, flash, portas, armadilhas
-│   └── decisions/            ADRs curtos (uma decisão por arquivo)
+├── docs/                     índice em docs/README.md
+│   ├── project/              como trabalhamos: MANUAL (pt/en), CONVENTIONS, ROADMAP, imagens
+│   └── context/              o que o sistema é e por quê
+│       ├── PRD.md
+│       ├── ARCHITECTURE.md
+│       ├── hardware.md       placa real: chip, flash, portas, armadilhas
+│       └── decisions/        ADRs curtos (uma decisão por arquivo)
 ├── firmware/                 projeto PlatformIO
 │   ├── platformio.ini        envs: esp32c3 (alvo) e native (testes no PC)
 │   ├── partitions.csv

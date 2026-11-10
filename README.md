@@ -1,6 +1,6 @@
 # esp32-logcat
 
-![esp32-logcat: an ESP32-C3 board with two USB-C ports, real esp-logcat stream output, and the stack used](docs/img/cover.svg)
+![esp32-logcat: an ESP32-C3 board with two USB-C ports, real esp-logcat stream output, and the stack used](docs/project/img/cover.svg)
 
 Persistent, `adb logcat`-style logging for embedded firmware.
 
@@ -13,8 +13,8 @@ Persistent, `adb logcat`-style logging for embedded firmware.
 How to flash the board, connect, read the output and use pipes and files, with real terminal
 output from the board:
 
-- **English:** [docs/MANUAL.en.md](docs/MANUAL.en.md)
-- **Português (pt-BR):** [docs/MANUAL.md](docs/MANUAL.md)
+- **English:** [docs/project/MANUAL.en.md](docs/project/MANUAL.en.md)
+- **Português (pt-BR):** [docs/project/MANUAL.md](docs/project/MANUAL.md)
 
 Quick start, with the firmware flashed and the board's native USB-C port plugged in:
 
@@ -72,7 +72,8 @@ Log line format:
 ```
 firmware/   PlatformIO project (core library, ESP-IDF adapters, demo app, tests)
 host/       esp-logcat Python CLI
-docs/       PRD, architecture, roadmap, conventions and ADRs (Portuguese)
+docs/       project/: manuals, conventions, roadmap; context/: PRD, architecture, hardware,
+            ADRs (Portuguese, except the English manual). Index in docs/README.md
 ```
 
 ## Building and testing

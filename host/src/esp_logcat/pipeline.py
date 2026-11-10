@@ -21,7 +21,7 @@ _LINE_START = re.compile(rb"\d{4}:\d{6} \d{10} [EWIDV] |ESP-ROM:")
 _PC_TIME = re.compile(rb"\d{2}:\d{2}:\d{2}\.\d{3} ")
 
 
-# Bytes the native USB-Serial-JTAG FIFO keeps while nobody reads (docs/hardware.md, item 7).
+# Bytes the native USB-Serial-JTAG FIFO keeps while nobody reads (docs/context/hardware.md, item 7).
 FIFO_BYTES = 64
 
 

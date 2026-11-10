@@ -1,10 +1,10 @@
-"""Render the terminal pictures of docs/MANUAL.md from sessions recorded on the board.
+"""Render the terminal pictures of docs/project/MANUAL.md from sessions recorded on the board.
 
 Usage (from the repository root, with the host venv):
     host/.venv/Scripts/python scripts/manual_screenshots.py            # all pictures
     host/.venv/Scripts/python scripts/manual_screenshots.py --list boot  # line indices
 
-Each recorded session (docs/manual/sessions/*.json, made by scripts/record_session.py) goes
+Each recorded session (docs/project/manual/sessions/*.json, made by scripts/record_session.py) goes
 through the same code as `esp-logcat stream`: pipeline.events() for parsing and stats,
 render()/render_notice() for colors, and the same summary. The result is printed into a rich
 Console that records it and is exported as SVG (a terminal window), so the pictures are real
@@ -32,8 +32,8 @@ from rich.terminal_theme import MONOKAI
 from rich.text import Text
 
 ROOT = Path(__file__).resolve().parent.parent
-SESSIONS = ROOT / "docs" / "manual" / "sessions"
-IMAGES = ROOT / "docs" / "manual" / "img"
+SESSIONS = ROOT / "docs" / "project" / "manual" / "sessions"
+IMAGES = ROOT / "docs" / "project" / "manual" / "img"
 PROMPT = "PS C:\\dev\\esp32-logcat> "
 WIDTH = 140  # a heartbeat line with --time (~138 columns) fits on one row
 
