@@ -1,7 +1,7 @@
 """Classify one line of device output. Pure functions, no I/O.
 
 A line is one of:
-- ``LogLine``: the esp32-logcat format (PRD §3), validated exactly like the firmware's C++
+- ``LogLine``: the esp32-logcat format (wire-format §1), validated exactly like the firmware's C++
   ``parse_line`` (same rules, same check order, same rejection reasons).
 - ``InvalidLine``: looks like that format but must not be trusted (torn, garbage...).
 - ``IdfLine``: the ESP-IDF native log format (``I (253) TAG: msg``), used by the bootloader

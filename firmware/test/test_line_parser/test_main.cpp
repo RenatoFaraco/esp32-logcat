@@ -347,8 +347,8 @@ void test_long_chunks_without_newline_are_overlong() {
     expect_status(ParseStatus::Overlong, chunk, sizeof(chunk));
 }
 
-// Documented ambiguity (PRD §3): an original 127-char message that already ends in "..." reads
-// back as truncated. Harmless: it reprints byte for byte.
+// Documented ambiguity (wire-format §1): an original 127-char message that already ends in "..."
+// reads back as truncated. Harmless: it reprints byte for byte.
 void test_127_char_message_ending_in_dots_reads_as_truncated() {
     char text[logcat::kMsgCapacity];
     std::memset(text, 'q', 124);

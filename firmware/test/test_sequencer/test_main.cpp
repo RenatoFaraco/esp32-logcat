@@ -19,7 +19,7 @@ void test_first_seq_is_zero_and_increments() {
     TEST_ASSERT_EQUAL_UINT32(2, sequencer.next());
 }
 
-// seq has 6 digits in the line format (PRD §3); at 1000 lines/s it wraps every ~17 min.
+// seq has 6 digits in the line format (wire-format §1); at 1000 lines/s it wraps every ~17 min.
 void test_seq_wraps_from_999999_to_zero() {
     Sequencer sequencer(logcat::kSeqModulo - 2);
     TEST_ASSERT_EQUAL_UINT32(999998, sequencer.next());

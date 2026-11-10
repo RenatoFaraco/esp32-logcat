@@ -20,7 +20,8 @@ enum class ParseStatus : uint8_t {
 // Short lowercase name ("torn", "bad_header"...) for counters and reports.
 const char* to_string(ParseStatus status);
 
-// Parses one line of the PRD §3 format. `line` holds `length` bytes *including* the final
+// Parses one line in the format of wire-format §1. `line` holds `length` bytes *including* the
+// final
 // '\n'; it is not a C string (data read back from flash may contain '\0').
 //
 // Strict by design: when in doubt, reject. A corrupted line taken as data is worse than a lost

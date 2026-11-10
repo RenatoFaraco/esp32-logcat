@@ -1,7 +1,9 @@
 # esp32-logcat — contexto para o Claude
 
 Sistema de logs persistente para firmware embarcado, estilo `adb logcat`.
-Leia `docs/context/PRD.md` antes de qualquer tarefa de implementação.
+Leia o PRD da versão corrente (`docs/context/prd/v1.md`) e, se a tarefa toca o que passa
+pela serial ou pela flash, a spec do fio (`docs/context/spec/wire-format.md`) antes de
+qualquer tarefa de implementação.
 
 ## Sobre o dono
 Renato: engenheiro eletricista, forte em Python/data science, aprendendo embarcados
@@ -37,7 +39,8 @@ esp32-logcat/
 ├── docs/                     índice em docs/README.md
 │   ├── project/              como trabalhamos: MANUAL (pt/en), CONVENTIONS, ROADMAP, imagens
 │   └── context/              o que o sistema é e por quê
-│       ├── PRD.md
+│       ├── prd/          um PRD por versão: v1 (corrente), v2, v2.x, v3 (rascunhos)
+│       ├── spec/         wire-format.md: linha de log, respostas, dump, sessão
 │       ├── ARCHITECTURE.md
 │       ├── hardware.md       placa real: chip, flash, portas, armadilhas
 │       └── decisions/        ADRs curtos (uma decisão por arquivo)
@@ -62,9 +65,12 @@ esp32-logcat/
 - Quem loga nunca bloqueia: só enfileira. Formatação e I/O ficam na tarefa escritora.
 - Nada de alocação dinâmica no caminho de log depois da inicialização.
 - C++17, sem exceções nem RTTI no firmware.
-- Formato de linha definido no PRD §3 — mudança de formato exige atualizar o parser
-  do host e os testes dos dois lados no mesmo commit, a começar pelos casos compartilhados
-  (`conformance/make_line_cases.py` → `line_cases.tsv`, lidos pelas duas suítes).
+- Formato no fio definido em `docs/context/spec/wire-format.md` (§1 linha de log, §2–§3
+  console e dump, §4 sessão) — mudança de formato exige atualizar a spec, o parser do host
+  e os testes dos dois lados no mesmo commit, a começar pelos casos compartilhados
+  (`conformance/make_line_cases.py` → `line_cases.tsv`, `make_reply_cases.py` →
+  `reply_cases.tsv`).
+- "PRD" sem versão quer dizer o PRD da v1 (`prd/v1.md`); os IDs F1–F9 e H1–H7 são dele.
 
 ## Fluxo de trabalho
 1. Plano antes de editar (modo de planejamento) para qualquer coisa além de ajuste trivial.

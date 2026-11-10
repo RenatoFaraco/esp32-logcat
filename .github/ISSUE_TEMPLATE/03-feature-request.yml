@@ -28,7 +28,7 @@ body:
       label: Impact
       description: Check what this change would touch.
       options:
-        - label: Changes the log line format (PRD §3) — host parser and tests on both sides must change together
+        - label: Changes the log line format (wire-format §1) — host parser and tests on both sides must change together
         - label: Adds work on the logging path (caller cost, RAM or flash usage)
         - label: Requires the hardware to implement or test
         - label: Is in the PRD backlog (§4, v1.1+)

@@ -24,9 +24,18 @@ Regra para um documento novo: se ele responde "como faço?", vai em `project/`. 
 
 | Documento | Para quê |
 |-----------|----------|
-| [PRD.md](context/PRD.md) | Requisitos da v1: problema, formato da linha (§3), persistência, critérios de aceite, marcos |
+| [prd/v1.md](context/prd/v1.md) | **PRD corrente.** Requisitos da v1: problema, escopo (F1–F9, H1–H7), persistência, critérios de aceite, marcos M0…M7 |
+| [prd/v2-multichip.md](context/prd/v2-multichip.md) | Rascunho: componente ESP-IDF multichip (ADR-009) |
+| [prd/v2x-go-host.md](context/prd/v2x-go-host.md) | Rascunho: host em Go, binário único (ADR-010) |
+| [prd/v3-rust-telemetry.md](context/prd/v3-rust-telemetry.md) | Rascunho: crate Rust (ADR-011) e telemetria por MQTT |
+| [spec/wire-format.md](context/spec/wire-format.md) | O contrato no fio, para todas as implementações: linha de log (§1), respostas do console (§2), bloco de dump (§3), arquivo de sessão (§4) |
 | [ARCHITECTURE.md](context/ARCHITECTURE.md) | Módulos, fluxo de dados, concorrência, orçamento de memória, protocolo do console |
 | [hardware.md](context/hardware.md) | A placa real: chip, flash, portas e armadilhas (leia antes de mexer em gravação ou serial) |
+
+Um PRD por versão: o da versão em andamento é o corrente; os seguintes ficam em rascunho, só com
+o que os ADRs e o ROADMAP já decidiram, e viram "aprovado" quando a versão começar. "PRD" sem
+versão, no código e nos documentos, quer dizer `prd/v1.md`. O formato no fio não é de uma
+versão: mora na spec, que todos os PRDs citam.
 
 ### Decisões (`context/decisions/`)
 

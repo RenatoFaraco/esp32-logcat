@@ -1,6 +1,7 @@
 # ADR-009: v2 como componente ESP-IDF multichip, só na família Espressif
 - Status: proposta
 - Data: 2026-11-07
+- Requisitos: [PRD v2](../prd/v2-multichip.md) (rascunho)
 
 ## Contexto
 A v1 roda só no ESP32-C3. Para quem adota o projeto, o chip muda de produto para produto, e um

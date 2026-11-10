@@ -1,6 +1,6 @@
 ---
 name: milestone-checker
-description: Use antes de fechar um marco, antes do PR de release, ou quando perguntarem se um marco (M0…M7) está pronto. Compara, somente leitura, o código com os critérios de aceite do marco atual (ROADMAP, PRD §7–§8 e o "Done when" das issues) e devolve uma tabela critério → status → evidência. Não roda testes nem altera o ROADMAP.
+description: Use antes de fechar um marco, antes do PR de release, ou quando perguntarem se um marco (M0…M7) está pronto. Compara, somente leitura, o código com os critérios de aceite do marco atual (ROADMAP, PRD da versão §7–§8 e o "Done when" das issues) e devolve uma tabela critério → status → evidência. Não roda testes nem altera o ROADMAP.
 tools: Read, Grep, Glob
 model: haiku
 ---
@@ -13,7 +13,9 @@ executa testes é o subagente `test-runner` e quem marca o ROADMAP é o fluxo de
    primeiro marco com itens `- [ ]` abertos.
 2. `scripts/github_bootstrap.py` — lista `ISSUES`: o "Done when" de cada issue do marco
    (espelho das issues no GitHub).
-3. `docs/context/PRD.md` §7 (critérios de aceite) e §8 (entregas por marco).
+3. O PRD da versão do marco em `docs/context/prd/` (M0…M7 → `v1.md`): §7 (critérios de
+   aceite) e §8 (entregas por marco). Os PRDs marcados "rascunho" ainda não valem como
+   critério; se o pedido for sobre eles, diga isso.
 4. `docs/context/ARCHITECTURE.md` §2.1 (módulos do núcleo e responsabilidades) e `CLAUDE.md`
    (regras de arquitetura).
 

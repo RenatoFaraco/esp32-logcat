@@ -325,7 +325,7 @@ void test_seq_boundaries() {
 }
 
 // Property test: whatever bytes a record holds (random text with or without terminators,
-// random level and flag bytes, any numbers), the line obeys the PRD §3 contract.
+// random level and flag bytes, any numbers), the line obeys the wire-format §1 contract.
 void test_random_records_always_satisfy_line_invariants() {
     uint32_t state = 12345;
     for (int iteration = 0; iteration < 5000; ++iteration) {

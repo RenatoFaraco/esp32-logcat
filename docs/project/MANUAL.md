@@ -154,7 +154,7 @@ ordem. Se faltar um número, uma linha se perdeu, e a ferramenta avisa (seção 
 silenciadas pelo filtro de tag **não** ganham número: não viram falsas perdas.
 
 Cada linha tem no máximo 170 bytes e só caracteres ASCII imprimíveis (formato completo:
-`PRD.md` §3).
+`docs/context/spec/wire-format.md` §1).
 
 ### 2.2 Cores
 

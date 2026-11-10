@@ -1,6 +1,6 @@
 # Hardware — placa de desenvolvimento
 
-> Levantado no bring-up (issue #9), 06/nov/2026. Lista de compras e uso: `PRD.md` §6.
+> Levantado no bring-up (issue #9), 06/nov/2026. Lista de compras e uso: `prd/v1.md` §6.
 
 ## Placa
 
@@ -37,7 +37,7 @@ O que sai em cada porta (desde #11/#12, firmware com `CONFIG_ESP_CONSOLE_SECONDA
 | | Nativa (COM6) — o stream do logcat | Ponte UART (COM5) — o console |
 |---|---|---|
 | ROM, bootloader e logs do início do app (formato do IDF) | sim (a ROM imprime nas duas) | sim |
-| Linhas do logcat (formato do PRD §3) | sim, pelo driver, só `\n` | sim, espelho, com `\r\n` |
+| Linhas do logcat (formato da spec, wire-format §1) | sim, pelo driver, só `\n` | sim, espelho, com `\r\n` |
 | `printf` e texto que não é log | não | sim |
 | Avisos `W LOGCAT: ...` (descartes) | sim | sim |
 
@@ -161,7 +161,7 @@ I (263) APP: ring buffer: 1/4, consistent=1
 ```
 
 A linha `0000:000000 0000000000 I APP: esp32-logcat hello` é a primeira linha gerada pelo
-`LineFormatter` no hardware real, no formato do PRD §3.
+`LineFormatter` no hardware real, no formato da spec (wire-format §1).
 
 ## Pendências
 

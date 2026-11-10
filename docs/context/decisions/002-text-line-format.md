@@ -8,7 +8,7 @@ depois de baixados da flash, por ferramentas comuns (`grep`, editor). Um formato
 tokenizado economiza banda e flash, mas exige o host para ler qualquer coisa.
 
 ## Decisão
-Texto, uma linha por registro, no formato do PRD §3:
+Texto, uma linha por registro, no formato da spec (wire-format §1):
 `<boot>:<seq> <uptime_ms> <L> <TAG>: <mensagem>`, com campos numéricos de largura fixa.
 O mesmo texto vai para USB, RAM e flash.
 

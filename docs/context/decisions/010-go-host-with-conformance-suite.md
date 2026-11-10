@@ -1,6 +1,7 @@
 # ADR-010: Host em Go na v2.x, validado por uma suíte de conformidade
 - Status: proposta (quando aceita, substitui o ADR-008)
 - Data: 2026-11-07
+- Requisitos: [PRD v2.x](../prd/v2x-go-host.md) (rascunho)
 
 ## Contexto
 O host da v1 é Python 3.12 com `pyserial`, `rich` e Textual (ADR-008). Para um projeto aberto
@@ -21,7 +22,7 @@ Riscos de uma reescrita:
 ## Decisão
 1. A v1 e a v2 mantêm o host Python. Na v2.x, o host é reescrito em Go: CLI e TUI (Bubbletea),
    com os mesmos comandos e um binário por sistema operacional.
-2. O contrato entre as implementações é o formato do PRD §3 mais uma **suíte de conformidade**
+2. O contrato entre as implementações é o formato da spec (wire-format §1) mais uma **suíte de conformidade**
    independente de linguagem: entradas (bytes, como chegam da serial ou da flash) e saídas
    esperadas (linhas classificadas, lacunas de `seq`, avisos) em arquivos de dados, nascidos
    das fixtures de `host/tests/fixtures/`. Python e Go rodam a mesma suíte.

@@ -1,6 +1,7 @@
 # Roadmap — esp32-logcat
 
-> Escopo e critérios de aceite → `PRD.md` · Componentes → `ARCHITECTURE.md` · Placa → `hardware.md`
+> Escopo e critérios de aceite → `docs/context/prd/` (v1 corrente) · Formato no fio →
+> `docs/context/spec/wire-format.md` · Componentes → `ARCHITECTURE.md` · Placa → `hardware.md`
 > 🖥️ = roda sem hardware (PC/`native`) · 🔌 = precisa da placa
 > Hardware chegou em 06/nov/2026 (previsão era ~11/nov).
 
@@ -115,10 +116,10 @@ telemetria vira só mais um `Sink` sobre ele. Os ADRs 009–011 estão como **pr
 | Versão | Ideia | Por quê | Decisão |
 |--------|-------|---------|---------|
 | v1.1 | Core dump, comando `log grep` no dispositivo | — | — |
-| v2 | Componente ESP-IDF multichip (família Espressif) publicado no IDF Component Registry | O chip muda de produto para produto | ADR-009 |
-| v2.x | Host em Go (CLI + TUI), binário único por SO, validado por suíte de conformidade | Instalar sem Python nem `.venv` | ADR-010 |
-| v3 | Crate Rust `no_std` (`esp-hal`) com o mesmo formato de linha | Logcat para firmware em Rust; prova que o formato independe da linguagem | ADR-011 |
-| v3 | Envio via MQTT (Wi-Fi), telemetria e métricas (heap, uptime, resets) + formato binário/tokenizado | **MLOps**: monitorar drift de sensores em campo; o binário economiza banda | — |
+| v2 | Componente ESP-IDF multichip (família Espressif) publicado no IDF Component Registry | O chip muda de produto para produto | ADR-009 · [PRD v2](../context/prd/v2-multichip.md) |
+| v2.x | Host em Go (CLI + TUI), binário único por SO, validado por suíte de conformidade | Instalar sem Python nem `.venv` | ADR-010 · [PRD v2.x](../context/prd/v2x-go-host.md) |
+| v3 | Crate Rust `no_std` (`esp-hal`) com o mesmo formato de linha | Logcat para firmware em Rust; prova que o formato independe da linguagem | ADR-011 · [PRD v3](../context/prd/v3-rust-telemetry.md) |
+| v3 | Envio via MQTT (Wi-Fi), telemetria e métricas (heap, uptime, resets) + formato binário/tokenizado | **MLOps**: monitorar drift de sensores em campo; o binário economiza banda | [PRD v3](../context/prd/v3-rust-telemetry.md) (rascunho, sem ADR) |
 | v4 | Outros fabricantes (STM32, RP2040, nRF…) e versão mínima para CH32V003 (só ring buffer + UART) | Multichip além da Espressif; pode exigir renomear o projeto | — |
 | backlog | Assinatura/encadeamento por hash dos logs | Valor probatório em perícia (ADR-007) | — |
 

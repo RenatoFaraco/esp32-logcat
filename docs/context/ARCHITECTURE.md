@@ -1,6 +1,6 @@
 # Arquitetura — esp32-logcat
 
-> **O quê / por quê** → `PRD.md` · **Quando** → `ROADMAP.md` · **Como escrever** → `CONVENTIONS.md`
+> **O quê / por quê** → `prd/v1.md` · **No fio** → `spec/wire-format.md` · **Quando** → `ROADMAP.md` · **Como escrever** → `CONVENTIONS.md`
 > Este documento descreve **como** o sistema funciona por dentro.
 
 ## 1. Visão geral
@@ -51,7 +51,7 @@ conhece adaptador.
 | Módulo | Responsabilidade |
 |--------|------------------|
 | `LogRecord` | Struct de tamanho fixo: `boot`, `seq`, `uptime_ms`, `level`, `tag[16]`, `msg[N]`, `truncated` |
-| `LineFormatter` | `LogRecord` → linha de texto no formato do PRD §3 |
+| `LineFormatter` | `LogRecord` → linha de texto no formato da spec (wire-format §1) |
 | `LineParser` | Linha → `LogRecord` (usado no firmware para ler a flash e espelhado no host) |
 | `RingBuffer<T, N>` | Buffer circular estático, sobrescreve o mais antigo. Sem construtor (pode viver em `RTC_NOINIT`), `is_consistent()` para validar memória que sobreviveu a reset; **não** é thread-safe |
 | `TagLevelFilter` | Nível por tag + nível padrão, tabela estática de 16 tags; `None` silencia. Um escritor (console), leitores sem lock em todo log; só load/store atômicos |
@@ -134,6 +134,9 @@ app_main()
 - Conteúdo: as mesmas linhas de texto do console → o host lê com o mesmo parser.
 
 ## 6. Protocolo no fio (USB)
+
+Resumo. O contrato exato está em `spec/wire-format.md` (§1 linha de log, §2 respostas,
+§3 bloco de dump); em caso de diferença, vale a spec.
 
 Tudo é texto, linha a linha (`\n`), ASCII imprimível, no máximo 170 bytes por linha. O host
 manda pedidos `<id> <comando> [args]` (id `1`–`9999`, ou `-` digitado à mão), e o

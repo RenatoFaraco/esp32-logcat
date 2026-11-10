@@ -28,7 +28,7 @@ def make_line(
     tag: str = "APP",
     msg: str = "x",
 ) -> bytes:
-    """Formats a line exactly like the device formatter (PRD §3) for valid inputs."""
+    """Formats a line exactly like the device formatter (wire-format §1) for valid inputs."""
     return f"{boot:04d}:{seq:06d} {uptime:010d} {level} {tag}: {msg}\n".encode("ascii")
 
 

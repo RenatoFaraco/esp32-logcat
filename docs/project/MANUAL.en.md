@@ -155,7 +155,7 @@ That's it: the logcat is running.
 number is missing, a line was lost, and the tool says so (section 3.2). Lines silenced by the
 tag filter do **not** get a number: they never look like losses.
 
-Each line is at most 170 bytes of printable ASCII (full format: `PRD.md` §3).
+Each line is at most 170 bytes of printable ASCII (full format: `docs/context/spec/wire-format.md` §1).
 
 ### 2.2 Colors
 
