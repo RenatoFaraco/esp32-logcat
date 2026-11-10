@@ -527,11 +527,11 @@ Not implemented yet: `dump` and `shell`
 
 1. `scripts/record_session.py <port> <seconds> <out.json> [--reset]` records, from a real
    session with the board, exactly what the serial transport delivered (bytes and notices) with
-   the time of each. The recordings live in `docs/manual/sessions/`.
+   the time of each. The recordings live in `docs/project/manual/sessions/`.
 2. `scripts/manual_screenshots.py` runs each recording through the same pipeline and renderer
-   as `esp-logcat stream` and exports the terminal window as SVG into `docs/manual/img/`. Cuts
+   as `esp-logcat stream` and exports the terminal window as SVG into `docs/project/manual/img/`. Cuts
    in long sessions show up as `...`.
-3. `scripts/readme_cover.py` draws the README cover (`docs/img/cover.svg`) with real output
+3. `scripts/readme_cover.py` draws the README cover (`docs/project/img/cover.svg`) with real output
    from the same recordings.
 
 When the output changes, record again and rerun the scripts: the pictures always show what

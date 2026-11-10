@@ -115,7 +115,7 @@ Nunca logar segredos (senha de Wi-Fi, chaves, tokens).
 
 - Mudou o comportamento → atualizar o documento correspondente no mesmo PR.
 - `ROADMAP.md`: marcar itens concluídos ao fechar cada PR.
-- Decisões não óbvias → ADR em `docs/decisions/NNN-titulo-curto.md`:
+- Decisões não óbvias → ADR em `docs/context/decisions/NNN-titulo-curto.md`:
 
 ```markdown
 # ADR-NNN: <título>

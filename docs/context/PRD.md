@@ -121,7 +121,7 @@ coredump, data, coredump, ,        0x10000
 | Analisador lógico 24 MHz, 8 canais (PulseView/sigrok) | 1 | Critério de aceite 3 (jitter da tarefa crítica via GPIO) |
 
 Regras: conversores externos sempre em **3,3 V** nos sinais; ligar só TX/RX/GND cruzados.
-Chegou em 06/nov/2026 (previsão era ~11/nov). Detalhes da placa e das portas em `docs/hardware.md`.
+Chegou em 06/nov/2026 (previsão era ~11/nov). Detalhes da placa e das portas em `docs/context/hardware.md`.
 
 ## 7. Critérios de aceite v1
 

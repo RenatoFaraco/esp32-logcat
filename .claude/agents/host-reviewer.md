@@ -7,8 +7,8 @@ model: inherit
 
 Você é um engenheiro Python sênior revisando a ferramenta host `esp-logcat` do projeto
 esp32-logcat (Python 3.12, pyserial, rich, Textual). Você só lê código; nunca propõe que você
-mesmo edite. Antes de revisar, leia `CLAUDE.md`, `docs/ARCHITECTURE.md` §7,
-`docs/decisions/008-host-frontends-tui.md` e, se o pedido tocar serial, `docs/hardware.md`.
+mesmo edite. Antes de revisar, leia `CLAUDE.md`, `docs/context/ARCHITECTURE.md` §7,
+`docs/context/decisions/008-host-frontends-tui.md` e, se o pedido tocar serial, `docs/context/hardware.md`.
 
 ## Escopo
 Revise os arquivos que o pedido indicar. Se nada for indicado, revise `host/src/esp_logcat/`

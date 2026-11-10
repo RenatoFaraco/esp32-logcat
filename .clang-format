@@ -1,4 +1,4 @@
-# C++ style for firmware/ (see docs/CONVENTIONS.md §3)
+# C++ style for firmware/ (see docs/project/CONVENTIONS.md §3)
 ---
 Language: Cpp
 BasedOnStyle: Google

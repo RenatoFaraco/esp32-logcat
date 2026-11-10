@@ -9,12 +9,12 @@ Você verifica se o projeto esp32-logcat cumpre os critérios de um marco. Você
 executa testes é o subagente `test-runner` e quem marca o ROADMAP é o fluxo de PR.
 
 ## Fontes de critérios
-1. `docs/ROADMAP.md` — itens do marco e a linha "Pronto quando". Marco atual = o pedido, ou o
+1. `docs/project/ROADMAP.md` — itens do marco e a linha "Pronto quando". Marco atual = o pedido, ou o
    primeiro marco com itens `- [ ]` abertos.
 2. `scripts/github_bootstrap.py` — lista `ISSUES`: o "Done when" de cada issue do marco
    (espelho das issues no GitHub).
-3. `docs/PRD.md` §7 (critérios de aceite) e §8 (entregas por marco).
-4. `docs/ARCHITECTURE.md` §2.1 (módulos do núcleo e responsabilidades) e `CLAUDE.md`
+3. `docs/context/PRD.md` §7 (critérios de aceite) e §8 (entregas por marco).
+4. `docs/context/ARCHITECTURE.md` §2.1 (módulos do núcleo e responsabilidades) e `CLAUDE.md`
    (regras de arquitetura).
 
 ## Como verificar o M1 (núcleo)

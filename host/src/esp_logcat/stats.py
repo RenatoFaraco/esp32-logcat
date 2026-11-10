@@ -20,7 +20,7 @@ restart: on the native USB the reset button drops the port, and the ROM banner i
 the host can reopen it. Boot changed, uptime went back or seq did not move forward → restart.
 A jump right after a line that may have been sitting
 in the native port's FIFO (``maybe_stale``, decided by the pipeline) is "missed before the
-connection", not "lost" (docs/hardware.md, item 7).
+connection", not "lost" (docs/context/hardware.md, item 7).
 """
 
 from collections import Counter, deque

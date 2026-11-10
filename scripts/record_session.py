@@ -5,7 +5,7 @@ Usage (from the repository root, with the host venv):
 
 Stores exactly what SerialTransport yielded (byte chunks and notices) with their time offsets.
 scripts/manual_screenshots.py replays it through the same pipeline and renderer as the real
-command, so the pictures in docs/MANUAL.md show real device output and can be regenerated.
+command, so the pictures in docs/project/MANUAL.md show real device output and can be regenerated.
 """
 
 import base64

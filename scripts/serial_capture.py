@@ -5,7 +5,7 @@ Usage (from the repository root, with the host venv):
 
 Writes <prefix>_<port>.log for each port. The reset goes through the native USB-Serial-JTAG,
 which restarts the CPU without dropping the USB link, so both ports stay open during the boot.
-See docs/hardware.md for the port behaviors this relies on.
+See docs/context/hardware.md for the port behaviors this relies on.
 """
 
 import sys

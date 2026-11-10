@@ -6,7 +6,7 @@ body:
     id: location
     attributes:
       label: Where?
-      placeholder: docs/ARCHITECTURE.md §3, README "Building and testing"
+      placeholder: docs/context/ARCHITECTURE.md §3, README "Building and testing"
     validations:
       required: true
 

@@ -59,12 +59,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   tag beats `*`. Lines without a tag always pass. Display only: gaps and the summary still count
   every line, and the summary says how many were hidden. Manual section 3.8 (en/pt).
 
-- User manual in English (`docs/MANUAL.en.md`) and Portuguese (`docs/MANUAL.md`): a "start
+- User manual in English (`docs/project/MANUAL.en.md`) and Portuguese (`docs/project/MANUAL.md`): a "start
   here" for PowerShell and cmd, from zero to the logcat running, how to read the output, what
   happens in each situation, pipes and files in both shells, both ports, troubleshooting. Its
   terminal pictures are real board sessions (`scripts/record_session.py`) rendered by the same
   code as `esp-logcat stream` (`scripts/manual_screenshots.py`), so they can be regenerated.
-- README cover (`docs/img/cover.svg`, `scripts/readme_cover.py`): the board, real logcat output
+- README cover (`docs/project/img/cover.svg`, `scripts/readme_cover.py`): the board, real logcat output
   and the stack; README links both manuals and has a quick start for PowerShell and cmd.
 
 - Firmware log pipeline: callers never wait for I/O (ADR-004). The hook only formats the
@@ -102,7 +102,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     port in any Windows language.
   - `pipeline.py`: bytes → lines → parser → stats, shared with the future replay and TUI.
     Splits the 64-byte fragment the native port keeps in its FIFO, which otherwise glues onto
-    the first live line as a false but valid-looking line (docs/hardware.md, item 7).
+    the first live line as a false but valid-looking line (docs/context/hardware.md, item 7).
 - Host `render.py`: each parsed line becomes a `rich.text.Text` colored by level (adb logcat
   palette, bright blue for Debug), whose plain text is the original line. ESP-IDF lines in the
   level color without bold, raw lines dimmed, invalid lines labeled with their reason and raw
@@ -113,6 +113,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   interactive TUI (`esp-logcat tui`, Textual) as a second frontend; `stream` stays plain stdout.
 - `host-reviewer` subagent: read-only review of host code (layers, format contract, serial on
   Windows, device text as data, TUI event loop, tests without a TTY).
+
+### Changed
+
+- `docs/` split by audience: `docs/project/` holds how we work (manuals, conventions, roadmap,
+  pictures) and `docs/context/` holds what the system is and why (PRD, architecture, hardware,
+  ADRs). `docs/README.md` is the index. Files moved unchanged; every path that cited them
+  (README, CLAUDE.md, agents, templates, scripts, code comments) follows.
 
 ## [0.2.0] - 2026-11-06
 

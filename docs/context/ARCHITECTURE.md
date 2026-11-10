@@ -198,7 +198,7 @@ estatísticas são funções puras → fáceis de testar.
 
 ## 9. Decisões registradas
 
-Decisões relevantes viram ADRs em `docs/decisions/` (modelo em `CONVENTIONS.md`).
+Decisões relevantes viram ADRs em `docs/context/decisions/` (modelo em `CONVENTIONS.md`).
 Iniciais:
 
 - ADR-001: ESP-IDF via PlatformIO (C++17) em vez de framework Arduino

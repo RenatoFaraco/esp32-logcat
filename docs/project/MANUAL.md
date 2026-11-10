@@ -526,11 +526,11 @@ Ainda não implementados: `dump` e `shell`
 
 1. `scripts/record_session.py <porta> <segundos> <saida.json> [--reset]` grava, de uma sessão
    real com a placa, exatamente o que o transporte serial entregou (bytes e avisos) com o tempo
-   de cada um. As gravações estão em `docs/manual/sessions/`.
+   de cada um. As gravações estão em `docs/project/manual/sessions/`.
 2. `scripts/manual_screenshots.py` passa cada gravação pelo mesmo pipeline e pelo mesmo
    renderer do `esp-logcat stream` e exporta a janela de terminal em SVG para
-   `docs/manual/img/`. Cortes em sessões longas aparecem como `...`.
-3. `scripts/readme_cover.py` desenha a capa do README (`docs/img/cover.svg`) com saída real
+   `docs/project/manual/img/`. Cortes em sessões longas aparecem como `...`.
+3. `scripts/readme_cover.py` desenha a capa do README (`docs/project/img/cover.svg`) com saída real
    das mesmas gravações.
 
 Quando a saída mudar, grave de novo e rode os scripts: as imagens sempre mostram o que a
