@@ -10,7 +10,7 @@
 | Seção | O quê | Casos compartilhados | Decisões |
 |-------|-------|----------------------|----------|
 | §1 | Linha de log | `conformance/line_cases.tsv` | ADR-002, ADR-006, ADR-007 |
-| §2 | Pedidos e respostas do console | `conformance/reply_cases.tsv` | ADR-012 |
+| §2 | Pedidos e respostas do console | `conformance/request_cases.tsv`, `conformance/reply_cases.tsv` | ADR-012 |
 | §3 | Bloco de dump | `conformance/reply_cases.tsv` (`block_crc`) | ADR-012 |
 | §4 | Arquivo de sessão do host | testes do host (`test_session.py`) | PRD v1 H6 |
 
@@ -57,7 +57,34 @@ Versão do protocolo: `proto=1`. Decisão e alternativas: ADR-012.
   no `shell`). O dispositivo ecoa o id em todas as linhas da resposta e não guarda ids.
 - O host gira os ids e não reusa um id antes de passar o timeout da resposta anterior
   (§2.3); aceita no máximo um pedido `-` pendente por vez.
-- Comandos e argumentos: PRD v1 F9 e `CommandParser` (#27).
+- **Palavras:** separadas por um ou mais espaços; espaços em volta da linha são ignorados.
+  Comandos em minúsculas, exatos (sem abreviação).
+- **Fim de linha:** `\n`, `\r\n` ou `\r` (o que um terminal serial manda), ou nenhum. O
+  host manda `\n`.
+- **Tamanho:** até 64 bytes antes do fim de linha, só `0x20`–`0x7E`.
+- Linha só com espaços: ignorada, sem resposta.
+
+| Comando | Argumentos | O que pede |
+|---------|------------|------------|
+| `info` | — | identidade e estado do dispositivo |
+| `stats` | — | contadores do motor de log, acumulados desde o boot |
+| `log level <tag> <L>` | `tag`: 1 ou mais caracteres sem espaço, cortada em 15; `*` é o padrão. `L`: `E` `W` `I` `D` `V`, ou `N` (silencia a tag); só maiúsculas | muda o nível de uma tag em tempo de execução |
+| `log tail` | — | as últimas linhas em RAM, num bloco (§3) |
+| `log dump` | — | os logs gravados na flash, em blocos (§3) |
+| `log clear` | — | apaga os logs gravados na flash |
+| `reboot` | — | reinicia o dispositivo |
+| `crash <panic\|wdt>` | `panic` ou `wdt` | provoca um crash, para testar a recuperação |
+
+Pedido rejeitado (a resposta é só o terminador de erro, §2.2):
+
+| Situação | Código | id da resposta |
+|----------|--------|----------------|
+| a primeira palavra não é um id válido | `bad_args` | `-` |
+| byte fora de `0x20`–`0x7E`, ou mais de 64 bytes | `bad_args` | `-` |
+| comando desconhecido, ou nenhum depois do id; subcomando de `log` desconhecido | `bad_command` | o do pedido |
+| argumento faltando, sobrando ou inválido (inclusive `log` sem subcomando) | `bad_args` | o do pedido |
+
+Casos compartilhados dos pedidos: `conformance/request_cases.tsv`.
 
 ### 2.2 Resposta (dispositivo → host)
 

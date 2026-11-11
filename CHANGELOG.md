@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Core `CommandParser` (#27): `parse_command` turns a console request
+  (`<id> <command> [args]`) into a `Command`: `info`, `stats`, `log dump`, `log tail`,
+  `log clear`, `log level <tag> <E|W|I|D|V|N>`, `reboot`, `crash <panic|wdt>`. A request is
+  understood whole or rejected with `bad_command`/`bad_args`, and the id to echo is always
+  available. Accepts the line endings serial terminals send. 76 shared cases in
+  `conformance/request_cases.tsv`; the grammar is in wire-format §2.1.
+- Core `ReplyFormatter` (#27): builds the ADR-012 reply lines (`#>`, `#.`, `#!`, `#BEGIN`,
+  `#END`) in a fixed buffer and refuses to build a malformed one; `crc32_update` (CRC-32
+  IEEE, 16-entry table) for dump blocks. Checked against the same
+  `conformance/reply_cases.tsv` the host parser reads.
 - ADR-012, console reply framing (#69): requests carry an id (`1`–`9999`, or `-`) that every
   reply line echoes; data lines `#> <id> key=value ...`, exactly one terminator
   (`#. <id> ok` or `#! <id> <code> [text]`), dump blocks `#BEGIN <id> ...`/`#END <id> ...`,
