@@ -34,6 +34,7 @@ public:
     const char* name() const override { return "usb"; }
 
     bool write_reply(const char* line, size_t length) override;
+    bool try_write_reply(const char* line, size_t length) override;
 };
 
 }  // namespace logcat

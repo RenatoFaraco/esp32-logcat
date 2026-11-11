@@ -99,6 +99,12 @@ void Console::run(const Command& command) {
                 return;
             }
             platform_.set_log_level(command.tag, command.level);
+            if (std::strcmp(command.tag, "*") == 0) {
+                // The platform's "*" may wipe its per-tag levels (ESP-IDF does); ours remain.
+                for (size_t i = 0; i < filter_.size(); ++i) {
+                    platform_.set_log_level(filter_.tag_at(i), filter_.level_at(i));
+                }
+            }
             reply_ok(command.id);
             return;
         case CommandKind::LogTail:
@@ -131,11 +137,9 @@ void Console::reply_fields(const char* id, void (ConsolePlatform::*fill)(ReplyFi
 void Console::reply_ok(const char* id) {
     char line[kLineBufferSize];
     const size_t length = format_reply_ok(id, line);
-    if (send_failed_) {
+    if (!send(ReplyKind::End, id, line, length)) {
         reply_error(id, "timeout", "reply queue full");
-        return;
     }
-    send(ReplyKind::End, id, line, length);
 }
 
 void Console::reply_error(const char* id, const char* code, const char* text) {
@@ -146,7 +150,9 @@ void Console::reply_error(const char* id, const char* code, const char* text) {
 }
 
 void Console::send_tail(const char* id) {
-    send(ReplyKind::Tail, id, "", 0);
+    if (!send(ReplyKind::Tail, id, "", 0)) {
+        reply_error(id, "timeout", "reply queue full");
+    }
 }
 
 bool Console::send(ReplyKind kind, const char* id, const char* line, size_t length) {

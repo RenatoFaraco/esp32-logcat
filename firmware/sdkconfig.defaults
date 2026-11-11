@@ -19,5 +19,6 @@ CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions.csv"
 CONFIG_ESP_CONSOLE_SECONDARY_NONE=y
 
 # `log level <tag> D` must be able to open a tag at run time, so D and V lines are compiled in.
-# The default level stays INFO: a D line costs one level check until someone asks for it.
+# The default level stays INFO: until someone asks, a D line costs ESP-IDF's level lookup
+# (a short mutex and a search in its tag cache), and never reaches the hook.
 CONFIG_LOG_MAXIMUM_LEVEL_VERBOSE=y

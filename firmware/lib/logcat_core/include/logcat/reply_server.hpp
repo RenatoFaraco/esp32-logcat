@@ -33,6 +33,8 @@ static_assert(std::is_trivially_copyable_v<ReplyMessage>, "copied with memcpy");
 class ReplyOutput {
 public:
     virtual bool write_reply(const char* line, size_t length) = 0;
+    // The same, without waiting: for the "#! timeout" sent after a write already timed out.
+    virtual bool try_write_reply(const char* line, size_t length) = 0;
 
 protected:
     ~ReplyOutput() = default;  // never deleted through the interface: outputs are statics

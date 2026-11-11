@@ -32,6 +32,7 @@ private:
     Writer& writer_;
     ReplyServer& server_;
     RamTail& tail_;
+    uint32_t queue_timeouts_ = 0;  // only the console task touches it
 };
 
 // Reads the native USB port and runs the console. The driver must be installed (UsbJtagSink).

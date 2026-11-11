@@ -71,8 +71,12 @@ int hook(const char* format, va_list args) {
     }
     // Inside the writer task (a driver logging while we write to it): straight to the console,
     // raw. Going through the queue would loop (write -> log -> enqueue -> write ...), and the
-    // USB sink may be the very thing that is failing.
-    if (in_hook || xTaskGetCurrentTaskHandle() == writer_task_handle()) {
+    // USB sink may be the very thing that is failing. Through the ROM printer, not stdout:
+    // stdout queues each byte in the UART driver, whose full ring busy-waits this very task.
+    if (xTaskGetCurrentTaskHandle() == writer_task_handle()) {
+        return esp_rom_vprintf(format, args);
+    }
+    if (in_hook) {
         return previous()(format, args);
     }
     const HookGuard guard;

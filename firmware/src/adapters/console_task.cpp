@@ -24,6 +24,7 @@ constexpr TickType_t kReadWait = pdMS_TO_TICKS(100);
 constexpr TickType_t kSendWait = pdMS_TO_TICKS(500);
 // Long enough for the writer task to take what is queued and the driver to send it.
 constexpr TickType_t kDrainWait = pdMS_TO_TICKS(100);
+constexpr int kDrainPolls = 100;  // of 10 ms
 constexpr uint32_t kProtocolVersion = 1;
 
 StackType_t stack[kStackBytes];
@@ -75,7 +76,9 @@ void run(void*) {
 }  // namespace
 
 bool EspConsolePlatform::send(const ReplyMessage& message) {
-    return replies_.send(message, kSendWait);
+    const bool sent = replies_.send(message, kSendWait);
+    queue_timeouts_ += sent ? 0 : 1;
+    return sent;
 }
 
 void EspConsolePlatform::fill_info(ReplyFields& fields) {
@@ -109,19 +112,21 @@ void EspConsolePlatform::fill_stats(ReplyFields& fields) {
         fields.add_uint(key, writer_.refused_total(i));
     }
     fields.add_uint("tail_skipped", tail_.skipped());
-    fields.add_uint("reply_failed", server_.failures());
+    fields.add_uint("reply_failed", server_.failures() + queue_timeouts_);
 }
 
 void EspConsolePlatform::set_log_level(const char* tag, LogLevel level) {
     // ESP-IDF drops a line by its own level before the hook sees it, so a D or V line needs
-    // this gate open too. Numbers match (see log_record.hpp). Only this tag: opening "*" for
-    // everything would make every ESP_LOGD of the IDF pay a vsnprintf in the hook. A tag cut to
-    // 15 chars does not match the full name here, so such a tag cannot go above the default.
+    // this gate open too. Numbers match (see log_record.hpp). Opening only the tag asked for
+    // keeps the other ESP_LOGD of the IDF out of the hook. `log level * D` does open them all.
+    // A tag cut to 15 chars does not match the full name here: it cannot go above the default.
     esp_log_level_set(tag, static_cast<esp_log_level_t>(level));
 }
 
 void EspConsolePlatform::reboot() {
-    while (!replies_.empty()) {
+    // Bounded: a stuck writer task is when a reboot is needed most. Under heavy logging the log
+    // queue may never empty, and what is left in it at the end is lost.
+    for (int i = 0; i < kDrainPolls && !(replies_.empty() && log_queue_.empty()); ++i) {
         vTaskDelay(pdMS_TO_TICKS(10));
     }
     vTaskDelay(kDrainWait);

@@ -6,6 +6,7 @@
 #include <cstdio>
 #include <cstring>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "logcat/console.hpp"
@@ -13,7 +14,9 @@
 #include "logcat/ram_tail.hpp"
 #include "logcat/reply_formatter.hpp"
 #include "logcat/reply_server.hpp"
+#include "logcat/sequencer.hpp"
 #include "logcat/tag_level_filter.hpp"
+#include "logcat/writer.hpp"
 
 using logcat::Console;
 using logcat::GatedSink;
@@ -55,6 +58,7 @@ public:
     void set_log_level(const char* tag, LogLevel level) override {
         level_tag = tag;
         platform_level = level;
+        levels.emplace_back(tag, level);
     }
     void reboot() override {
         reboot_saw = messages.size();
@@ -77,6 +81,7 @@ public:
     int stat_fields = 2;
     std::string level_tag;
     LogLevel platform_level = LogLevel::Info;
+    std::vector<std::pair<std::string, LogLevel>> levels;
     size_t reboot_saw = 0;
     int reboots = 0;
     int panics = 0;
@@ -96,9 +101,14 @@ public:
         text.append(line, length);
         return true;
     }
+    bool try_write_reply(const char* line, size_t length) override {
+        ++tries;
+        return write_reply(line, length);
+    }
     std::string text;
     int accept = -1;  // -1 = always
     int calls = 0;
+    int tries = 0;
 };
 
 class FakeSink final : public logcat::Sink {
@@ -311,6 +321,78 @@ void test_log_level_with_a_full_table_is_an_error_and_leaves_the_platform_alone(
     rig.send("3 log level NEW D\n");
     TEST_ASSERT_EQUAL_STRING("#! 3 full tag table full (16 tags)\n", rig.platform.lines().c_str());
     TEST_ASSERT_EQUAL_STRING("", rig.platform.level_tag.c_str());
+}
+
+// ESP-IDF's "*" wipes its per-tag levels; the filter keeps its own, so they go back.
+void test_log_level_star_restores_the_platform_levels_of_each_tag() {
+    Rig rig;
+    rig.send("1 log level HEARTBEAT D\n");
+    rig.send("2 log level APP E\n");
+    rig.platform.levels.clear();
+    rig.send("3 log level * W\n");
+    TEST_ASSERT_EQUAL_size_t(3, rig.platform.levels.size());
+    TEST_ASSERT_EQUAL_STRING("*", rig.platform.levels[0].first.c_str());  // first, then the tags
+    TEST_ASSERT_EQUAL_STRING("HEARTBEAT", rig.platform.levels[1].first.c_str());
+    TEST_ASSERT_TRUE(rig.platform.levels[1].second == LogLevel::Debug);
+    TEST_ASSERT_EQUAL_STRING("APP", rig.platform.levels[2].first.c_str());
+    TEST_ASSERT_TRUE(rig.platform.levels[2].second == LogLevel::Error);
+}
+
+void test_log_level_of_one_tag_touches_only_that_tag() {
+    Rig rig;
+    rig.send("1 log level HEARTBEAT D\n");
+    rig.platform.levels.clear();
+    rig.send("2 log level APP E\n");
+    TEST_ASSERT_EQUAL_size_t(1, rig.platform.levels.size());
+}
+
+// A platform that refuses exactly its n-th send and takes the others.
+struct RefusesNth final : logcat::ConsolePlatform {
+    explicit RefusesNth(int n) : refused_at(n) {}
+    bool send(const ReplyMessage& message) override {
+        if (++sends == refused_at) {
+            return false;
+        }
+        messages.push_back(message);
+        return true;
+    }
+    void fill_info(ReplyFields& fields) override { fields.add("a", "1"); }
+    void fill_stats(ReplyFields&) override {}
+    void set_log_level(const char*, LogLevel) override {}
+    void reboot() override {}
+    void crash_panic() override {}
+    void crash_wdt() override {}
+    int refused_at;
+    int sends = 0;
+    std::vector<ReplyMessage> messages;
+};
+
+void test_tail_that_finds_no_room_becomes_a_timeout_error() {
+    RefusesNth platform(1);
+    TagLevelFilter filter;
+    Console console(platform, filter);
+    console.feed("4 log tail\n", 11);
+    TEST_ASSERT_EQUAL_size_t(1, platform.messages.size());
+    TEST_ASSERT_EQUAL_STRING("#! 4 timeout reply queue full\n", platform.messages[0].line);
+}
+
+void test_ok_that_finds_no_room_becomes_a_timeout_error() {
+    RefusesNth platform(2);  // the data line goes, the terminator does not
+    TagLevelFilter filter;
+    Console console(platform, filter);
+    console.feed("7 info\n", 7);
+    TEST_ASSERT_EQUAL_size_t(2, platform.messages.size());
+    TEST_ASSERT_EQUAL_STRING("#! 7 timeout reply queue full\n", platform.messages[1].line);
+}
+
+void test_request_of_exactly_the_limit_runs_and_one_more_does_not() {
+    const std::string at_limit = "7 info" + std::string(logcat::kMaxRequestLength - 6, ' ');
+    Rig ok;
+    ok.send(at_limit + "\n");
+    TEST_ASSERT_EQUAL_STRING("#> 7 fw=1.2.3 proto=1\n#. 7 ok\n", ok.platform.lines().c_str());
+    Rig over;
+    over.send(at_limit + " \n");
+    TEST_ASSERT_EQUAL_MEMORY("#! - bad_args", over.platform.messages[0].line, 13);
 }
 
 void test_log_tail_is_one_message_for_the_writer_task() {
@@ -532,6 +614,9 @@ void test_failure_inside_the_block_sends_the_error_when_it_fits() {
             text.append(line, length);
             return true;
         }
+        bool try_write_reply(const char* line, size_t length) override {
+            return write_reply(line, length);
+        }
         int* count;
         std::string text;
     } output(&writes);
@@ -604,6 +689,9 @@ void test_failed_write_tells_the_host_when_it_can() {
             text.append(line, length);
             return true;
         }
+        bool try_write_reply(const char* line, size_t length) override {
+            return write_reply(line, length);
+        }
         int* count;
         std::string text;
     } output(&writes);
@@ -613,6 +701,103 @@ void test_failed_write_tells_the_host_when_it_can() {
     ReplyServer server(output, gate, tail);
     server.handle(message_of(ReplyKind::Data, "7", "#> 7 a=1\n"));
     TEST_ASSERT_EQUAL_STRING("#! 7 timeout host not reading\n", output.text.c_str());
+}
+
+void test_the_timeout_error_does_not_wait_again() {
+    Server s;
+    s.output.accept = 0;
+    s.server.handle(message_of(ReplyKind::End, "7", "#. 7 ok\n"));
+    TEST_ASSERT_EQUAL_INT(1, s.output.tries);  // and only that one try
+    TEST_ASSERT_EQUAL_INT(2, s.output.calls);  // the write, then the try (which forwards)
+}
+
+void test_refused_terminator_after_end_closes_the_block_and_counts() {
+    Server s;
+    s.output.accept = 2;  // #BEGIN and #END: the tail is empty
+    s.server.handle(message_of(ReplyKind::Tail, "4", ""));
+    s.server.step();
+    TEST_ASSERT_FALSE(s.server.block_open());
+    TEST_ASSERT_EQUAL_UINT32(1, s.server.failures());
+    TEST_ASSERT_TRUE(s.gate.write("x\n", 2));
+}
+
+void test_full_block_after_wrap_counts_every_byte() {
+    Server s;
+    std::vector<std::string> lines;
+    for (size_t i = 0; i < logcat::kRamTailLines + 5; ++i) {
+        std::string line(logcat::kMaxLineLength - 1, static_cast<char>('a' + i % 26));
+        line += "\n";
+        s.add_tail_line(line);
+        lines.push_back(line);
+    }
+    std::string content;
+    for (size_t i = 5; i < lines.size(); ++i) {
+        content += lines[i];
+    }
+    s.server.handle(message_of(ReplyKind::Tail, "4", ""));
+    s.run_block();
+    const std::string expected = "#BEGIN 4 ram " + std::to_string(content.size()) + "\n" + content +
+                                 "#END 4 " + crc_of(content) + "\n#. 4 ok\n";
+    TEST_ASSERT_TRUE(s.output.text == expected);
+}
+
+// The real Writer with the gate and the tail: what the board wires together.
+void test_writer_with_gate_and_tail_during_a_block() {
+    struct Clock final : logcat::Clock {
+        uint32_t uptime_ms() override { return 1; }
+    } clock;
+    logcat::Sequencer sequencer;
+    logcat::Writer writer(sequencer, clock);
+    Server s;
+    writer.add_sink(s.gate);
+    writer.add_sink(s.tail);
+    logcat::LogRecord record{};
+    record.level = LogLevel::Info;
+    record.set_tag("APP");
+    record.set_message("before");
+    writer.write(record);
+    s.server.handle(message_of(ReplyKind::Tail, "4", ""));
+    const size_t usb_before = s.usb.text.size();
+
+    record.set_message("during");
+    writer.write(record);
+    writer.idle();  // a report now would land inside the block
+    TEST_ASSERT_EQUAL_size_t(usb_before, s.usb.text.size());
+    TEST_ASSERT_EQUAL_UINT32(1, writer.refused_total(0));
+    TEST_ASSERT_EQUAL_UINT32(0, writer.refused_total(1));  // the frozen tail is not failing
+    TEST_ASSERT_EQUAL_UINT32(1, s.tail.skipped());
+
+    s.run_block();
+    record.set_message("after");
+    writer.write(record);
+    writer.idle();
+    TEST_ASSERT_TRUE(s.usb.text.find("after") != std::string::npos);
+    TEST_ASSERT_TRUE(s.usb.text.find("1 lines not sent to usb") != std::string::npos);
+    TEST_ASSERT_TRUE(s.usb.text.find("during") == std::string::npos);
+}
+
+void test_a_second_block_starts_its_crc_from_zero() {
+    Server s;
+    s.add_tail_line("a\n");
+    s.server.handle(message_of(ReplyKind::Tail, "4", ""));
+    s.run_block();
+    s.output.text.clear();
+    s.server.handle(message_of(ReplyKind::Tail, "5", ""));
+    s.run_block();
+    const std::string expected = "#BEGIN 5 ram 2\na\n#END 5 " + crc_of("a\n") + "\n#. 5 ok\n";
+    TEST_ASSERT_EQUAL_STRING(expected.c_str(), s.output.text.c_str());
+}
+
+// The terminator of the broken reply never came: another id ends the abort, so the broken
+// reply's id is usable again.
+void test_another_id_ends_an_abort() {
+    Server s;
+    s.output.accept = 0;
+    s.server.handle(message_of(ReplyKind::Data, "7", "#> 7 a=1\n"));
+    s.output.accept = -1;
+    s.server.handle(message_of(ReplyKind::End, "8", "#. 8 ok\n"));
+    s.server.handle(message_of(ReplyKind::End, "7", "#. 7 ok\n"));
+    TEST_ASSERT_EQUAL_STRING("#. 8 ok\n#. 7 ok\n", s.output.text.c_str());
 }
 
 void test_step_without_a_block_does_nothing() {
@@ -638,6 +823,11 @@ int main() {
     RUN_TEST(test_log_level_star_sets_the_default);
     RUN_TEST(test_log_level_none_silences);
     RUN_TEST(test_log_level_with_a_full_table_is_an_error_and_leaves_the_platform_alone);
+    RUN_TEST(test_log_level_star_restores_the_platform_levels_of_each_tag);
+    RUN_TEST(test_log_level_of_one_tag_touches_only_that_tag);
+    RUN_TEST(test_tail_that_finds_no_room_becomes_a_timeout_error);
+    RUN_TEST(test_ok_that_finds_no_room_becomes_a_timeout_error);
+    RUN_TEST(test_request_of_exactly_the_limit_runs_and_one_more_does_not);
     RUN_TEST(test_log_tail_is_one_message_for_the_writer_task);
     RUN_TEST(test_flash_commands_are_unsupported_for_now);
     RUN_TEST(test_reboot_replies_before_restarting);
@@ -662,6 +852,12 @@ int main() {
     RUN_TEST(test_same_id_after_the_terminator_is_a_new_reply);
     RUN_TEST(test_failed_terminator_does_not_swallow_the_next_reply);
     RUN_TEST(test_failed_write_tells_the_host_when_it_can);
+    RUN_TEST(test_the_timeout_error_does_not_wait_again);
+    RUN_TEST(test_refused_terminator_after_end_closes_the_block_and_counts);
+    RUN_TEST(test_full_block_after_wrap_counts_every_byte);
+    RUN_TEST(test_writer_with_gate_and_tail_during_a_block);
+    RUN_TEST(test_a_second_block_starts_its_crc_from_zero);
+    RUN_TEST(test_another_id_ends_an_abort);
     RUN_TEST(test_step_without_a_block_does_nothing);
     return UNITY_END();
 }

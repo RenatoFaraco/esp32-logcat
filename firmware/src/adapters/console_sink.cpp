@@ -27,8 +27,11 @@ bool ConsoleSink::write(const char* line, size_t length) {
     // Whole line or nothing, and only when it fits: uart_write_bytes() busy-waits on a full ring
     // without ever sleeping, and was seen stuck there for good, starving the IDLE task (#28).
     size_t free_size = 0;
+    // Twice the line: the driver's figure adds the two free segments of its ring, and a write
+    // needs one contiguous segment. With twice the room, one of the two always holds it.
+    const size_t aligned = (length + 1 + 3) & ~size_t{3};
     if (length == 0 || length > kMaxLineLength ||
-        uart_get_tx_buffer_free_size(port, &free_size) != ESP_OK || free_size < length + 1) {
+        uart_get_tx_buffer_free_size(port, &free_size) != ESP_OK || free_size < 2 * aligned) {
         return false;
     }
     // One write per line, with the CRLF of a terminal. Going through stdout would queue every

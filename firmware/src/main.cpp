@@ -72,10 +72,11 @@ extern "C" void app_main(void) {
     } else {
         ESP_LOGE(TAG, "usb_serial_jtag driver install failed: logs only on the console");
     }
-    if (console_sink.begin() != ESP_OK) {
+    if (console_sink.begin() == ESP_OK) {
+        writer.add_sink(uart_mirror);
+    } else {
         ESP_LOGE(TAG, "uart driver install failed: no console mirror");
     }
-    writer.add_sink(uart_mirror);
     writer.add_sink(ram_tail);
     log_queue.begin();
     reply_queue.begin();

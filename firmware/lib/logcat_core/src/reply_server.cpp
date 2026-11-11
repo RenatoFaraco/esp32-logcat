@@ -20,7 +20,7 @@ void ReplyServer::count_failure() {
 void ReplyServer::send_timeout(const char* id) {
     const size_t length = format_reply_error(id, "timeout", "host not reading", line_);
     if (length != 0) {
-        output_.write_reply(line_, length);
+        output_.try_write_reply(line_, length);
     }
 }
 
