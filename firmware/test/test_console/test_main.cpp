@@ -50,7 +50,7 @@ public:
     }
     void fill_stats(ReplyFields& fields) override {
         for (int i = 0; i < stat_fields; ++i) {
-            char key[16];
+            char key[32];
             std::snprintf(key, sizeof(key), "counter_%02d", i);
             fields.add_uint(key, 4000000000u);
         }
@@ -314,7 +314,7 @@ void test_log_level_none_silences() {
 void test_log_level_with_a_full_table_is_an_error_and_leaves_the_platform_alone() {
     Rig rig;
     for (size_t i = 0; i < TagLevelFilter::capacity(); ++i) {
-        char tag[8];
+        char tag[32];
         std::snprintf(tag, sizeof(tag), "T%zu", i);
         TEST_ASSERT_TRUE(rig.filter.set(tag, LogLevel::Debug));
     }
@@ -453,7 +453,7 @@ void test_queue_full_midway_stops_the_lines_and_tries_a_timeout_terminator() {
         void fill_info(ReplyFields&) override {}
         void fill_stats(ReplyFields& fields) override {
             for (int i = 0; i < 30; ++i) {
-                char key[16];
+                char key[32];
                 std::snprintf(key, sizeof(key), "counter_%02d", i);
                 fields.add_uint(key, 4000000000u);
             }
