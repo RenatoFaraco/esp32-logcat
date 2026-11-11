@@ -310,8 +310,48 @@ void test_queue_report_comes_before_sink_reports() {
     TEST_ASSERT_TRUE(usb.parsed(2).seq == usb.parsed(1).seq + 1);
 }
 
+void test_refused_total_is_cumulative_and_survives_the_report() {
+    Sequencer sequencer;
+    FakeClock clock;
+    Writer writer(sequencer, clock);
+    FakeSink usb("usb");
+    writer.add_sink(usb);
+    TEST_ASSERT_EQUAL_size_t(1, writer.sink_count());
+    TEST_ASSERT_EQUAL_STRING("usb", writer.sink_name(0));
+    TEST_ASSERT_NULL(writer.sink_name(1));
+    TEST_ASSERT_EQUAL_UINT32(0, writer.refused_total(1));
+
+    usb.refusing = true;
+    writer.write(make_record(0, "a"));
+    writer.write(make_record(1, "b"));
+    TEST_ASSERT_EQUAL_UINT32(2, writer.refused_total(0));
+    usb.refusing = false;
+    writer.write(make_record(2, "c"));
+    writer.idle();  // the report zeroes unsent, not the total
+    TEST_ASSERT_EQUAL_UINT32(0, writer.unsent(0));
+    TEST_ASSERT_EQUAL_UINT32(2, writer.refused_total(0));
+}
+
+void test_a_refused_report_counts_once_in_the_total() {
+    Sequencer sequencer;
+    FakeClock clock;
+    Writer writer(sequencer, clock);
+    FakeSink usb("usb");
+    writer.add_sink(usb);
+    usb.refusing = true;
+    writer.write(make_record(0, "a"));
+    usb.refusing = false;
+    writer.write(make_record(1, "b"));
+    usb.refusing = true;  // the report itself is refused: +1 line, not + the count it explained
+    writer.idle();
+    TEST_ASSERT_EQUAL_UINT32(2, writer.unsent(0));         // the line and the report
+    TEST_ASSERT_EQUAL_UINT32(2, writer.refused_total(0));  // "a" and the report, each once
+}
+
 int main() {
     UNITY_BEGIN();
+    RUN_TEST(test_refused_total_is_cumulative_and_survives_the_report);
+    RUN_TEST(test_a_refused_report_counts_once_in_the_total);
     RUN_TEST(test_write_formats_once_and_reaches_every_sink);
     RUN_TEST(test_idle_without_losses_writes_nothing);
     RUN_TEST(test_queue_drops_are_reported_with_their_own_seq);
