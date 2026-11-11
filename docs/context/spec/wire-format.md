@@ -60,9 +60,10 @@ Versão do protocolo: `proto=1`. Decisão e alternativas: ADR-012.
 - **Palavras:** separadas por um ou mais espaços; espaços em volta da linha são ignorados.
   Comandos em minúsculas, exatos (sem abreviação).
 - **Fim de linha:** `\n`, `\r\n` ou `\r` (o que um terminal serial manda), ou nenhum. O
-  host manda `\n`.
-- **Tamanho:** até 64 bytes antes do fim de linha, só `0x20`–`0x7E`.
-- Linha só com espaços: ignorada, sem resposta.
+  host manda `\n`; o dispositivo aceita os três.
+- **Tamanho:** até 64 bytes antes do fim de linha, contando os espaços em volta; só
+  `0x20`–`0x7E`.
+- Linha vazia ou só com espaços, de qualquer tamanho: ignorada, sem resposta.
 
 | Comando | Argumentos | O que pede |
 |---------|------------|------------|
@@ -74,6 +75,10 @@ Versão do protocolo: `proto=1`. Decisão e alternativas: ADR-012.
 | `log clear` | — | apaga os logs gravados na flash |
 | `reboot` | — | reinicia o dispositivo |
 | `crash <panic\|wdt>` | `panic` ou `wdt` | provoca um crash, para testar a recuperação |
+
+A `tag` do `log level` é comparada com o texto que o código passou ao log (os 15 primeiros
+caracteres), não com o que a linha mostra: na §1, espaço e `:` da tag saem como `_`. Não há
+tradução: `a_b` só casa com uma tag que tem `_`, e `**` ou `*a` são tags, não o padrão.
 
 Pedido rejeitado (a resposta é só o terminador de erro, §2.2):
 
@@ -103,7 +108,7 @@ Zero ou mais linhas de dados e **exatamente um** terminador:
 | valor | 1 ou mais bytes de `0x21`–`0x7E`; o primeiro `=` separa chave e valor |
 | separador | um espaço, nunca dois nem TAB, entre os elementos acima e entre os campos; nada de espaço depois do último campo de uma linha de dados, nem depois do código quando não há texto |
 | código | `[a-z_]{1,32}`, menos `ok`. Na v1: `bad_command`, `bad_args`, `full`, `busy`, `timeout`, `unsupported`, `failed` |
-| texto | opcional, `0x20`–`0x7E`, começa por um caractere que não é espaço; pode ter espaços internos e finais; só para pessoas |
+| texto | opcional, `0x20`–`0x7E`, começa por um caractere que não é espaço; pode ter espaços internos e finais; só para pessoas. O dispositivo nunca perde o terminador por causa do texto: tira os espaços iniciais, troca byte fora da faixa por `?` e corta no limite da linha |
 | fim de linha | `\n` puro: sem `\n` final, ou com `\r`, a linha é raw |
 | tamanho máximo | 170 bytes com o `\n` (resposta maior: várias linhas de dados) |
 | campo desconhecido | omitido, nunca `0` |
@@ -153,6 +158,9 @@ Respostas que carregam linhas de log inteiras (`log tail`, `log dump`):
 - Com um bloco aberto, nenhuma linha de log vai para a USB (as puladas são contadas como
   `not_sent.usb`).
 - O terminador vem depois do `#END`. Um `#!` no meio do bloco o encerra sem `#END`.
+- **Mais de um bloco** (`log dump` com vários arquivos): zero ou mais blocos, um depois do
+  outro, e um único terminador no fim. Sem nada para mandar, a resposta é só `#. <id> ok`. Um
+  bloco fechado por um `#END` conferido continua válido mesmo que a resposta termine em `#!`.
 - Bloco incompleto (sem bytes por **2 s**, porta caiu, `#!` no meio, CRC que não confere): o
   host descarta o bloco inteiro; nada vai para o disco antes do `#END` conferido.
 

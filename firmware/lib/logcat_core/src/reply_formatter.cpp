@@ -11,6 +11,10 @@ constexpr size_t kMaxKeyLength = 32;
 constexpr size_t kMaxCodeLength = 32;
 constexpr size_t kMaxNameLength = 64;
 constexpr size_t kMaxBody = kMaxLineLength - 1;  // bytes before the final '\n'
+// The fixed parts are written without a length check: these keep that safe.
+static_assert(3 + kMaxIdLength + 1 + kMaxCodeLength + 1 < kMaxBody,
+              "\"#! <id> <code> \" must leave room for the text");
+static_assert(7 + kMaxIdLength + 1 + kMaxNameLength + 1 + 10 <= kMaxBody, "#BEGIN always fits");
 
 constexpr bool is_lower(char c) {
     return c >= 'a' && c <= 'z';
@@ -266,19 +270,15 @@ size_t format_reply_error(const char* id, const char* code, const char* text,
     }
     *cursor++ = ' ';
     cursor = put(cursor, code, code_size);
+    // The text never costs the reply its terminator: it is made to fit the rules instead.
+    while (text != nullptr && *text == ' ') {
+        ++text;
+    }
     if (text != nullptr && text[0] != '\0') {
-        if (text[0] == ' ') {
-            out[0] = '\0';
-            return 0;
-        }
         *cursor++ = ' ';
         const char* const limit = out + kMaxBody;
         for (size_t i = 0; text[i] != '\0' && cursor < limit; ++i) {
-            if (text[i] < 0x20 || text[i] > 0x7E) {
-                out[0] = '\0';
-                return 0;
-            }
-            *cursor++ = text[i];
+            *cursor++ = (text[i] >= 0x20 && text[i] <= 0x7E) ? text[i] : '?';
         }
     }
     return end_line(out, cursor);

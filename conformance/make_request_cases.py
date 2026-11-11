@@ -8,7 +8,9 @@ firmware (ADR-011) will read it too. The host only writes requests, so the Pytho
 checks that the committed file is what this script writes.
 
 TSV columns: name, status, line_hex, id, kind, tag, level
-- status: ok, empty (nothing to answer), bad_id, bad_command, bad_args
+- status: ok, empty (nothing to answer), bad_id, bad_command, bad_args. "bad_id" is the
+          parser's name for "the first word is not an id"; on the wire it is answered with the
+          code bad_args and the id "-", like a damaged line (wire-format 2.1).
 - id:     the id to echo in the reply: the request's own, or "-" when it had no usable id
           (bad_id, a control byte, an overlong line). Empty column for status "empty".
 - kind:   info, stats, log_dump, log_tail, log_clear, log_level, reboot, crash_panic, crash_wdt
@@ -57,6 +59,10 @@ CASES = [
     bad("id_letters", "bad_id", b"x7 info\n"),
     bad("id_missing", "bad_id", b"info\n"),  # the first word is always the id
     bad("id_plus", "bad_id", b"+7 info\n"),
+    bad("id_digit_then_letter", "bad_id", b"7x info\n"),
+    bad("id_letter_inside", "bad_id", b"12a4 info\n"),
+    bad("id_exponent", "bad_id", b"1e3 info\n"),
+    ok("id_manual_with_arguments", b"- log level * W\n", "-", "log_level", "*", "W"),
     # ---------------------------------------------------------------- line endings and spaces
     ok("ending_crlf", b"7 info\r\n", "7", "info"),
     ok("ending_cr", b"7 info\r", "7", "info"),
@@ -75,7 +81,16 @@ CASES = [
     bad("del_byte", "bad_args", b"7 info\x7f\n"),
     bad("non_ascii", "bad_args", b"7 inf\xc3\xb3\n"),
     ok("longest_line", LONGEST + b"\n", "9999", "log_level", "t" * 15, "N"),
+    ok("longest_line_crlf", LONGEST + b"\r\n", "9999", "log_level", "t" * 15, "N"),
     bad("overlong_line", "bad_args", LONGEST[:-2] + b"t N\n"),
+    bad("overlong_line_crlf", "bad_args", LONGEST[:-2] + b"t N\r\n"),
+    # Spaces around the request count for the limit; the line ending does not.
+    ok("limit_with_spaces", b"7 info".ljust(MAX_REQUEST) + b"\n", "7", "info"),
+    bad("over_limit_with_spaces", "bad_args", b"7 info".ljust(MAX_REQUEST + 1) + b"\n"),
+    bad("blank_overlong", "empty", b" " * (MAX_REQUEST + 6) + b"\n"),  # blank wins: no reply
+    bad("cr_in_the_middle", "bad_args", b"7 in\rfo\n"),
+    bad("ending_two_crs", "bad_args", b"7 info\r\r"),
+    ok("crash_panic_crlf", b"7 crash panic\r\n", "7", "crash_panic"),
     # ---------------------------------------------------------------- unknown commands
     bad("only_id", "bad_command", b"7\n", "7"),
     bad("unknown_command", "bad_command", b"7 help\n", "7"),
@@ -85,6 +100,11 @@ CASES = [
     bad("command_with_suffix", "bad_command", b"7 infos\n", "7"),
     bad("log_unknown_subcommand", "bad_command", b"7 log grep\n", "7"),
     bad("log_uppercase_subcommand", "bad_command", b"7 log DUMP\n", "7"),
+    bad("log_uppercase", "bad_command", b"7 LOG dump\n", "7"),
+    bad("log_level_uppercase", "bad_command", b"7 log LEVEL APP D\n", "7"),
+    bad("unknown_with_arguments", "bad_command", b"7 help me\n", "7"),
+    bad("log_unknown_with_arguments", "bad_command", b"7 log grep x\n", "7"),
+    bad("many_unknown_words", "bad_command", b"7 " + b" ".join([b"a"] * 31) + b"\n", "7"),
     # ---------------------------------------------------------------- wrong arguments
     bad("info_extra", "bad_args", b"7 info now\n", "7"),
     bad("stats_extra", "bad_args", b"7 stats 1\n", "7"),
@@ -97,6 +117,7 @@ CASES = [
     bad("crash_unknown", "bad_args", b"7 crash now\n", "7"),
     bad("crash_uppercase", "bad_args", b"7 crash PANIC\n", "7"),
     bad("crash_extra", "bad_args", b"7 crash panic now\n", "7"),
+    bad("info_many_extra", "bad_args", b"7 info a b c d e f g\n", "7"),
     # ---------------------------------------------------------------- log level
     ok("level_error", b"7 log level APP E\n", "7", "log_level", "APP", "E"),
     ok("level_warn", b"7 log level APP W\n", "7", "log_level", "APP", "W"),
@@ -115,6 +136,21 @@ CASES = [
     ),
     ok("level_tag_punctuation", b"7 log level a:b/c D\n", "7", "log_level", "a:b/c", "D"),
     ok("level_tag_one_char", b"7 log level x D\n", "7", "log_level", "x", "D"),
+    # The tag is compared with what the code passed to the log, not with what the line shows
+    # (there, space and ':' print as '_'): no translation here.
+    ok("level_tag_underscore", b"7 log level a_b D\n", "7", "log_level", "a_b", "D"),
+    ok("level_tag_dash", b"7 log level - D\n", "7", "log_level", "-", "D"),
+    ok("level_tag_two_stars", b"7 log level ** D\n", "7", "log_level", "**", "D"),  # a tag
+    ok("level_tag_star_prefix", b"7 log level *a D\n", "7", "log_level", "*a", "D"),
+    ok(
+        "level_tag_cut_at_punctuation",
+        b"7 log level 0123456789abcd:xyz D\n",
+        "7",
+        "log_level",
+        "0123456789abcd:",
+        "D",
+    ),
+    bad("level_many_extra", "bad_args", b"7 log level APP D a b c\n", "7"),
     bad("level_missing_both", "bad_args", b"7 log level\n", "7"),
     bad("level_missing_level", "bad_args", b"7 log level APP\n", "7"),
     bad("level_extra", "bad_args", b"7 log level APP D now\n", "7"),

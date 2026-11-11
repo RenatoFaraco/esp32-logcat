@@ -62,6 +62,15 @@ struct Command {
 // `out.kind`, `out.tag` and `out.level` are written only for Ok; `out.id` for everything but
 // Empty (see Command::id).
 //
+// For the caller (the console task):
+// - One line per call. Split the input at '\n' and '\r' before calling: two lines in one buffer
+//   are a control byte in the middle of a request (BadArgs, id "-"). "\r\n" split in two gives
+//   an empty second line, which is Empty and gets no reply.
+// - A buffer of kMaxRequestLength + 1 bytes is enough: keep at most that much of a line (the
+//   parser rejects anything over kMaxRequestLength) and discard the rest up to the line ending,
+//   so the tail of an overlong line is never parsed as a new request.
+// - On rejection `kind`, `tag` and `level` are left as they were; on Empty, `id` too.
+//
 // Preconditions: `line` points to `length` readable bytes (may be nullptr only if length is 0).
 // Pure and reentrant: no state, no heap.
 CommandStatus parse_command(const char* line, size_t length, Command& out);

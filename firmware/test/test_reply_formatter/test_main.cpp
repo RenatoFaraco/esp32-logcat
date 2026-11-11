@@ -83,6 +83,13 @@ std::string check_case(const std::vector<std::string>& f) {
     }
     const std::string& name = f[0];
     const std::string& kind = f[1];
+    const size_t columns = kind == "raw"                            ? 3
+                           : kind == "block_crc"                    ? 4
+                           : (kind == "data" || kind == "dump_end") ? 5
+                                                                    : 6;
+    if (f.size() != columns) {
+        return name + ": wrong column count";
+    }
     const std::vector<char> bytes = test_support::from_hex(f[2]);
     if (kind == "raw") {
         return "";
@@ -130,7 +137,7 @@ void test_formatter_reproduces_the_shared_reply_cases() {
     size_t built = 0;
     for (const std::vector<std::string>& row : cases.rows) {
         const std::string problem = check_case(row);
-        built += row[1] != "raw" ? 1 : 0;
+        built += row.size() > 1 && row[1] != "raw" ? 1 : 0;
         if (!problem.empty()) {
             failures += problem + "\n";
             ++failed;
@@ -157,14 +164,27 @@ void test_reply_ids() {
 
 void test_every_line_kind_refuses_a_bad_id() {
     char line[kLineBufferSize];
+    // Each call starts from a dirty buffer and must leave an empty string, never old bytes.
+    const auto dirty = [&line] { std::memset(line, 0x5A, sizeof(line)); };
     for (const char* id : {"0", "07", "10000", "", "x"}) {
+        dirty();
         ReplyData data(line, id);
+        TEST_ASSERT_EQUAL_STRING("", line);
         TEST_ASSERT_FALSE(data.add("a", "1"));
         TEST_ASSERT_EQUAL_size_t(0, data.finish());
+        TEST_ASSERT_EQUAL_STRING("", line);
+        dirty();
         TEST_ASSERT_EQUAL_size_t(0, logcat::format_reply_ok(id, line));
+        TEST_ASSERT_EQUAL_STRING("", line);
+        dirty();
         TEST_ASSERT_EQUAL_size_t(0, logcat::format_reply_error(id, "full", nullptr, line));
+        TEST_ASSERT_EQUAL_STRING("", line);
+        dirty();
         TEST_ASSERT_EQUAL_size_t(0, logcat::format_dump_begin(id, "ram", 1, line));
+        TEST_ASSERT_EQUAL_STRING("", line);
+        dirty();
         TEST_ASSERT_EQUAL_size_t(0, logcat::format_dump_end(id, 1, line));
+        TEST_ASSERT_EQUAL_STRING("", line);
     }
 }
 
@@ -283,17 +303,28 @@ void test_bad_error_codes_are_refused() {
     assert_line("#! 3 okay\n", line, logcat::format_reply_error("3", "okay", nullptr, line));
 }
 
-void test_bad_error_texts_are_refused() {
+// The terminator must arrive whatever the text is: a text taken from a driver or from the
+// request is made to fit, never a reason to send nothing.
+void test_error_text_is_made_to_fit_the_rules() {
     char line[kLineBufferSize];
-    for (const char* text :
-         {" leading space", "tab\there", "line\nbreak", "esc\x1b[2J", "caf\xc3\xa9", "del\x7f"}) {
-        TEST_ASSERT_EQUAL_size_t_MESSAGE(0, logcat::format_reply_error("3", "failed", text, line),
-                                         text);
-        TEST_ASSERT_EQUAL_STRING("", line);
+    const struct {
+        const char* text;
+        const char* expected;
+    } cases[] = {
+        {"a  b ", "#! 3 failed a  b \n"},  // spaces inside and at the end are fine
+        {"  leading spaces", "#! 3 failed leading spaces\n"},
+        {"   ", "#! 3 failed\n"},  // nothing left: no text, and no trailing space
+        {"tab\there", "#! 3 failed tab?here\n"},
+        {"line\nbreak", "#! 3 failed line?break\n"},  // never a second line
+        {"esc\x1b[2J", "#! 3 failed esc?[2J\n"},
+        {"caf\xc3\xa9", "#! 3 failed caf??\n"},
+        {"del\x7f", "#! 3 failed del?\n"},
+    };
+    for (const auto& item : cases) {
+        const size_t length = logcat::format_reply_error("3", "failed", item.text, line);
+        TEST_ASSERT_EQUAL_STRING(item.expected, line);
+        TEST_ASSERT_EQUAL_size_t(std::strlen(item.expected), length);
     }
-    assert_line(
-        "#! 3 failed a  b \n", line,
-        logcat::format_reply_error("3", "failed", "a  b ", line));  // spaces inside are fine
 }
 
 void test_error_text_is_cut_at_the_line_limit() {
@@ -353,6 +384,7 @@ void test_crc32_byte_by_byte_equals_one_call() {
         crc = logcat::crc32_update(crc, &byte, 1);
     }
     TEST_ASSERT_EQUAL_HEX32(logcat::crc32_update(0, content, sizeof(content)), crc);
+    TEST_ASSERT_EQUAL_HEX32(crc, logcat::crc32_update(crc, content, 0));  // an empty piece
 }
 
 int main() {
@@ -369,7 +401,7 @@ int main() {
     RUN_TEST(test_the_last_byte_of_room_is_usable);
     RUN_TEST(test_ok_and_error_lines);
     RUN_TEST(test_bad_error_codes_are_refused);
-    RUN_TEST(test_bad_error_texts_are_refused);
+    RUN_TEST(test_error_text_is_made_to_fit_the_rules);
     RUN_TEST(test_error_text_is_cut_at_the_line_limit);
     RUN_TEST(test_dump_markers);
     RUN_TEST(test_bad_dump_names_are_refused);

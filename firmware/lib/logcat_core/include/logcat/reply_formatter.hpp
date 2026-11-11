@@ -35,6 +35,8 @@ bool is_reply_id(const char* id);
 //   send(line, data.finish());
 //
 // A field the firmware cannot measure is left out, never sent as 0 (ADR-012 §2).
+// One ReplyData per line. After finish(), add() continues the same line and finish() closes
+// it again; start a new ReplyData for the next line.
 class ReplyData {
 public:
     ReplyData(char (&line)[kLineBufferSize], const char* id);
@@ -61,9 +63,11 @@ private:
 
 size_t format_reply_ok(const char* id, char (&out)[kLineBufferSize]);
 
-// `code`: [a-z_]{1,32}, never "ok" (success is only "#."). `text` is for people and optional
-// (nullptr or ""): printable ASCII starting with a non-space. A text that does not fit is cut
-// at the line limit: the code is what tools read, and it must arrive.
+// `code`: [a-z_]{1,32}, never "ok" (success is only "#."); a bad code returns 0. `text` is for
+// people and optional (nullptr or ""). It never costs the reply its terminator, since the code
+// is what tools read and it must arrive: leading spaces are dropped, a byte outside 0x20-0x7E
+// becomes '?' (as in a log message, ADR-006) and a text that does not fit is cut at the line
+// limit. So a driver's error name or a piece of the request can be passed as it is.
 size_t format_reply_error(const char* id, const char* code, const char* text,
                           char (&out)[kLineBufferSize]);
 
