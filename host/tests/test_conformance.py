@@ -1,5 +1,6 @@
-"""The shared wire cases: log lines (conformance/line_cases.tsv, also read by the C++ suite) and
-console replies (conformance/reply_cases.tsv, ADR-012).
+"""The shared wire cases: log lines (conformance/line_cases.tsv, also read by the C++ suite),
+console replies (conformance/reply_cases.tsv, ADR-012) and console requests
+(conformance/request_cases.tsv, read by the C++ command parser).
 
 assume_log=True: the parser's mode without heuristics, which returns exactly the firmware's
 categories (the default mode turns non-esp32-logcat input into RawLine by design).
@@ -132,3 +133,19 @@ def test_python_parser_agrees_on_replies(row):
             assert parsed == DumpEnd(id=ident, crc32=int(crc, 16)), name
         case _:
             assert isinstance(parsed, RawLine), f"{name}: {parsed!r}"
+
+
+# ------------------------------------------------------------------ console requests (#27)
+# The host only writes requests; the C++ command parser is what reads this file
+# (firmware/test/test_command_parser). Here: nobody edits the TSV by hand.
+
+REQUEST_FILE = CONFORMANCE / "request_cases.tsv"
+
+
+def test_committed_request_file_matches_the_generator():
+    spec = importlib.util.spec_from_file_location(
+        "make_request_cases", CONFORMANCE / "make_request_cases.py"
+    )
+    generator = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(generator)
+    assert REQUEST_FILE.read_bytes() == generator.render().encode("ascii")
