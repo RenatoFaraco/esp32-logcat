@@ -17,3 +17,7 @@ CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions.csv"
 # bytes with the driver's) and blocked ~50 ms per line when no host was reading. The UART0
 # console (CH340K) keeps bootloader and printf output plus a mirror of the log lines.
 CONFIG_ESP_CONSOLE_SECONDARY_NONE=y
+
+# `log level <tag> D` must be able to open a tag at run time, so D and V lines are compiled in.
+# The default level stays INFO: a D line costs one level check until someone asks for it.
+CONFIG_LOG_MAXIMUM_LEVEL_VERBOSE=y

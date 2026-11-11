@@ -13,7 +13,18 @@ bool FreeRtosLogQueue::try_send(const LogRecord& record) {
 }
 
 bool FreeRtosLogQueue::receive(LogRecord& record, TickType_t timeout) {
-    return handle_ != nullptr && xQueueReceive(handle_, &record, timeout) == pdTRUE;
+    if (handle_ == nullptr || xQueueReceive(handle_, &record, timeout) != pdTRUE) {
+        return false;
+    }
+    const uint32_t level = static_cast<uint32_t>(uxQueueMessagesWaiting(handle_)) + 1;
+    if (level > high_water_.load(std::memory_order_relaxed)) {
+        high_water_.store(level, std::memory_order_relaxed);
+    }
+    return true;
+}
+
+size_t FreeRtosLogQueue::used() const {
+    return handle_ == nullptr ? 0 : uxQueueMessagesWaiting(handle_);
 }
 
 bool FreeRtosLogQueue::empty() const {

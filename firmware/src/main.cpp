@@ -1,9 +1,11 @@
 #include <cstring>
 
 #include "adapters/console_sink.hpp"
+#include "adapters/console_task.hpp"
 #include "adapters/esp_clock.hpp"
 #include "adapters/idf_log_hook.hpp"
 #include "adapters/log_queue.hpp"
+#include "adapters/reply_queue.hpp"
 #include "adapters/usb_jtag_sink.hpp"
 #include "adapters/writer_task.hpp"
 #include "app/switchable_sink.hpp"
@@ -11,9 +13,12 @@
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "logcat/console.hpp"
 #include "logcat/line_formatter.hpp"
 #include "logcat/line_parser.hpp"
 #include "logcat/log_record.hpp"
+#include "logcat/ram_tail.hpp"
+#include "logcat/reply_server.hpp"
 #include "logcat/ring_buffer.hpp"
 #include "logcat/sequencer.hpp"
 #include "logcat/tag_level_filter.hpp"
@@ -32,6 +37,14 @@ static logcat::UsbJtagSink usb_sink;      // native USB port: the logcat stream
 static logcat::ConsoleSink console_sink;  // UART console (CH340K): mirror for monitors
 // The timing sweep turns the mirror off: the UART drains ~70 lines/s, the demo logs 1000/s.
 static app::SwitchableSink uart_mirror(console_sink);
+// The console: requests in on the native port, replies out through the writer task.
+static logcat::GatedSink usb_log(usb_sink);  // out of the log while a dump block is open
+static logcat::RamTail ram_tail;             // what `log tail` returns
+static logcat::FreeRtosReplyQueue reply_queue;
+static logcat::ReplyServer reply_server(usb_sink, usb_log, ram_tail);
+static logcat::EspConsolePlatform console_platform(reply_queue, log_queue, writer, reply_server,
+                                                   ram_tail);
+static logcat::Console console(console_platform, tag_filter);
 
 // Continuous output to follow in `esp-logcat stream`. Also shows the hook's cost in the caller
 // (capture + enqueue) and the stack left in this task and in the writer task.
@@ -45,23 +58,28 @@ static void heartbeat_task(void*) {
                  static_cast<unsigned long>(stats.max_cycles),
                  static_cast<unsigned>(uxTaskGetStackHighWaterMark(nullptr)),
                  static_cast<unsigned>(uxTaskGetStackHighWaterMark(logcat::writer_task_handle())));
+        ESP_LOGD("HEARTBEAT", "debug detail of tick %lu: shown after `log level HEARTBEAT D`",
+                 static_cast<unsigned long>(tick));
     }
 }
 
 extern "C" void app_main(void) {
     // Sinks, writer task, then the hook: from there on every ESP_LOGx goes through the core.
     // Anything logged before (the driver install below) keeps the ESP-IDF format, on UART.
-    if (usb_sink.begin() == ESP_OK) {
-        writer.add_sink(usb_sink);
+    const bool usb_ready = usb_sink.begin() == ESP_OK;
+    if (usb_ready) {
+        writer.add_sink(usb_log);
     } else {
         ESP_LOGE(TAG, "usb_serial_jtag driver install failed: logs only on the console");
     }
     if (console_sink.begin() != ESP_OK) {
-        ESP_LOGE(TAG, "uart driver install failed: console mirror busy-waits on the FIFO");
+        ESP_LOGE(TAG, "uart driver install failed: no console mirror");
     }
     writer.add_sink(uart_mirror);
+    writer.add_sink(ram_tail);
     log_queue.begin();
-    if (logcat::start_writer_task(writer, log_queue) == nullptr) {
+    reply_queue.begin();
+    if (logcat::start_writer_task(writer, log_queue, reply_server, reply_queue) == nullptr) {
         ESP_LOGE(TAG, "writer task not created: logs stay in the ESP-IDF format");
         return;
     }
@@ -96,11 +114,16 @@ extern "C" void app_main(void) {
     ESP_LOGI(TAG, "parse_line on the device: %s, ring buffer %u/%u", logcat::to_string(status),
              static_cast<unsigned>(recent.size()), static_cast<unsigned>(recent.capacity()));
 
-    // Burst: 100 lines in a few ms, faster than the writer drains them (the console mirror
-    // alone takes ~15 ms per line). The 32-deep queue fills, the rest is dropped and counted,
+    // Burst: 100 lines in a few ms, faster than the writer task gets to run (same priority as
+    // this one). The 32-deep queue fills, the rest is dropped and counted,
     // and the writer reports "dropped N lines: log queue full"; the host shows the gap (#11).
     for (int i = 1; i <= 100; ++i) {
         ESP_LOGI("BURST", "line %d of 100", i);
+    }
+
+    // Last of all: the console is the only writer of tag_filter from here on.
+    if (usb_ready && logcat::start_console_task(console) == nullptr) {
+        ESP_LOGE(TAG, "console task not created");
     }
 
     if (xTaskCreate(heartbeat_task, "heartbeat", 3072, nullptr, 1, nullptr) != pdPASS) {

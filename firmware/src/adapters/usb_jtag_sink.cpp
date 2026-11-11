@@ -1,6 +1,7 @@
 #include "adapters/usb_jtag_sink.hpp"
 
 #include "driver/usb_serial_jtag.h"
+#include "freertos/FreeRTOS.h"
 #include "sdkconfig.h"
 
 #if !defined(CONFIG_ESP_CONSOLE_SECONDARY_NONE)
@@ -23,6 +24,12 @@ bool UsbJtagSink::write(const char* line, size_t length) {
     // Zero ticks: the driver's TX mutex and ring buffer are tried once. Partial writes cannot
     // happen with a byte ring buffer, but anything short of the whole line counts as refused.
     const int written = usb_serial_jtag_write_bytes(line, length, 0);
+    return written == static_cast<int>(length);
+}
+
+bool UsbJtagSink::write_reply(const char* line, size_t length) {
+    constexpr TickType_t kReplyWait = pdMS_TO_TICKS(50);
+    const int written = usb_serial_jtag_write_bytes(line, length, kReplyWait);
     return written == static_cast<int>(length);
 }
 
