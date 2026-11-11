@@ -47,6 +47,7 @@ machine, no environment yet or no firmware on the board: section 1.
 5. [The board's two ports](#5-the-boards-two-ports)
 6. [Troubleshooting](#6-troubleshooting)
 7. [Quick reference](#7-quick-reference)
+8. [Console commands](#8-console-commands)
 
 ---
 
@@ -518,8 +519,169 @@ esp-logcat tui [options] [TAG:L ...]    interactive interface (section 3.11):
 esp-logcat --version
 ```
 
-Not implemented yet: `dump` and `shell`
-(milestone M5).
+Not implemented yet: `dump` and `shell` (milestone M5). The commands the board understands are
+in [section 8](#8-console-commands).
+
+---
+
+## 8. Console commands
+
+The board takes commands on the **native port** (the same one as `stream`). Each request is one
+line, `<id> <command> [arguments]`, and every reply line repeats the id. When typing by hand, use
+`-` as the id. The exact contract is in `docs/context/spec/wire-format.md` sections 2 and 3.
+
+### 8.1 Sending a command
+
+`esp-logcat shell` does not exist yet (#30). Until then, in PowerShell (in cmd, type `powershell`
+first), replace `COM6` with your native port and `- info` with the command:
+
+```powershell
+$p = [System.IO.Ports.SerialPort]::new("COM6", 115200)
+$p.NewLine = "`n"; $p.ReadTimeout = 2000; $p.Open()
+$p.WriteLine("- info")
+do { $l = $p.ReadLine(); if ($l -match '^#') { $l } } until ($l -match '^#[.!] ')
+$p.Close()
+```
+
+Opening the port this way does not reset the board. Windows allows one program per port at a
+time: close `esp-logcat stream` first. Log lines arriving in between are skipped by `-match '^#'`.
+
+### 8.2 Reading the reply
+
+| Line | What it is |
+|------|------------|
+| `#> <id> key=value ...` | data; there may be more than one |
+| `#. <id> ok` | end, success |
+| `#! <id> <code> <text>` | end, failure |
+| `#BEGIN <id> ram <bytes>` … `#END <id> <crc32>` | a block holding whole log lines |
+
+Every reply ends in exactly one `#.` or `#!` (except `crash`, which does not reply).
+
+### 8.3 Each command, with real output
+
+The output below was captured on the board.
+
+**`info`**: who the board is.
+
+```
+> 1 info
+#> 1 fw=v0.2.0-56-gcbb9213 proto=1 chip=esp32c3 idf=6.1.0 uptime_ms=10413 reset=USB
+#. 1 ok
+```
+
+| Field | Meaning |
+|-------|---------|
+| `fw` | firmware version (`git describe` at build time) |
+| `proto` | console protocol version |
+| `chip` | the chip |
+| `idf` | ESP-IDF version |
+| `uptime_ms` | time since boot, in ms |
+| `reset` | why it restarted: `POWERON` (power-up), `USB` (reset over USB), `EXT` (EN pin), `SW` (`reboot`), `PANIC` (crash), `INT_WDT`, `TASK_WDT` or `WDT` (watchdogs), `BROWNOUT` (low voltage), `DEEPSLEEP`, `SDIO`, `JTAG` |
+
+A field the board cannot measure is left out: it never comes as `0`. The boot counter (`boot`)
+arrives with persistence (M4).
+
+**`stats`**: the logging engine's counters. Read-only: it clears nothing.
+
+```
+> 2 stats
+#> 2 dropped=42 queue=0/32 queue_max=32 capture_cycles=17578/32460 writer_stack_free=3084 console_stack_free=3044 not_sent.usb=57 not_sent.console=40 not_sent.ram=0
+#> 2 tail_skipped=0 reply_failed=0
+#. 2 ok
+```
+
+| Field | Meaning |
+|-------|---------|
+| `dropped` | lines refused because the queue was full, since boot |
+| `queue` | lines in the queue now / capacity |
+| `queue_max` | the most the queue has held since boot |
+| `capture_cycles` | cost of logging to whoever logs, in CPU cycles: last / maximum |
+| `writer_stack_free`, `console_stack_free` | smallest stack headroom seen in each task, in bytes |
+| `not_sent.<output>` | lines that output refused since boot (`usb`, `console` = UART mirror, `ram`) |
+| `tail_skipped` | lines left out of `log tail` because a block was being sent |
+| `reply_failed` | replies or reply lines that could not go out |
+
+Counters only go up; for a rate, read twice and subtract.
+
+**`log level <tag> <level>`**: changes a tag's level while the board runs. Levels: `E`, `W`, `I`,
+`D`, `V`, or `N` to silence it. The tag `*` changes the default level.
+
+```
+> 5 log level HEARTBEAT D
+#. 5 ok
+```
+
+After that, the `D` lines of that tag show up in `stream`:
+
+```
+0000:000120 0000011030 D HEARTBEAT: debug detail of tick 11: shown after `log level HEARTBEAT D`
+```
+
+The board keeps up to 16 tags. The 17th is an error, and those already in the table can still
+change:
+
+```
+> 113 log level TAG13 W
+#! 113 full tag table full (16 tags)
+```
+
+The level does not survive a restart. The tag is compared with the name used in the code, not
+with what the line shows: in the log, a space or `:` in a tag appears as `_`.
+
+**`log tail`**: the last 32 lines kept in RAM, as a block.
+
+```
+> 8 log tail
+#BEGIN 8 ram 1504
+0000:000662 0000021299 I LOAD: tick 884 line 0
+... (32 lines, 1504 bytes in total)
+0000:000693 0000021610 I LOAD: tick 915 line 0
+#END 8 4cf3e184
+#. 8 ok
+```
+
+`1504` is the exact size of the content and `4cf3e184` its CRC-32. While the block goes out, the
+live log stays off the USB. After a block under load you may see
+`W LOGCAT: N lines not sent to usb: no reader`: those are the lines of that interval.
+
+**`log dump`** and **`log clear`**: work on the logs in flash, which arrive in M4. For now:
+
+```
+> 10 log dump
+#! 10 unsupported needs flash storage (M4)
+```
+
+**`reboot`**: replies and restarts. The next `info` shows `reset=SW`.
+
+```
+> 20 reboot
+#. 20 ok
+```
+
+**`crash panic`** and **`crash wdt`**: bring the board down on purpose, to test recovery. They do
+not reply. After the restart, `info` shows `reset=PANIC` or `reset=INT_WDT`:
+
+```
+> 21 crash panic
+(the board restarts)
+> 900 info
+#> 900 fw=v0.2.0-56-gcbb9213 proto=1 chip=esp32c3 idf=6.1.0 uptime_ms=1814 reset=PANIC
+#. 900 ok
+```
+
+### 8.4 Errors
+
+| Code | When | Example |
+|------|------|--------------|
+| `bad_command` | unknown command | `#! 12 bad_command try: info stats log reboot crash` |
+| `bad_args` | missing, extra or invalid argument | `#! 13 bad_args wrong arguments` |
+| `bad_args` with id `-` | the first word is not an id (`info` with no id, `07 info`) | `#! - bad_args the first word is the id: 1-9999 or -` |
+| `bad_args` with id `-` | a line over 64 bytes, or with a control byte | `#! - bad_args wrong arguments` |
+| `full` | tag table full | `#! 113 full tag table full (16 tags)` |
+| `unsupported` | this firmware does not do that yet | `#! 10 unsupported needs flash storage (M4)` |
+| `timeout` | the reply could not go out in time | `#! 7 timeout host not reading` |
+
+A blank line gets no reply. Commands are lowercase with no abbreviations; levels are uppercase.
 
 ---
 

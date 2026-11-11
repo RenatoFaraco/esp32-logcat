@@ -59,8 +59,8 @@ Versão do protocolo: `proto=1`. Decisão e alternativas: ADR-012.
   (§2.3); aceita no máximo um pedido `-` pendente por vez.
 - **Palavras:** separadas por um ou mais espaços; espaços em volta da linha são ignorados.
   Comandos em minúsculas, exatos (sem abreviação).
-- **Fim de linha:** `\n`, `\r\n` ou `\r` (o que um terminal serial manda), ou nenhum. O
-  host manda `\n`; o dispositivo aceita os três.
+- **Fim de linha:** `\n`, `\r\n` ou `\r` (o que um terminal serial manda). O host manda `\n`;
+  o dispositivo aceita os três e só executa a linha quando ela termina.
 - **Tamanho:** até 64 bytes antes do fim de linha, contando os espaços em volta; só
   `0x20`–`0x7E`.
 - Linha vazia ou só com espaços, de qualquer tamanho: ignorada, sem resposta.
@@ -134,6 +134,31 @@ Zero ou mais linhas de dados e **exatamente um** terminador:
 - Entre linhas de resposta podem chegar linhas de log (fora de um bloco); o id é o que separa.
   O host não deduz ordem entre resposta e log.
 
+### 2.4 Campos de `info` e `stats`
+
+Todos opcionais (campo desconhecido é omitido). `stats` só lê.
+
+| Comando | Chave | Valor |
+|---------|-------|-------|
+| `info` | `fw` | versão do firmware |
+| | `proto` | versão do protocolo |
+| | `chip` | alvo do ESP-IDF, ex.: `esp32c3` |
+| | `idf` | versão do ESP-IDF |
+| | `uptime_ms` | ms desde o boot |
+| | `reset` | motivo do último reset: `POWERON`, `EXT`, `SW`, `PANIC`, `INT_WDT`, `TASK_WDT`, `WDT`, `DEEPSLEEP`, `BROWNOUT`, `SDIO`, `USB`, `JTAG` |
+| | `boot` | contador de boots (vem com a #25) |
+| `stats` | `dropped` | linhas recusadas pela fila cheia; acumulado |
+| | `queue` | `<usadas>/<capacidade>`; instantâneo |
+| | `queue_max` | maior ocupação da fila; acumulado |
+| | `capture_cycles` | `<último>/<máximo>`, custo do hook em ciclos |
+| | `writer_stack_free`, `console_stack_free` | menor folga de stack, em bytes |
+| | `not_sent.<saída>` | linhas recusadas por aquela saída; acumulado (inclui as puladas durante um bloco) |
+| | `tail_skipped` | linhas fora do tail por causa de um bloco; acumulado |
+| | `reply_failed` | linhas de resposta que não saíram; acumulado |
+
+Acumulado quer dizer desde o boot, sem comando para zerar: a taxa vem de duas leituras. Os
+valores são `uint32`, e dão a volta em 2^32.
+
 ## 3. Bloco de dump
 
 Respostas que carregam linhas de log inteiras (`log tail`, `log dump`):
@@ -157,7 +182,9 @@ Respostas que carregam linhas de log inteiras (`log tail`, `log dump`):
   conteúdo. As linhas do conteúdo passam pelo parser da §1.
 - Com um bloco aberto, nenhuma linha de log vai para a USB (as puladas são contadas como
   `not_sent.usb`).
-- O terminador vem depois do `#END`. Um `#!` no meio do bloco o encerra sem `#END`.
+- O terminador vem depois do `#END`. Um `#!` no meio do bloco o encerra sem `#END`. Como o
+  host lê por contagem, esse `#!` e o que vier depois entram na contagem: ele só percebe quando
+  a linha seguinte aos `<bytes>` não é o `#END`, e aí descarta o bloco.
 - **Mais de um bloco** (`log dump` com vários arquivos): zero ou mais blocos, um depois do
   outro, e um único terminador no fim. Sem nada para mandar, a resposta é só `#. <id> ok`. Um
   bloco fechado por um `#END` conferido continua válido mesmo que a resposta termine em `#!`.

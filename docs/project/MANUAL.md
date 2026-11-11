@@ -47,6 +47,7 @@ máquina, sem o ambiente criado ou sem firmware gravado: seção 1.
 5. [As duas portas da placa](#5-as-duas-portas-da-placa)
 6. [Solução de problemas](#6-solução-de-problemas)
 7. [Referência rápida](#7-referência-rápida)
+8. [Comandos do console](#8-comandos-do-console)
 
 ---
 
@@ -517,8 +518,169 @@ esp-logcat tui [opções] [TAG:L ...]     interface interativa (seção 3.11):
 esp-logcat --version
 ```
 
-Ainda não implementados: `dump` e `shell`
-(marco M5).
+Ainda não implementados: `dump` e `shell` (marco M5). Os comandos que a placa entende estão
+na [seção 8](#8-comandos-do-console).
+
+---
+
+## 8. Comandos do console
+
+A placa aceita comandos pela **porta nativa** (a mesma do `stream`). Cada pedido é uma linha,
+`<id> <comando> [argumentos]`, e toda linha da resposta repete o id. Digitando à mão, use `-`
+como id. O contrato exato está em `docs/context/spec/wire-format.md` §2 e §3.
+
+### 8.1 Como mandar um comando
+
+O `esp-logcat shell` ainda não existe (#30). Até lá, no PowerShell (no cmd, digite `powershell`
+antes), troque `COM6` pela sua porta nativa e `- info` pelo comando:
+
+```powershell
+$p = [System.IO.Ports.SerialPort]::new("COM6", 115200)
+$p.NewLine = "`n"; $p.ReadTimeout = 2000; $p.Open()
+$p.WriteLine("- info")
+do { $l = $p.ReadLine(); if ($l -match '^#') { $l } } until ($l -match '^#[.!] ')
+$p.Close()
+```
+
+Abrir a porta assim não reinicia a placa. O Windows só deixa um programa por vez na porta: feche
+o `esp-logcat stream` antes. As linhas de log que chegam no meio são ignoradas pelo `-match '^#'`.
+
+### 8.2 Como ler a resposta
+
+| Linha | O que é |
+|-------|---------|
+| `#> <id> chave=valor ...` | dados; pode haver mais de uma |
+| `#. <id> ok` | fim, deu certo |
+| `#! <id> <código> <texto>` | fim, deu errado |
+| `#BEGIN <id> ram <bytes>` … `#END <id> <crc32>` | um bloco com linhas de log inteiras |
+
+Toda resposta termina em exatamente um `#.` ou `#!` (menos `crash`, que não responde).
+
+### 8.3 Cada comando, com a saída real
+
+As saídas abaixo foram capturadas na placa.
+
+**`info`**: quem é a placa.
+
+```
+> 1 info
+#> 1 fw=v0.2.0-56-gcbb9213 proto=1 chip=esp32c3 idf=6.1.0 uptime_ms=10413 reset=USB
+#. 1 ok
+```
+
+| Campo | Significado |
+|-------|-------------|
+| `fw` | versão do firmware (`git describe` na hora do build) |
+| `proto` | versão do protocolo do console |
+| `chip` | o chip |
+| `idf` | versão do ESP-IDF |
+| `uptime_ms` | tempo desde o boot, em ms |
+| `reset` | por que reiniciou: `POWERON` (ligou), `USB` (reset pela USB), `EXT` (pino EN), `SW` (`reboot`), `PANIC` (crash), `INT_WDT`, `TASK_WDT` ou `WDT` (watchdogs), `BROWNOUT` (tensão baixa), `DEEPSLEEP`, `SDIO`, `JTAG` |
+
+Campo que a placa não sabe medir não aparece: nunca vem como `0`. O contador de boots (`boot`)
+entra com a persistência (M4).
+
+**`stats`**: os contadores do motor de log. Só lê: não zera nada.
+
+```
+> 2 stats
+#> 2 dropped=42 queue=0/32 queue_max=32 capture_cycles=17578/32460 writer_stack_free=3084 console_stack_free=3044 not_sent.usb=57 not_sent.console=40 not_sent.ram=0
+#> 2 tail_skipped=0 reply_failed=0
+#. 2 ok
+```
+
+| Campo | Significado |
+|-------|-------------|
+| `dropped` | linhas recusadas porque a fila estava cheia, desde o boot |
+| `queue` | linhas na fila agora / capacidade |
+| `queue_max` | o máximo que a fila já teve desde o boot |
+| `capture_cycles` | custo de logar para quem loga, em ciclos de CPU: último / máximo |
+| `writer_stack_free`, `console_stack_free` | menor folga de stack já vista em cada tarefa, em bytes |
+| `not_sent.<saída>` | linhas que aquela saída recusou desde o boot (`usb`, `console` = espelho UART, `ram`) |
+| `tail_skipped` | linhas que não entraram no `log tail` porque um bloco estava sendo enviado |
+| `reply_failed` | respostas ou linhas de resposta que não conseguiram sair |
+
+Os contadores só sobem; para ter uma taxa, leia duas vezes e subtraia.
+
+**`log level <tag> <nível>`**: muda o nível de uma tag com a placa rodando. Níveis: `E`, `W`, `I`,
+`D`, `V`, ou `N` para silenciar. A tag `*` muda o nível padrão.
+
+```
+> 5 log level HEARTBEAT D
+#. 5 ok
+```
+
+Depois disso as linhas `D` dessa tag aparecem no `stream`:
+
+```
+0000:000120 0000011030 D HEARTBEAT: debug detail of tick 11: shown after `log level HEARTBEAT D`
+```
+
+A placa guarda até 16 tags. A 17ª dá erro, e as que já estão na tabela continuam mudando:
+
+```
+> 113 log level TAG13 W
+#! 113 full tag table full (16 tags)
+```
+
+O nível não sobrevive a um reinício. A tag é comparada com o nome usado no código, não com o
+que a linha mostra: no log, espaço e `:` da tag aparecem como `_`.
+
+**`log tail`**: as últimas 32 linhas guardadas em RAM, num bloco.
+
+```
+> 8 log tail
+#BEGIN 8 ram 1504
+0000:000662 0000021299 I LOAD: tick 884 line 0
+... (32 linhas, 1504 bytes no total)
+0000:000693 0000021610 I LOAD: tick 915 line 0
+#END 8 4cf3e184
+#. 8 ok
+```
+
+`1504` é o tamanho exato do conteúdo, e `4cf3e184` é o CRC-32 dele. Enquanto o bloco sai, o log
+ao vivo não vai para a USB. Depois de um bloco sob carga, pode aparecer
+`W LOGCAT: N lines not sent to usb: no reader`: são as linhas desse intervalo.
+
+**`log dump`** e **`log clear`**: trabalham com os logs da flash, que chegam no M4. Por enquanto:
+
+```
+> 10 log dump
+#! 10 unsupported needs flash storage (M4)
+```
+
+**`reboot`**: responde e reinicia. O `info` seguinte mostra `reset=SW`.
+
+```
+> 20 reboot
+#. 20 ok
+```
+
+**`crash panic`** e **`crash wdt`**: derrubam a placa de propósito, para testar a recuperação. Não
+respondem. Depois de reiniciar, o `info` mostra `reset=PANIC` ou `reset=INT_WDT`:
+
+```
+> 21 crash panic
+(a placa reinicia)
+> 900 info
+#> 900 fw=v0.2.0-56-gcbb9213 proto=1 chip=esp32c3 idf=6.1.0 uptime_ms=1814 reset=PANIC
+#. 900 ok
+```
+
+### 8.4 Erros
+
+| Código | Quando | Exemplo |
+|--------|--------|--------------|
+| `bad_command` | comando desconhecido | `#! 12 bad_command try: info stats log reboot crash` |
+| `bad_args` | argumento faltando, sobrando ou inválido | `#! 13 bad_args wrong arguments` |
+| `bad_args` com id `-` | a primeira palavra não é um id (`info` sem id, `07 info`) | `#! - bad_args the first word is the id: 1-9999 or -` |
+| `bad_args` com id `-` | linha com mais de 64 bytes, ou com byte de controle | `#! - bad_args wrong arguments` |
+| `full` | tabela de tags cheia | `#! 113 full tag table full (16 tags)` |
+| `unsupported` | este firmware ainda não faz isso | `#! 10 unsupported needs flash storage (M4)` |
+| `timeout` | a resposta não conseguiu sair a tempo | `#! 7 timeout host not reading` |
+
+Uma linha em branco não tem resposta. Comandos são em minúsculas e sem abreviação; os níveis
+são em maiúsculas.
 
 ---
 

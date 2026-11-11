@@ -144,6 +144,22 @@ seguida de `W LOGCAT: 39 lines not sent to usb: no reader` (o que estava no ring
 pelo `pyserial`, que limpa o buffer de entrada ao abrir). O tratamento do host continua valendo
 para firmwares antigos e para a FIFO da ROM.
 
+**8. O driver da UART espera sem dormir, e `stdout` manda um byte por vez**
+
+Visto em 10/nov (#28): sob carga, a tarefa escritora ficou presa para sempre em `uart_tx_all`,
+com o IDLE sem CPU e o watchdog reclamando a cada 5 s. Duas coisas se somam no ESP-IDF 6.1:
+- `uart_write_bytes` com o ring cheio fica num laço que **não dorme** esperando vaga;
+- `stdout` (VFS) chama o driver **byte a byte**, e cada byte vira dois itens no ring.
+
+O `ConsoleSink` agora escreve uma vez por linha, direto no driver, e só se couber; senão recusa,
+e o `Writer` conta (`not_sent.console`). A consulta `uart_get_tx_buffer_free_size` soma os dois
+trechos livres do ring, e uma escrita precisa de um só: por isso a checagem pede o dobro da linha.
+
+Efeito medido na fase com espelho UART da #13: o atraso máximo do ISR do timer caiu de
+**99 312 µs** (198 períodos perdidos) para **até 119 µs** (nenhum perdido). O caminho exato
+que segurava as interrupções não foi isolado; a medição externa é da #14. Com esse caminho,
+também apareceu 1 bloco de dump com bytes a mais em 200; depois da correção, 0 em 3491.
+
 ## Boot capturado (06/nov, reset pela USB nativa, trecho)
 
 ```
