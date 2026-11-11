@@ -56,7 +56,8 @@ conhece adaptador.
 | `RingBuffer<T, N>` | Buffer circular estático, sobrescreve o mais antigo. Sem construtor (pode viver em `RTC_NOINIT`), `is_consistent()` para validar memória que sobreviveu a reset; **não** é thread-safe |
 | `TagLevelFilter` | Nível por tag + nível padrão, tabela estática de 16 tags; `None` silencia. Um escritor (console), leitores sem lock em todo log; só load/store atômicos |
 | `RotatingStore` | Lógica de rotação: arquivo corrente, limite por arquivo e total, descarte do mais antigo — sobre a interface `FileSystem` |
-| `CommandParser` | Linha de comando do console → `Command` (enum + argumentos) |
+| `CommandParser` | Linha de pedido do console (`<id> <comando> [args]`) → `Command` (tipo, id a ecoar, tag e nível). Entende o pedido inteiro ou o rejeita (`bad_command`/`bad_args`); função pura |
+| `ReplyFormatter` | Monta as linhas de resposta (`#>`, `#.`, `#!`, `#BEGIN`, `#END`) num buffer fixo e recusa montar uma linha malformada; CRC-32 do bloco de dump (tabela de 16 entradas) |
 | `Sequencer` | Contador `seq` por boot e contador de linhas descartadas |
 
 ### 2.2 Interfaces (ports) definidas no núcleo

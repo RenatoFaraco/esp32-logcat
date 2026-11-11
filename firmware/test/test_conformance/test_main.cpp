@@ -20,77 +20,13 @@
 #include "logcat/line_parser.hpp"
 #include "logcat/log_record.hpp"
 
+#include "../support/case_file.hpp"
+
+using test_support::CaseFile;
+using test_support::from_hex;
+using test_support::is_hex;
+
 namespace {
-
-std::vector<std::string> split(const std::string& row, char separator) {
-    std::vector<std::string> out;
-    size_t start = 0;
-    for (;;) {
-        const size_t end = row.find(separator, start);
-        out.push_back(row.substr(start, end - start));
-        if (end == std::string::npos) {
-            return out;
-        }
-        start = end + 1;
-    }
-}
-
-bool is_hex(const std::string& hex) {
-    if (hex.size() % 2 != 0) {
-        return false;
-    }
-    for (char c : hex) {
-        if (!((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f'))) {
-            return false;
-        }
-    }
-    return true;
-}
-
-std::vector<char> from_hex(const std::string& hex) {
-    std::vector<char> out;
-    for (size_t i = 0; i + 1 < hex.size(); i += 2) {
-        out.push_back(static_cast<char>(std::strtol(hex.substr(i, 2).c_str(), nullptr, 16)));
-    }
-    return out;
-}
-
-struct CaseFile {
-    std::vector<std::vector<std::string>> rows;
-    long declared = -1;  // "# cases: N"
-};
-
-// `pio test` runs from the PlatformIO project directory (firmware/), in CI too.
-CaseFile load_cases() {
-    const char* candidates[] = {"../conformance/line_cases.tsv", "conformance/line_cases.tsv"};
-    FILE* file = nullptr;
-    for (const char* path : candidates) {
-        file = std::fopen(path, "rb");
-        if (file != nullptr) {
-            break;
-        }
-    }
-    CaseFile cases;
-    if (file == nullptr) {
-        return cases;
-    }
-    std::string row;
-    int c = 0;
-    while ((c = std::fgetc(file)) != EOF) {
-        if (c != '\n') {
-            row.push_back(static_cast<char>(c));
-            continue;
-        }
-        if (row.rfind("# cases: ", 0) == 0) {
-            cases.declared = std::strtol(row.c_str() + 9, nullptr, 10);
-        } else if (!row.empty() && row[0] != '#') {
-            cases.rows.push_back(split(row, '\t'));
-        }
-        row.clear();
-    }
-    std::fclose(file);
-    return cases;
-}
 
 std::string check_case(const std::vector<std::string>& f) {
     const std::string& name = f[0];
@@ -145,7 +81,7 @@ void setUp() {}
 void tearDown() {}
 
 void test_cpp_parser_and_formatter_agree_with_the_shared_cases() {
-    const CaseFile cases = load_cases();
+    const CaseFile cases = test_support::load_cases("line_cases.tsv");
     TEST_ASSERT_TRUE_MESSAGE(!cases.rows.empty(),
                              "conformance/line_cases.tsv not found or empty (run from firmware/)");
     TEST_ASSERT_EQUAL_size_t_MESSAGE(static_cast<size_t>(cases.declared), cases.rows.size(),

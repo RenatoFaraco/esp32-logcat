@@ -10,7 +10,7 @@
 | Seção | O quê | Casos compartilhados | Decisões |
 |-------|-------|----------------------|----------|
 | §1 | Linha de log | `conformance/line_cases.tsv` | ADR-002, ADR-006, ADR-007 |
-| §2 | Pedidos e respostas do console | `conformance/reply_cases.tsv` | ADR-012 |
+| §2 | Pedidos e respostas do console | `conformance/request_cases.tsv`, `conformance/reply_cases.tsv` | ADR-012 |
 | §3 | Bloco de dump | `conformance/reply_cases.tsv` (`block_crc`) | ADR-012 |
 | §4 | Arquivo de sessão do host | testes do host (`test_session.py`) | PRD v1 H6 |
 
@@ -57,7 +57,39 @@ Versão do protocolo: `proto=1`. Decisão e alternativas: ADR-012.
   no `shell`). O dispositivo ecoa o id em todas as linhas da resposta e não guarda ids.
 - O host gira os ids e não reusa um id antes de passar o timeout da resposta anterior
   (§2.3); aceita no máximo um pedido `-` pendente por vez.
-- Comandos e argumentos: PRD v1 F9 e `CommandParser` (#27).
+- **Palavras:** separadas por um ou mais espaços; espaços em volta da linha são ignorados.
+  Comandos em minúsculas, exatos (sem abreviação).
+- **Fim de linha:** `\n`, `\r\n` ou `\r` (o que um terminal serial manda), ou nenhum. O
+  host manda `\n`; o dispositivo aceita os três.
+- **Tamanho:** até 64 bytes antes do fim de linha, contando os espaços em volta; só
+  `0x20`–`0x7E`.
+- Linha vazia ou só com espaços, de qualquer tamanho: ignorada, sem resposta.
+
+| Comando | Argumentos | O que pede |
+|---------|------------|------------|
+| `info` | — | identidade e estado do dispositivo |
+| `stats` | — | contadores do motor de log, acumulados desde o boot |
+| `log level <tag> <L>` | `tag`: 1 ou mais caracteres sem espaço, cortada em 15; `*` é o padrão. `L`: `E` `W` `I` `D` `V`, ou `N` (silencia a tag); só maiúsculas | muda o nível de uma tag em tempo de execução |
+| `log tail` | — | as últimas linhas em RAM, num bloco (§3) |
+| `log dump` | — | os logs gravados na flash, em blocos (§3) |
+| `log clear` | — | apaga os logs gravados na flash |
+| `reboot` | — | reinicia o dispositivo |
+| `crash <panic\|wdt>` | `panic` ou `wdt` | provoca um crash, para testar a recuperação |
+
+A `tag` do `log level` é comparada com o texto que o código passou ao log (os 15 primeiros
+caracteres), não com o que a linha mostra: na §1, espaço e `:` da tag saem como `_`. Não há
+tradução: `a_b` só casa com uma tag que tem `_`, e `**` ou `*a` são tags, não o padrão.
+
+Pedido rejeitado (a resposta é só o terminador de erro, §2.2):
+
+| Situação | Código | id da resposta |
+|----------|--------|----------------|
+| a primeira palavra não é um id válido | `bad_args` | `-` |
+| byte fora de `0x20`–`0x7E`, ou mais de 64 bytes | `bad_args` | `-` |
+| comando desconhecido, ou nenhum depois do id; subcomando de `log` desconhecido | `bad_command` | o do pedido |
+| argumento faltando, sobrando ou inválido (inclusive `log` sem subcomando) | `bad_args` | o do pedido |
+
+Casos compartilhados dos pedidos: `conformance/request_cases.tsv`.
 
 ### 2.2 Resposta (dispositivo → host)
 
@@ -76,7 +108,7 @@ Zero ou mais linhas de dados e **exatamente um** terminador:
 | valor | 1 ou mais bytes de `0x21`–`0x7E`; o primeiro `=` separa chave e valor |
 | separador | um espaço, nunca dois nem TAB, entre os elementos acima e entre os campos; nada de espaço depois do último campo de uma linha de dados, nem depois do código quando não há texto |
 | código | `[a-z_]{1,32}`, menos `ok`. Na v1: `bad_command`, `bad_args`, `full`, `busy`, `timeout`, `unsupported`, `failed` |
-| texto | opcional, `0x20`–`0x7E`, começa por um caractere que não é espaço; pode ter espaços internos e finais; só para pessoas |
+| texto | opcional, `0x20`–`0x7E`, começa por um caractere que não é espaço; pode ter espaços internos e finais; só para pessoas. O dispositivo nunca perde o terminador por causa do texto: tira os espaços iniciais, troca byte fora da faixa por `?` e corta no limite da linha |
 | fim de linha | `\n` puro: sem `\n` final, ou com `\r`, a linha é raw |
 | tamanho máximo | 170 bytes com o `\n` (resposta maior: várias linhas de dados) |
 | campo desconhecido | omitido, nunca `0` |
@@ -126,6 +158,9 @@ Respostas que carregam linhas de log inteiras (`log tail`, `log dump`):
 - Com um bloco aberto, nenhuma linha de log vai para a USB (as puladas são contadas como
   `not_sent.usb`).
 - O terminador vem depois do `#END`. Um `#!` no meio do bloco o encerra sem `#END`.
+- **Mais de um bloco** (`log dump` com vários arquivos): zero ou mais blocos, um depois do
+  outro, e um único terminador no fim. Sem nada para mandar, a resposta é só `#. <id> ok`. Um
+  bloco fechado por um `#END` conferido continua válido mesmo que a resposta termine em `#!`.
 - Bloco incompleto (sem bytes por **2 s**, porta caiu, `#!` no meio, CRC que não confere): o
   host descarta o bloco inteiro; nada vai para o disco antes do `#END` conferido.
 

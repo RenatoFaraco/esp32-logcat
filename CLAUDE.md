@@ -34,7 +34,7 @@ esp32-logcat/
 ├── .github/
 │   ├── workflows/ci.yml      testes native + pytest + validação dos templates
 │   └── ISSUE_TEMPLATE/       formulários de issue
-├── conformance/              casos do formato de linha lidos pelo C++ e pelo Python (#20)
+├── conformance/              casos do fio lidos pelo C++ e pelo Python: linhas, pedidos, respostas
 ├── scripts/                  github_bootstrap.py (GitHub), serial_capture.py (boot nas 2 portas)
 ├── docs/                     índice em docs/README.md
 │   ├── project/              como trabalhamos: MANUAL (pt/en), CONVENTIONS, ROADMAP, imagens
@@ -68,8 +68,8 @@ esp32-logcat/
 - Formato no fio definido em `docs/context/spec/wire-format.md` (§1 linha de log, §2–§3
   console e dump, §4 sessão) — mudança de formato exige atualizar a spec, o parser do host
   e os testes dos dois lados no mesmo commit, a começar pelos casos compartilhados
-  (`conformance/make_line_cases.py` → `line_cases.tsv`, `make_reply_cases.py` →
-  `reply_cases.tsv`).
+  (`conformance/make_line_cases.py` → `line_cases.tsv`, `make_request_cases.py` →
+  `request_cases.tsv`, `make_reply_cases.py` → `reply_cases.tsv`).
 - "PRD" sem versão quer dizer o PRD da v1 (`prd/v1.md`); os IDs F1–F9 e H1–H7 são dele.
 
 ## Fluxo de trabalho

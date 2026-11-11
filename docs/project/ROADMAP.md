@@ -87,8 +87,11 @@ Os blocos 🖥️ (M3, M4a, M5a) podem ser adiantados sempre que o trabalho com 
 - [ ] Política de flush (periódico + ERROR + comando)
 
 ### M5a · Console — lógica 🖥️
-- [ ] `CommandParser` para todos os comandos do PRD (F9)
-- [ ] Testes de comandos válidos, inválidos e com argumentos errados
+- [x] `CommandParser` para todos os comandos do PRD (F9), mais `info` e `stats` (#27)
+- [x] Testes de comandos válidos, inválidos e com argumentos errados (casos compartilhados
+      em `conformance/request_cases.tsv`)
+- [x] `ReplyFormatter`: linhas de resposta e CRC-32 do bloco, conferidos contra
+      `conformance/reply_cases.tsv` (ADR-012)
 
 ### M5b · Console — integração 🔌
 - [ ] Console na porta nativa; comandos executando de verdade
