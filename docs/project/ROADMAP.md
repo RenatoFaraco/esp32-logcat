@@ -40,12 +40,14 @@ quando o firmware passa a precisar dele):
 
 1. ~~Chegada das placas (#9)~~ — feito em 06/nov
 2. ~~Fechar o M1: sanitizers (#42) e release `v0.2.0`~~ — feito em 06/nov
-3. **Esqueleto do host** ("walking skeleton"): parser (#16), cores (#18) e `stream` mínimo
-   (#15) — para acompanhar os logs da placa na própria ferramenta durante o M2
-4. M2 · parte 1 — captura e saída USB (#10, #11, #12), com uma tarefa de heartbeat
-5. Resto do M3 — filtros (#17), replay (#19), fixtures C++/Python (#20), sessão (#21)
-6. M2 · parte 2 — `stream` completo com filtros, app de demo e medição de jitter (#15, #13, #14)
-7. M4 (a e b), M5 (a e b), M6, M7 (stretch)
+3. ~~**Esqueleto do host** ("walking skeleton"): parser (#16), cores (#18) e `stream` mínimo
+   (#15)~~
+4. ~~M2 · parte 1 — captura e saída USB (#10, #11, #12), com uma tarefa de heartbeat~~
+5. ~~Resto do M3 — filtros (#17), replay (#19), fixtures C++/Python (#20), sessão (#21)~~
+6. ~~M2 · parte 2 — `stream` completo com filtros, app de demo e medição interna de jitter
+   (#15, #13)~~; a medição com o analisador (#14) foi para o M6
+7. ~~M5 no firmware: `CommandParser` (#27) e console (#28)~~ e release `v0.3.0` — 11/nov
+8. `esp-logcat shell` (#30), M4a (#22, #23), M4b, `esp-logcat dump` (#29), M6, M7 (stretch)
 
 Os blocos 🖥️ (M3, M4a, M5a) podem ser adiantados sempre que o trabalho com a placa travar.
 
@@ -56,12 +58,14 @@ Os blocos 🖥️ (M3, M4a, M5a) podem ser adiantados sempre que o trabalho com 
 - [x] Gravar o "hello" e ver saída na ponte UART
 - [x] Ver saída na porta nativa (mesma saída nas duas portas)
 
-### M2 · Captura e escrita 🔌 — parte 1
+### M2 · Captura e escrita 🔌 — parte 1 — `v0.3.0`
 - [x] `IdfLogHook`, `FreeRtosLogQueue`, `WriterTask`, `UsbJtagSink`, `EspClock` (#10, #11, #12)
 - [x] Proteção contra recursão e contador de descartes (#11, #12)
-- [ ] Interação com o filtro por tag do próprio IDF (`esp_log_level_set`) — ver #10
+- [x] Interação com o filtro por tag do próprio IDF (`esp_log_level_set`) — ver #10. O comando
+      `log level` (#28) mexe nos dois portões. Limitação: um `esp_log_level_set` chamado direto
+      pela aplicação só mexe no do IDF, e o `TagLevelFilter` não fica sabendo
 
-### M3 · Ferramenta host 🖥️
+### M3 · Ferramenta host 🖥️ — `v0.3.0`
 - [x] `parser.py`: formato do PRD (espelho do parser C++), formato nativo do ESP-IDF, resposta de comando, marcadores de dump e raw (#16)
 - [x] `esp-logcat stream` mínimo (sem filtros): transporte serial com reconexão, estatísticas de `seq`, `ports` (#15, parte 1)
 - [x] `filters.py` com sintaxe `TAG:L` (#17)
@@ -69,12 +73,14 @@ Os blocos 🖥️ (M3, M4a, M5a) podem ser adiantados sempre que o trabalho com 
 - [x] `esp-logcat tui` com Textual, depois dos filtros (H7, ADR-008, #56)
 - [x] `esp-logcat replay <arquivo>` + fixtures em `tests/fixtures/` (#19)
 - [x] Testes de compatibilidade: as mesmas linhas de exemplo validadas pelo parser C++ e pelo Python (#20, `conformance/`)
+- [x] Sessão salva com a hora do PC (`--save`), reproduzida igual pelo `replay` (H6, #21)
 - **Pronto quando:** `replay` de um log de exemplo filtra e colore corretamente.
 
-### M2 · Captura e escrita 🔌 — parte 2
-- [ ] `esp-logcat stream` funcionando com a placa
+### M2 · Captura e escrita 🔌 — parte 2 — `v0.3.0`
+- [x] `esp-logcat stream` funcionando com a placa (as imagens do manual são sessões reais)
 - [x] App de demo com tarefa crítica de 1 kHz alternando um GPIO, e varredura de carga de log em fases (#13)
-- [ ] **Medição:** jitter com analisador lógico (PulseView) + `esp_timer` interno; definir o X do critério 3
+- [x] Medição interna: a tarefa de 1 kHz mede o próprio atraso e a varredura reporta
+      p50/p99/máx por fase (`TIMING`, #13). A medição externa e o X foram para o M6 (#14)
 
 ### M4a · Persistência — lógica 🖥️
 - [ ] Interface `FileSystem` + implementação fake em memória para testes
@@ -94,14 +100,16 @@ Os blocos 🖥️ (M3, M4a, M5a) podem ser adiantados sempre que o trabalho com 
       `conformance/reply_cases.tsv` (ADR-012)
 
 ### M5b · Console — integração 🔌
-- [x] Console na porta nativa; comandos executando de verdade (#28; `log dump` e `log clear`
-      respondem `unsupported` até o M4)
+- [x] Console na porta nativa, com 7 dos 9 comandos do F9 funcionando na placa (#28)
+- [ ] `log dump` e `log clear` de verdade: dependem da flash (M4); até lá, `unsupported`
 - [ ] `esp-logcat dump` (bloco `#BEGIN/#END` com CRC) e `esp-logcat shell`
 
 ### M6 · Robustez 🔌
 - [ ] `RtcLastWords` com mágico + CRC
 - [ ] Teste: `crash panic` e `crash wdt` → próximo boot mostra motivo e últimas linhas
 - [ ] Teste de corte de energia (desligar a USB durante logs intensos, repetir N vezes)
+- [ ] **Medição:** jitter com analisador lógico (PulseView), conferindo a medição interna da
+      #13; definir o X do critério 3 (#14)
 - [ ] Validar todos os critérios de aceite do PRD
 - **Release v1.0.0** com GIF no README
 
