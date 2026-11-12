@@ -20,11 +20,14 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from pathlib import Path
 
+from esp_logcat.console import Exchange, RequestIds
 from esp_logcat.events import Notice, NoticeKind, Received
+from esp_logcat.framing import Framer
 from esp_logcat.filters import LogFilter
 from esp_logcat.parser import InvalidLine, InvalidReason
 from esp_logcat.pipeline import events, visible
 from esp_logcat.render import device_text, render, render_notice
+from esp_logcat.shell import print_reply, show_event
 from esp_logcat.stats import StreamStats
 from esp_logcat.transport import FileTransport, PortInfo
 from rich.console import Console
@@ -49,7 +52,9 @@ class Shot:
     # a dim "..." line marks what was left out. Empty = everything.
     keep: list[tuple[int, int]] = field(default_factory=list)
     summary: bool = True
-    filters: list[str] = field(default_factory=list)  # logcat-style specs, as on the command line
+    filters: list[str] = field(
+        default_factory=list
+    )  # logcat-style specs, as on the command line
     # A saved log replayed with FileTransport (path relative to the repository), instead of a
     # recorded session: the picture of `esp-logcat replay`.
     file: str = ""
@@ -73,7 +78,9 @@ def replay(path: Path) -> tuple[Iterator[bytes | Notice], datetime, list[float]]
 
 def stream_lines(shot: Shot) -> list[Text]:
     if shot.file:
-        transport = FileTransport((ROOT / shot.file).open("rb"), shot.file.replace("/", "\\"))
+        transport = FileTransport(
+            (ROOT / shot.file).open("rb"), shot.file.replace("/", "\\")
+        )
         source, started, offsets = transport.chunks(), datetime(2026, 11, 8), []
     else:
         source, started, offsets = replay(SESSIONS / f"{shot.session}.json")
@@ -89,7 +96,9 @@ def stream_lines(shot: Shot) -> list[Text]:
     for event in visible(events(source, stats, clock=clock), stats, line_filter):
         last = event
         if isinstance(event, Received):
-            lines.append(render(event.line, pc_time=event.pc_time if shot.show_time else None))
+            lines.append(
+                render(event.line, pc_time=event.pc_time if shot.show_time else None)
+            )
         else:
             lines.append(render_notice(event))
     # A recording ends by closing the port mid-line: that tail is an artifact of the
@@ -174,7 +183,13 @@ SHOTS = [
         "boot",
         keep=[(60, 66), (85, 96)],
     ),
-    Shot("time", "esp-logcat stream --time", "esp-logcat stream --time", "time", show_time=True),
+    Shot(
+        "time",
+        "esp-logcat stream --time",
+        "esp-logcat stream --time",
+        "time",
+        show_time=True,
+    ),
     Shot("reopen", "esp-logcat stream", "esp-logcat stream", "reopen"),
     Shot("busy", "esp-logcat stream", "esp-logcat stream", "busy"),
     Shot(
@@ -196,9 +211,137 @@ SHOTS = [
 ]
 
 
+# ------------------------------------------------------------------ esp-logcat shell (#30)
+# Runs recorded by scripts/record_shell.py, replayed through the shell's own backend: the
+# pipeline with the Framer, the Exchange matching replies, print_reply() and show_event().
+
+
+@dataclass
+class ShellShot:
+    name: str
+    title: str
+    runs: list[tuple[str, str]]  # (run in sessions/shell.json, the command line shown)
+    as_json: bool = False
+    keep: list[tuple[int, int]] = field(
+        default_factory=list
+    )  # crop, as in Shot (one run)
+
+
+class _Lines:
+    """Stands in for the shell's consoles: collects what would be printed, as Text lines."""
+
+    def __init__(self) -> None:
+        self.lines: list[Text] = []
+
+    def print(self, item: object, **_: object) -> None:
+        self.lines.append(item if isinstance(item, Text) else Text(str(item)))
+
+
+def shell_run_lines(run: dict, *, as_json: bool) -> list[Text]:
+    interactive = run["mode"] == "prompt"
+    first = next(item["write"] for item in run["items"] if "write" in item)
+    exchange = Exchange(RequestIds(start=int(first.split(" ", 1)[0])))
+    framer = Framer(exchange.expects_block)
+    stats = StreamStats()
+    out = _Lines()
+    now = [0.0]
+    if interactive:
+        out.print(
+            Text("esp-logcat shell: type help, quit or Ctrl+D to leave", style="dim")
+        )
+
+    def chunks() -> Iterator[bytes | Notice]:
+        for item in run["items"]:
+            now[0] = item["t"]
+            if "write" in item:
+                command = item["write"].rstrip("\n").split(" ", 1)[1]
+                if interactive:
+                    prompt = Text("logcat> ", style="bold")
+                    prompt.append(command)
+                    out.print(prompt)
+                exchange.start(command, now[0])
+            elif "notice" in item:
+                yield Notice(NoticeKind(item["notice"]), item["text"])
+            else:
+                yield base64.b64decode(item["data"])
+
+    line_filter = LogFilter.parse(run.get("filters", [])) if interactive else None
+    for event in visible(events(chunks(), stats, framer=framer), stats, line_filter):
+        replies, out_of_context = exchange.observe(event, now[0])
+        if interactive:
+            show_event(event, out_of_context, out, out)  # type: ignore[arg-type]
+        for reply in replies:
+            print_reply(reply, out, out, as_json=as_json)  # type: ignore[arg-type]
+    if interactive:
+        out.print(
+            Text("logcat> ", style="bold")
+        )  # the prompt, waiting for the next command
+    return out.lines
+
+
+def save_shell(shot: ShellShot) -> None:
+    runs = json.loads((SESSIONS / "shell.json").read_text(encoding="utf-8"))
+    console = Console(
+        file=io.StringIO(),
+        record=True,
+        width=WIDTH,
+        force_terminal=True,
+        color_system="truecolor",
+        highlight=False,
+        emoji=False,
+        soft_wrap=False,
+    )
+    total = 0
+    for index, (run, command) in enumerate(shot.runs):
+        if index:
+            console.print()
+        prompt = Text(PROMPT, style="bold blue")
+        prompt.append(command, style="bold")
+        console.print(prompt)
+        lines = crop(shell_run_lines(runs[run], as_json=shot.as_json), shot.keep)
+        for line in lines:
+            console.print(line)
+        total += len(lines)
+    svg = console.export_svg(title=shot.title, theme=MONOKAI)
+    (IMAGES / f"{shot.name}.svg").write_text(svg, encoding="utf-8", newline="\n")
+    print(f"img/{shot.name}.svg: {total} lines")
+
+
+SHELL_SHOTS = [
+    ShellShot(
+        "shell",
+        "esp-logcat shell",
+        [
+            ("info", "esp-logcat shell info"),
+            ("level", "esp-logcat shell log level HEARTBEAT D"),
+            ("bad_args", "esp-logcat shell log level APP x"),
+        ],
+    ),
+    ShellShot(
+        "shell_tail",
+        "esp-logcat shell log tail",
+        [("tail", "esp-logcat shell log tail")],
+        keep=[(0, 2), (30, 32)],
+    ),
+    ShellShot(
+        "shell_json",
+        "esp-logcat shell stats --json",
+        [("json", "esp-logcat shell stats --json")],
+        as_json=True,
+    ),
+    ShellShot(
+        "shell_prompt",
+        'esp-logcat shell "*:S" "HEARTBEAT:V"',
+        [("prompt", 'esp-logcat shell "*:S" "HEARTBEAT:V"')],
+    ),
+]
+
+
 def list_lines(session: str) -> None:
     """Prints the rendered lines of a session with their indices, to choose `keep` ranges."""
-    for index, line in enumerate(stream_lines(Shot("", "", "", session, summary=False))):
+    for index, line in enumerate(
+        stream_lines(Shot("", "", "", session, summary=False))
+    ):
         print(index, line.plain[:110])
 
 
@@ -208,6 +351,8 @@ def main() -> None:
         return
     for shot in SHOTS:
         save(shot, ports_lines() if shot.name == "ports" else stream_lines(shot))
+    for shell_shot in SHELL_SHOTS:
+        save_shell(shell_shot)
     tui_shot()
 
 
@@ -219,7 +364,8 @@ def tui_shot() -> None:
 
     async def capture() -> None:
         transport = FileTransport(
-            (ROOT / "host/tests/fixtures/two_boots_esp32c3.log").open("rb"), "two_boots_esp32c3.log"
+            (ROOT / "host/tests/fixtures/two_boots_esp32c3.log").open("rb"),
+            "two_boots_esp32c3.log",
         )
         app = LogcatApp(
             transport.chunks(),

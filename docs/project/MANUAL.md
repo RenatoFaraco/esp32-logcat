@@ -542,6 +542,8 @@ esp-logcat shell log level APP D
 esp-logcat shell stats --json
 ```
 
+![esp-logcat shell com um comando](manual/img/shell.svg)
+
 **Interativo**: sem comando, abre um prompt. As linhas de log continuam aparecendo acima do que
 você digita, com os mesmos filtros do `stream` (seção 3.8):
 
@@ -551,6 +553,11 @@ logcat> stats
 logcat> log level HEARTBEAT D
 logcat> quit
 ```
+
+Aqui só o `HEARTBEAT` aparece; as linhas `D` dele surgem depois do `log level HEARTBEAT D` e
+somem depois do `I`:
+
+![esp-logcat shell interativo](manual/img/shell_prompt.svg)
 
 No prompt, `help` lista os comandos, as setas trazem os anteriores, e Ctrl+D (ou `quit`) sai.
 
@@ -625,9 +632,8 @@ reply_failed        0
 
 Em JSON (`esp-logcat shell stats --json`):
 
-```
-{"id": 1060, "command": "stats", "ok": true, "fields": {"dropped": 42, "queue": "0/32", "queue_max": 32, "capture_cycles": "6446/32460", "writer_stack_free": 3084, "console_stack_free": 3044, "not_sent.usb": 421, "not_sent.console": 40, "not_sent.ram": 0, "tail_skipped": 0, "reply_failed": 0}, "elapsed_ms": 16}
-```
+![esp-logcat shell stats --json](manual/img/shell_json.svg)
+
 
 | Campo | Significado |
 |-------|-------------|
@@ -668,15 +674,10 @@ que a linha mostra: no log, espaço e `:` da tag aparecem como `_`.
 
 **`log tail`**: as últimas 32 linhas guardadas em RAM, num bloco.
 
-```
-> esp-logcat shell log tail
-0000:000520 0000016389 I LOAD: tick 393 line 0
-... (32 linhas, 1504 bytes no total)
-0000:000551 0000016700 I LOAD: tick 424 line 0
-32 lines, 1504 bytes, CRC ok
-```
+![esp-logcat shell log tail](manual/img/shell_tail.svg)
 
-O shell lê o bloco pelo tamanho anunciado (1504 bytes) e confere o CRC-32 antes de mostrar as
+
+O shell lê o bloco pelo tamanho anunciado no `#BEGIN` e confere o CRC-32 antes de mostrar as
 linhas. Enquanto o bloco sai, o log ao vivo não vai para a USB. Depois de um bloco sob carga, pode aparecer
 `W LOGCAT: N lines not sent to usb: no reader`: são as linhas desse intervalo.
 
@@ -741,6 +742,9 @@ antes. Comandos são em minúsculas e sem abreviação; os níveis são em maiú
 2. `scripts/manual_screenshots.py` passa cada gravação pelo mesmo pipeline e pelo mesmo
    renderer do `esp-logcat stream` e exporta a janela de terminal em SVG para
    `docs/project/manual/img/`. Cortes em sessões longas aparecem como `...`.
+   As imagens do `shell` vêm de `scripts/record_shell.py <porta> <saida.json>`, que grava
+   execuções reais do shell (os bytes recebidos e os comandos enviados); o script as passa
+   pelo mesmo código do shell (casamento de respostas, blocos, `print_reply`).
 3. `scripts/readme_cover.py` desenha a capa do README (`docs/project/img/cover.svg`) com saída real
    das mesmas gravações.
 

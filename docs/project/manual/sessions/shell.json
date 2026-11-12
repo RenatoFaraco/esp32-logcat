@@ -1,0 +1,332 @@
+{
+ "info": {
+  "mode": "one",
+  "commands": [
+   "info"
+  ],
+  "started": "2026-11-11T22:00:58.033",
+  "items": [
+   {
+    "t": 0.015,
+    "notice": "connected",
+    "text": "connected to COM6"
+   },
+   {
+    "t": 0.015,
+    "write": "1934 info\n"
+   },
+   {
+    "t": 0.015,
+    "data": "MA=="
+   },
+   {
+    "t": 0.015,
+    "data": "MDAwOjUwNTU2MSAwMDAwODkyODgwIEkgTE9BRDogdGljayA1MTQgbGluZSAwCg=="
+   },
+   {
+    "t": 0.015,
+    "data": "Iz4gMTkzNCBmdz12MC4zLjAtMi1nNDQxOWM1ZSBwcm90bz0xIGNoaXA9ZXNwMzJjMyBpZGY9Ni4xLjAgdXB0aW1lX21zPTg5Mjg3NiByZXNldD1TVwojLiAxOTM0IG9rCg=="
+   },
+   {
+    "t": 0.031,
+    "data": "MA=="
+   }
+  ]
+ },
+ "level": {
+  "mode": "one",
+  "commands": [
+   "log level HEARTBEAT D"
+  ],
+  "started": "2026-11-11T22:00:58.570",
+  "items": [
+   {
+    "t": 0.016,
+    "notice": "connected",
+    "text": "connected to COM6"
+   },
+   {
+    "t": 0.016,
+    "write": "6667 log level HEARTBEAT D\n"
+   },
+   {
+    "t": 0.016,
+    "data": "MA=="
+   },
+   {
+    "t": 0.016,
+    "data": "MDAwOjUwNTYxNiAwMDAwODkzNDEwIEkgTE9BRDogdGljayA1NjcgbGluZSAwCiMuIDY2Njcgb2sK"
+   },
+   {
+    "t": 0.031,
+    "data": "MA=="
+   }
+  ]
+ },
+ "bad_args": {
+  "mode": "one",
+  "commands": [
+   "log level APP x"
+  ],
+  "started": "2026-11-11T22:00:59.100",
+  "items": [
+   {
+    "t": 0.0,
+    "notice": "connected",
+    "text": "connected to COM6"
+   },
+   {
+    "t": 0.016,
+    "write": "4481 log level APP x\n"
+   },
+   {
+    "t": 0.016,
+    "data": "MA=="
+   },
+   {
+    "t": 0.016,
+    "data": "MDAwOjUwNTY3MCAwMDAwODkzOTQwIEkgTE9BRDogdGljayA2MjAgbGluZSAwCiMhIDQ0ODEgYmFkX2FyZ3Mgd3JvbmcgYXJndW1lbnRzCg=="
+   },
+   {
+    "t": 0.016,
+    "data": "MA=="
+   }
+  ]
+ },
+ "tail": {
+  "mode": "one",
+  "commands": [
+   "log tail"
+  ],
+  "started": "2026-11-11T22:00:59.630",
+  "items": [
+   {
+    "t": 0.0,
+    "notice": "connected",
+    "text": "connected to COM6"
+   },
+   {
+    "t": 0.0,
+    "write": "6111 log tail\n"
+   },
+   {
+    "t": 0.016,
+    "data": "MA=="
+   },
+   {
+    "t": 0.016,
+    "data": "MDAwOjUwNTcyNiAwMDAwODk0NDcwIEkgTE9BRDogdGljayA2NzMgbGluZSAwCg=="
+   },
+   {
+    "t": 0.016,
+    "data": "I0JFR0lOIDYxMTEgcmFtIDE1MjYK"
+   },
+   {
+    "t": 0.016,
+    "data": "MA=="
+   },
+   {
+    "t": 0.016,
+    "data": "MDAwOjUwNTY5NSAwMDAwODk0MTY5IEkgTE9BRDogdGljayA2NDMgbGluZSAwCjAwMDA6NTA1Njk2IDAwMDA4OTQxNzkgSSBMT0FEOiB0aWNrIDY0NCBsaW5lIDAKMDAwMDo1MDU2OTcgMDAwMDg5NDE4OSBJIExPQUQ6IHRpY2sgNjQ1IGxpbmUgMAowMDAwOjUwNTY5OCAwMDAwODk0MTk5IEkgTE9BRDogdGljayA2NDYgbGluZSAwCjAwMDA6NTA1Njk5IDAwMDA4OTQyMDkgSSBMT0FEOiB0aWNrIDY0NyBsaW5lIDAKMDAwMDo1MDU3MDAgMDAwMDg5NDIxOSBJIExPQUQ6IHRpYw=="
+   },
+   {
+    "t": 0.016,
+    "data": "aw=="
+   },
+   {
+    "t": 0.016,
+    "data": "IDY0OCBsaW5lIDAKMDAwMDo1MDU3MDEgMDAwMDg5NDIyOSBJIExPQUQ6IHRpY2sgNjQ5IGxpbmUgMAowMDAwOjUwNTcwMiAwMDAwODk0MjM5IEkgTE9BRDogdGljayA2NTAgbGluZSAwCjAwMDA6NTA1NzAzIDAwMDA4OTQyNDkgSSBMT0FEOiB0aWNrIDY1MSBsaW5lIDAKMDAwMDo1MDU3MDQgMDAwMDg5NDI1OSBJIExPQUQ6IHRpY2sgNjUyIGxpbmUgMAowMDAwOjUwNTcwNSAwMDAwODk0MjY5IEkgTE9BRDogdGljayA2NTMgbGluZSAwCjAwMDA6NTA1NzA2IDAwMDA4OTQyNzkgSSBMT0FEOiB0aWNrIDY1NCBsaW5lIDAKMDAwMDo1MDU3MDcgMDAwMDg5NDI4OSBJIExPQUQ6IHRpY2sgNjU1IGxpbmUgMAowMDAwOjUwNTcwOCAwMDAwODk0Mjk5IEkgTE9BRDogdGljayA2NTYgbGluZSAwCjAwMDA6NTA1NzA5IDAwMDA4OTQzMDkgSSBMT0FEOiB0aWNrIDY1NyBsaW5lIDAKMDAwMDo1MDU3MTAgMDAwMDg5NDMxOSBJIExPQUQ6IHRpY2sgNjU4IGxpbmUgMAowMDAwOjUwNTcxMSAwMDAwODk0MzI5IEkgTE9BRDogdGljayA2NTkgbGluZSAwCjAwMDA6NTA1NzEyIDAwMDA4OTQzMzkgSSBMT0FEOiB0aWNrIDY2MCBsaW5lIDAKMDAwMDo1MDU3MTMgMDAwMDg5NDM0OSBJIExPQUQ6IHRpY2sgNjYxIGxpbmUgMAowMDAwOjUwNTcxNCAwMDAwODk0MzU5IEkgTE9BRDogdGljayA2NjIgbGluZSAwCjAwMDA6NTA1NzE1IDAwMDA4OTQzNjkgSSBMT0FEOiB0aWNrIDY2MyBsaW5lIDAKMDAwMDo1MDU3MTYgMDAwMDg5NDM3OSBJIExPQUQ6IHRpY2sgNjY0IGxpbmUgMAowMDAwOjUwNTcxNyAwMDAwODk0Mzg5IEkgTE9BRDogdGljayA2NjUgbGluZSAwCjAwMDA6NTA1NzE4IDAwMDA4OTQzOTkgSSBMT0FEOiB0aWNrIDY2NiBsaW5lIDAKMDAwMDo1MDU3MTkgMDAwMDg5NDQwOSBJIExPQUQ6IHRpY2sgNjY3IGxpbmUgMAowMDAwOjUwNTcyMCAwMDAwODk0NDE5IEkgTE9BRDogdGljayA2NjggbGluZSAwCjAwMDA6NTA1NzIxIDAwMDA4OTQ0MjkgSSBMT0FEOiB0aWNrIDY2OSBsaW5lIDAKMDAwMDo1MDU3MjIgMDAwMDg5NDQzOSBJIExPQUQ6IHRpY2sgNjcwIGxpbmUgMAowMDAwOjUwNTcyMyAwMDAwODk0NDQ5IEkgTE9BRDogdGljayA2NzEgbGluZSAwCjAwMDA6NTA1NzI0IDAwMDA4OTQ0NTkgSSBMT0FEOiB0aWNrIDY3MiBsaW5lIDAKMDAwMDo1MDU3MjUgMDAwMDg5NDQ2MCBXIExPR0NBVDogMzIgbGluZXMgbm90IHNlbnQgdG8gdXNiOiBubyByZWFkZXIKMDAwMDo1MDU3MjYgMDAwMDg5NDQ3MCBJIExPQUQ6IHRpY2sgNjczIGxpbmUgMAojRU5EIDYxMTEgMjgwMzZkNzYKIy4gNjExMSBvawo="
+   },
+   {
+    "t": 0.016,
+    "data": "MA=="
+   }
+  ]
+ },
+ "json": {
+  "mode": "one",
+  "commands": [
+   "stats"
+  ],
+  "started": "2026-11-11T22:01:00.160",
+  "items": [
+   {
+    "t": 0.0,
+    "notice": "connected",
+    "text": "connected to COM6"
+   },
+   {
+    "t": 0.0,
+    "write": "6666 stats\n"
+   },
+   {
+    "t": 0.015,
+    "data": "MA=="
+   },
+   {
+    "t": 0.015,
+    "data": "MDAwOjUwNTc4MCAwMDAwODk1MDAwIEkgTE9BRDogdGljayA3MjYgbGluZSAwCg=="
+   },
+   {
+    "t": 0.015,
+    "data": "Iw=="
+   },
+   {
+    "t": 0.015,
+    "data": "PiA2NjY2IGRyb3BwZWQ9NDIgcXVldWU9MC8zMiBxdWV1ZV9tYXg9MzIgY2FwdHVyZV9jeWNsZXM9OTQzNS81MTU5MyB3cml0ZXJfc3RhY2tfZnJlZT0zMDI0IGNvbnNvbGVfc3RhY2tfZnJlZT0zMDQ0IG5vdF9zZW50LnVzYj00Nzc4MzIgbm90X3NlbnQuY29uc29sZT0xMDYyOTkKIz4gNjY2NiBub3Rfc2VudC5yYW09MCB0YWlsX3NraXBwZWQ9OSByZXBseV9mYWlsZWQ9MAojLiA2NjY2IG9rCg=="
+   },
+   {
+    "t": 0.015,
+    "data": "MA=="
+   }
+  ]
+ },
+ "prompt": {
+  "mode": "prompt",
+  "filters": [
+   "*:S",
+   "HEARTBEAT:V"
+  ],
+  "before": [
+   "log level LOAD N",
+   "log level HEARTBEAT I"
+  ],
+  "after": [
+   "log level LOAD I"
+  ],
+  "commands": [
+   [
+    "",
+    2.2
+   ],
+   [
+    "stats",
+    1.2
+   ],
+   [
+    "log level HEARTBEAT D",
+    2.2
+   ],
+   [
+    "log level HEARTBEAT I",
+    1.2
+   ]
+  ],
+  "started": "2026-11-11T22:01:01.955",
+  "items": [
+   {
+    "t": 0.015,
+    "notice": "connected",
+    "text": "connected to COM6"
+   },
+   {
+    "t": 0.25,
+    "data": "MA=="
+   },
+   {
+    "t": 0.25,
+    "data": "MDAwOjUwNTgzOCAwMDAwODk3MDMwIEkgSEVBUlRCRUFUOiB0aWNrIDg5NywgY2FwdHVyZSA4NTc1IGN5Y2xlcyAobWF4IDUxNTkzKSwgc3RhY2sgZnJlZSAyMDc2IEIsIHdyaXRlciAzMDI0IEIK"
+   },
+   {
+    "t": 1.171,
+    "data": "MA=="
+   },
+   {
+    "t": 1.171,
+    "data": "MDAwOjUwNTgzOSAwMDAwODk3OTUwIEkgVElNSU5HOiBwaGFzZSAxIGxvYWQgMTAwL3M6IHdha2UgdXMgcDUwIDcgcDk5IDcgbWF4IDMyLCBpc3IgdXMgcDUwIDEgcDk5IDEgbWF4IDE2Cg=="
+   },
+   {
+    "t": 1.171,
+    "data": "MDAwMDo1MDU4NDAgMDAwMDg5Nzk1MCBJIFRJTUlORzogcGhhc2UgMTogcGVyaW9kcyAxMDAxMCwgb3ZlcnJ1bnMgMCwgb3ZlciAxIG1zIDAsIGRyb3BwZWQgMCwgc3RhY2sgZnJlZSBjcml0aWNhbCAzMjUyIEIgc3dlZXAgMTkzMiBCCg=="
+   },
+   {
+    "t": 1.25,
+    "data": "MA=="
+   },
+   {
+    "t": 1.25,
+    "data": "MDAwOjUwNTg0MSAwMDAwODk4MDMwIEkgSEVBUlRCRUFUOiB0aWNrIDg5OCwgY2FwdHVyZSAxNTQzNiBjeWNsZXMgKG1heCA1MTU5MyksIHN0YWNrIGZyZWUgMjA3NiBCLCB3cml0ZXIgMzAyNCBCCg=="
+   },
+   {
+    "t": 2.218,
+    "write": "5369 stats\n"
+   },
+   {
+    "t": 2.218,
+    "data": "Iw=="
+   },
+   {
+    "t": 2.218,
+    "data": "PiA1MzY5IGRyb3BwZWQ9NDIgcXVldWU9MC8zMiBxdWV1ZV9tYXg9MzIgY2FwdHVyZV9jeWNsZXM9MTcwMjMvNTE1OTMgd3JpdGVyX3N0YWNrX2ZyZWU9MzAyNCBjb25zb2xlX3N0YWNrX2ZyZWU9MzA0NCBub3Rfc2VudC51c2I9NDc3ODY0IG5vdF9zZW50LmNvbnNvbGU9MTA2Mjk5CiM+IDUzNjkgbm90X3NlbnQucmFtPTAgdGFpbF9za2lwcGVkPTkgcmVwbHlfZmFpbGVkPTAKIy4gNTM2OSBvawo="
+   },
+   {
+    "t": 2.25,
+    "data": "MA=="
+   },
+   {
+    "t": 2.25,
+    "data": "MDAwOjUwNTg0MiAwMDAwODk5MDMwIEkgSEVBUlRCRUFUOiB0aWNrIDg5OSwgY2FwdHVyZSAxNzAyMyBjeWNsZXMgKG1heCA1MTU5MyksIHN0YWNrIGZyZWUgMjA3NiBCLCB3cml0ZXIgMzAyNCBCCg=="
+   },
+   {
+    "t": 3.25,
+    "data": "MA=="
+   },
+   {
+    "t": 3.25,
+    "data": "MDAwOjUwNTg0MyAwMDAwOTAwMDMwIEkgSEVBUlRCRUFUOiB0aWNrIDkwMCwgY2FwdHVyZSAyNjg1NyBjeWNsZXMgKG1heCA1MTU5MyksIHN0YWNrIGZyZWUgMjA3NiBCLCB3cml0ZXIgMzAyNCBCCg=="
+   },
+   {
+    "t": 3.421,
+    "write": "5370 log level HEARTBEAT D\n"
+   },
+   {
+    "t": 3.437,
+    "data": "Iw=="
+   },
+   {
+    "t": 3.437,
+    "data": "LiA1MzcwIG9rCg=="
+   },
+   {
+    "t": 4.25,
+    "data": "MA=="
+   },
+   {
+    "t": 4.25,
+    "data": "MDAwOjUwNTg0NCAwMDAwOTAxMDMwIEkgSEVBUlRCRUFUOiB0aWNrIDkwMSwgY2FwdHVyZSAxNzg2NyBjeWNsZXMgKG1heCA1MTU5MyksIHN0YWNrIGZyZWUgMjA3NiBCLCB3cml0ZXIgMzAyNCBCCg=="
+   },
+   {
+    "t": 4.25,
+    "data": "MDAwMDo1MDU4NDUgMDAwMDkwMTAzMCBEIEhFQVJUQkVBVDogZGVidWcgZGV0YWlsIG9mIHRpY2sgOTAxOiBzaG93biBhZnRlciBgbG9nIGxldmVsIEhFQVJUQkVBVCBEYAo="
+   },
+   {
+    "t": 5.25,
+    "data": "MA=="
+   },
+   {
+    "t": 5.25,
+    "data": "MDAwOjUwNTg0NiAwMDAwOTAyMDMwIEkgSEVBUlRCRUFUOiB0aWNrIDkwMiwgY2FwdHVyZSA4NDIwIGN5Y2xlcyAobWF4IDUxNTkzKSwgc3RhY2sgZnJlZSAyMDc2IEIsIHdyaXRlciAzMDI0IEIKMDAwMDo1MDU4NDcgMDAwMDkwMjAzMCBEIEhFQVJUQkVBVDogZGVidWcgZGV0YWlsIG9mIHRpY2sgOTAyOiBzaG93biBhZnRlciBgbG9nIGxldmVsIEhFQVJUQkVBVCBEYAo="
+   },
+   {
+    "t": 5.64,
+    "write": "5371 log level HEARTBEAT I\n"
+   },
+   {
+    "t": 5.656,
+    "data": "Iw=="
+   },
+   {
+    "t": 5.656,
+    "data": "LiA1MzcxIG9rCg=="
+   },
+   {
+    "t": 6.25,
+    "data": "MA=="
+   },
+   {
+    "t": 6.25,
+    "data": "MDAwOjUwNTg0OCAwMDAwOTAzMDMwIEkgSEVBUlRCRUFUOiB0aWNrIDkwMywgY2FwdHVyZSA4ODM4IGN5Y2xlcyAobWF4IDUxNTkzKSwgc3RhY2sgZnJlZSAyMDc2IEIsIHdyaXRlciAzMDI0IEIK"
+   }
+  ]
+ }
+}

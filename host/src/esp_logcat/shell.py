@@ -187,20 +187,26 @@ class Shell:
                 self._changed.notify_all()
 
     def _show(self, event: object, out_of_context: bool) -> None:
-        if not self._show_logs:
-            return
-        match event:
-            case Received(line=line) if out_of_context:
-                # A reply nobody asked for: shown, never acted on (ADR-012 §6).
-                self._out.print(render(RawLine(render(line).plain)))
-            case Received(line=line) if _is_reply_line(line):
-                pass  # part of a reply: printed with the reply
-            case Received(line=line):
-                self._out.print(render(line))  # visible() already applied the filter
-            case Notice():
-                self._err.print(render_notice(event))
-            case ReceivedBlock():
-                pass
+        if self._show_logs:
+            show_event(event, out_of_context, self._out, self._err)
+
+
+def show_event(event: object, out_of_context: bool, out: Console, err: Console) -> None:
+    """How the interactive shell shows one pipeline event (also used for the manual's pictures).
+
+    Log lines print as in `stream` (the filter was applied by visible()); reply lines belong to
+    their reply and print with it; a reply line nobody asked for prints as raw (ADR-012 §6)."""
+    match event:
+        case Received(line=line) if out_of_context:
+            out.print(render(RawLine(render(line).plain)))
+        case Received(line=line) if _is_reply_line(line):
+            pass
+        case Received(line=line):
+            out.print(render(line))
+        case Notice():
+            err.print(render_notice(event))
+        case ReceivedBlock():
+            pass
 
 
 def _is_reply_line(line: object) -> bool:
@@ -213,8 +219,7 @@ def _is_reply_line(line: object) -> bool:
 def print_reply(reply: Reply, out: Console, err: Console, *, as_json: bool = False) -> int:
     """Prints a reply; returns the exit code: 0 when it worked, 1 otherwise."""
     if as_json:
-        out.file.write(json.dumps(reply_json(reply)) + "\n")
-        out.file.flush()
+        out.print(Text(json.dumps(reply_json(reply))), soft_wrap=True)
         return 0 if reply.ok else 1
     width = max((len(key) for key, _ in reply.fields), default=0)
     for key, value in reply.fields:
