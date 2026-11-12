@@ -9,6 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Core `RotatingStore` (#23, PRD F5): a sink that appends to the newest of `log_000.txt`
+  … `log_999.txt`, starts a new file at 64 KB and removes the oldest so the files never
+  pass 448 KB, not even for one line (criterion 4). One write per line; a file whose last
+  byte is not `\n` (a power cut, a short write) is closed with DEL + `\n` before anything
+  else, so the piece reads as torn and never glues to the next record. After `log_999`
+  the files are renamed back to `log_000` in order. `FileLineReader` reads a file in
+  blocks with a fixed 171-byte line buffer, counts each parse status and says when a read
+  failed before the end. A newest file that will not open is skipped for the next index; a
+  failed flush closes the file so it is reopened and repaired; `stats()` counts sync
+  failures and the unsynced bytes a short write or failed sync drops, and
+  `unsynced_bytes()` is there for the flush policy (#26).
 - Core `FileSystem` port (#22): append to one open file, `sync` as the only durability
   point, read by offset, size, remove, rename and list (through a visitor, no heap). The
   contract is the strict side of LittleFS, so what works on the fake works on the board: a

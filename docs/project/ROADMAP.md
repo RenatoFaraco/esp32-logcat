@@ -85,7 +85,8 @@ Os blocos 🖥️ (M3, M4a, M5a) podem ser adiantados sempre que o trabalho com 
 ### M4a · Persistência — lógica 🖥️
 - [x] Interface `FileSystem` + implementação fake em memória para testes (#22): o fake
       também simula partição cheia, falhas e queda de energia em qualquer ponto
-- [ ] `RotatingStore`: rotação, limite por arquivo, limite total, descarte
+- [x] `RotatingStore`: rotação, limite por arquivo, limite total, descarte, reparo do
+      final rasgado com `DEL` + `\n`; `FileLineReader` para ler e contar as linhas (#23)
 - **Pronto quando:** testes de rotação cobrindo encher, girar e descartar.
 
 ### M4b · Persistência — integração 🔌

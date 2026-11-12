@@ -142,9 +142,28 @@ app_main()
 ## 5. Persistência em flash
 
 - Partição `logs` (512 KB, LittleFS).
-- Arquivos `log_000.txt` … `log_NNN.txt`; corrente = maior índice.
-- Limite por arquivo: 64 KB. Limite total: 448 KB (folga para metadados do FS).
-- Ao exceder o total: remove o arquivo de menor índice.
+- Arquivos `log_000.txt` … `log_999.txt`; corrente = maior índice (`RotatingStore`, #23).
+- Limite por arquivo: 64 KB. Limite total: 448 KB (folga para os blocos e metadados do
+  LittleFS: no modelo de blocos de 4 KB do fake, o orçamento cabe nos 512 KB).
+- Antes de cada linha, o store gira o arquivo se ela não cabe e remove os mais antigos até o
+  total mais a linha caber: **a partição nunca passa do limite**, nem por um instante. Um
+  arquivo antigo que não se deixa apagar faz a linha ser recusada (e contada), nunca o limite
+  ser passado.
+- Uma linha, um `write()`. Ao abrir o arquivo corrente (no boot ou depois de uma escrita
+  curta), se o último byte não é `\n`, o store acrescenta `DEL` + `\n` antes da próxima linha,
+  mesmo que essa linha vá para um arquivo novo: o pedaço vira uma linha `torn` e nunca gruda no
+  próximo registro, nem num dump que junte os arquivos.
+- Um arquivo mais novo com dados que não abre é pulado (próximo índice), uma vez só: um FS
+  quebrado não consome os índices apagando o histórico.
+- Com blocos de 4 KB do LittleFS (cada um guarda ~4088 bytes do arquivo), 448 KB de log ocupam
+  quase todos os 128 blocos da partição: a conta fecha no modelo do fake, e precisa ser
+  confirmada na placa (#24). Se a folga for pequena, o limite total cai para 384 KB.
+- Depois de `log_999`, os arquivos são renomeados para `log_000…` na mesma ordem (em ordem
+  crescente, então um corte no meio deixa os índices ainda em ordem).
+- Uma escrita curta perde, no LittleFS, o que o arquivo tinha recebido desde o último `sync`:
+  o intervalo de flush (#26) é a janela de perda também para a partição cheia.
+- Leitura: `FileLineReader` lê o arquivo em blocos de 512 bytes, separa linhas com um buffer
+  de 171 bytes, conta cada `ParseStatus`, e pula o resto de uma linha longa demais.
 - Conteúdo: as mesmas linhas de texto do console → o host lê com o mesmo parser.
 
 ## 6. Protocolo no fio (USB)

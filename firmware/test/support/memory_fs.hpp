@@ -13,7 +13,7 @@
 //   other file systems and for defensive tests;
 // - a full partition, optionally with LittleFS-like blocks: each file uses whole blocks,
 //   plus a few blocks of metadata;
-// - failures on demand: the next open, write, sync, rename or remove fails once.
+// - failures on demand: the next open, write, sync, read, rename or remove fails once.
 #pragma once
 
 #include <algorithm>
@@ -28,11 +28,15 @@ namespace test_support {
 
 class MemoryFileSystem final : public logcat::FileSystem {
 public:
-    // `block_size` 1 counts bytes exactly; 4096 with a few `overhead_blocks` is closer to
-    // LittleFS on the 512 KB partition.
+    // `block_size` 1 counts bytes exactly. Closer to LittleFS on the 512 KB partition: blocks
+    // of 4096 holding `data_per_block` 4088 bytes of a file (the rest are the pointers of
+    // LittleFS's skip list), plus a few `overhead_blocks` for metadata.
     explicit MemoryFileSystem(size_t capacity = 512 * 1024, size_t block_size = 1,
-                              size_t overhead_blocks = 0)
-        : capacity_(capacity), block_size_(block_size), overhead_blocks_(overhead_blocks) {}
+                              size_t overhead_blocks = 0, size_t data_per_block = 0)
+        : capacity_(capacity),
+          block_size_(block_size),
+          overhead_blocks_(overhead_blocks),
+          data_per_block_(data_per_block == 0 ? block_size : data_per_block) {}
 
     // ---------------------------------------------------------------- FileSystem
 
@@ -98,6 +102,10 @@ public:
     }
 
     size_t read(const char* name, uint32_t offset, char* out, size_t length) override {
+        if (fail_next_read) {
+            fail_next_read = false;
+            return 0;
+        }
         const File* file = find(name);
         if (file == nullptr) {
             return 0;
@@ -187,6 +195,7 @@ public:
     bool fail_next_write = false;
     size_t short_write = 0;  // bytes the failing write still accepts
     bool fail_next_sync = false;
+    bool fail_next_read = false;
     bool fail_next_rename = false;
     bool fail_next_remove = false;
 
@@ -236,7 +245,7 @@ private:
         return true;
     }
 
-    size_t blocks(size_t bytes) const { return (bytes + block_size_ - 1) / block_size_; }
+    size_t blocks(size_t bytes) const { return (bytes + data_per_block_ - 1) / data_per_block_; }
 
     // Space in use if `name` (when given) held `bytes` instead.
     size_t used_with(const std::string* name, size_t bytes) const {
@@ -252,12 +261,13 @@ private:
     // The most bytes the open file can hold: whole blocks left after the others.
     size_t room_for_open() const {
         const size_t others = used_with(&open_, 0);
-        return others >= capacity_ ? 0 : (capacity_ - others) / block_size_ * block_size_;
+        return others >= capacity_ ? 0 : (capacity_ - others) / block_size_ * data_per_block_;
     }
 
     size_t capacity_;
     size_t block_size_;
     size_t overhead_blocks_;
+    size_t data_per_block_;
     std::map<std::string, File> files_;
     std::string open_;
 };
