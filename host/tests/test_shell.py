@@ -256,6 +256,20 @@ def test_reply_for_nobody_is_shown_as_raw_in_the_interactive_view():
     assert "#. 5 ok" in out.getvalue()
 
 
+def test_a_bom_before_the_first_piped_command_is_ignored(device):
+    shell, out, err, out_console, err_console = make_shell(device)
+    try:
+        assert run_lines(shell, ["\ufeffinfo"], out_console, err_console) == 0
+    finally:
+        shell.close()
+    assert "fw" in out.getvalue() and err.getvalue() == ""
+
+
+def test_cli_help_without_a_device(capsys):
+    assert cli.main(["shell", "help"]) == 0
+    assert "log level <tag> <L>" in capsys.readouterr().out
+
+
 def test_help_lists_the_commands(device):
     shell, out, _, out_console, err_console = make_shell(device)
     try:

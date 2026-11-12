@@ -208,7 +208,9 @@ def run_lines(shell: Shell, lines: Iterable[str], out: Console, err: Console) ->
         err.print(f"esp-logcat: {shell.waiting or 'the port did not open'}", markup=False)
         return 1
     code = 0
-    for raw in lines:
+    for number, raw in enumerate(lines):
+        if number == 0:
+            raw = raw.removeprefix("\ufeff")  # Windows PowerShell puts a BOM before piped text
         command = " ".join(raw.split())
         if not command or command.startswith("#"):
             continue

@@ -350,6 +350,9 @@ def tui_command(args: argparse.Namespace) -> int:
 def shell_command(args: argparse.Namespace, transport: Transport | None = None) -> int:
     from esp_logcat import shell as shell_module
 
+    if args.words == ["help"]:
+        print(shell_module.HELP)
+        return 0
     one_command = shell_module.is_command(args.words)
     line_filter = None
     if not one_command:
