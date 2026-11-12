@@ -13,7 +13,7 @@
 //   other file systems and for defensive tests;
 // - a full partition, optionally with LittleFS-like blocks: each file uses whole blocks,
 //   plus a few blocks of metadata;
-// - failures on demand: the next open, write, sync, rename or remove fails once.
+// - failures on demand: the next open, write, sync, read, rename or remove fails once.
 #pragma once
 
 #include <algorithm>
@@ -98,6 +98,10 @@ public:
     }
 
     size_t read(const char* name, uint32_t offset, char* out, size_t length) override {
+        if (fail_next_read) {
+            fail_next_read = false;
+            return 0;
+        }
         const File* file = find(name);
         if (file == nullptr) {
             return 0;
@@ -187,6 +191,7 @@ public:
     bool fail_next_write = false;
     size_t short_write = 0;  // bytes the failing write still accepts
     bool fail_next_sync = false;
+    bool fail_next_read = false;
     bool fail_next_rename = false;
     bool fail_next_remove = false;
 

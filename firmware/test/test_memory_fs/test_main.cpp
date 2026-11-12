@@ -269,6 +269,11 @@ void test_failures_happen_once() {
     fs.fail_next_remove = true;
     TEST_ASSERT_FALSE(fs.remove("c.txt"));
     TEST_ASSERT_TRUE(fs.remove("c.txt"));
+
+    char byte = 0;
+    fs.fail_next_read = true;
+    TEST_ASSERT_EQUAL_size_t(0, fs.read("a.txt", 0, &byte, 1));
+    TEST_ASSERT_EQUAL_size_t(1, fs.read("a.txt", 0, &byte, 1));
 }
 
 void test_a_failed_sync_keeps_the_data_pending() {
