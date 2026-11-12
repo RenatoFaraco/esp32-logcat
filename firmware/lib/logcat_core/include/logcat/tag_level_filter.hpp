@@ -52,6 +52,13 @@ public:
 
     // Number of tag overrides.
     size_t size() const { return count_.load(std::memory_order_acquire); }
+
+    // The override at position i < size(), in the order they were added. nullptr past the end.
+    const char* tag_at(size_t i) const { return i < size() ? entries_[i].tag : nullptr; }
+    LogLevel level_at(size_t i) const {
+        return i < size() ? static_cast<LogLevel>(entries_[i].level.load(std::memory_order_relaxed))
+                          : LogLevel::None;
+    }
     static constexpr size_t capacity() { return kMaxTagFilters; }
 
 private:

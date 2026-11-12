@@ -35,7 +35,7 @@ bool Writer::add_sink(Sink& sink) {
     if (sink_count_ >= kMaxSinks) {
         return false;
     }
-    sinks_[sink_count_++] = SinkState{&sink, 0, true};
+    sinks_[sink_count_++].sink = &sink;
     return true;
 }
 
@@ -49,6 +49,9 @@ void Writer::send(size_t length) {
         state.last_ok = state.sink->write(line_, length);
         if (!state.last_ok) {
             ++state.unsent;
+            // Only this task writes: a load and a store, no emulated read-modify-write.
+            state.refused_total.store(state.refused_total.load(std::memory_order_relaxed) + 1,
+                                      std::memory_order_relaxed);
         }
     }
 }
@@ -98,6 +101,16 @@ void Writer::report(LogLevel level, uint32_t count, const char* text_before,
 
 uint32_t Writer::unsent(size_t sink_index) const {
     return sink_index < sink_count_ ? sinks_[sink_index].unsent : 0;
+}
+
+const char* Writer::sink_name(size_t sink_index) const {
+    return sink_index < sink_count_ ? sinks_[sink_index].sink->name() : nullptr;
+}
+
+uint32_t Writer::refused_total(size_t sink_index) const {
+    return sink_index < sink_count_
+               ? sinks_[sink_index].refused_total.load(std::memory_order_relaxed)
+               : 0;
 }
 
 }  // namespace logcat

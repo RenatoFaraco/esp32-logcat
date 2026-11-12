@@ -58,6 +58,10 @@ conhece adaptador.
 | `RotatingStore` | Lógica de rotação: arquivo corrente, limite por arquivo e total, descarte do mais antigo — sobre a interface `FileSystem` |
 | `CommandParser` | Linha de pedido do console (`<id> <comando> [args]`) → `Command` (tipo, id a ecoar, tag e nível). Entende o pedido inteiro ou o rejeita (`bad_command`/`bad_args`); função pura |
 | `ReplyFormatter` | Monta as linhas de resposta (`#>`, `#.`, `#!`, `#BEGIN`, `#END`) num buffer fixo e recusa montar uma linha malformada; CRC-32 do bloco de dump (tabela de 16 entradas) |
+| `Console` | Bytes recebidos → linhas → comandos executados → respostas; só a parte de plataforma fica no adaptador (`ConsolePlatform`) |
+| `ReplyServer` | O lado da `WriterTask` no console: escreve as respostas e serve um bloco, uma linha por volta |
+| `RamTail` | `Sink` com as últimas 32 linhas em RAM (`log tail`); congela enquanto um bloco sai |
+| `GatedSink` | Tira a USB do log enquanto um bloco está aberto |
 | `Sequencer` | Contador `seq` por boot e contador de linhas descartadas |
 
 ### 2.2 Interfaces (ports) definidas no núcleo
@@ -195,8 +199,10 @@ estatísticas são funções puras → fáceis de testar.
 | Item | RAM |
 |------|-----|
 | Fila: 32 × `LogRecord` (~160 B) | ~5 KB |
-| RingBuffer: 64 linhas | ~10 KB |
+| `RamTail`: 32 linhas formatadas | ~5,5 KB |
+| Fila de respostas: 4 × ~180 B | ~0,7 KB |
 | Stack da `WriterTask` | 4 KB |
+| Stack da tarefa do console | 4 KB |
 | LastWords (RTC) | 2 KB |
 | **Total** | **~21 KB** de ~400 KB do C3 |
 

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <atomic>
 #include <cstddef>
 #include <cstdint>
 
@@ -50,11 +51,18 @@ public:
 
     uint32_t unsent(size_t sink_index) const;
 
+    // For `stats`, from the console task: safe once the writer task runs, since the sinks are
+    // fixed by then. The total counts every refused line since boot, and never goes back.
+    size_t sink_count() const { return sink_count_; }
+    const char* sink_name(size_t sink_index) const;
+    uint32_t refused_total(size_t sink_index) const;
+
 private:
     struct SinkState {
-        Sink* sink;
-        uint32_t unsent;  // refused lines not reported yet
-        bool last_ok;     // the last write to this sink succeeded
+        Sink* sink = nullptr;
+        uint32_t unsent = 0;  // refused lines not reported yet
+        bool last_ok = true;  // the last write to this sink succeeded
+        std::atomic<uint32_t> refused_total{0};
     };
 
     void send(size_t length);
@@ -62,7 +70,7 @@ private:
 
     Sequencer& sequencer_;
     Clock& clock_;
-    SinkState sinks_[kMaxSinks] = {};
+    SinkState sinks_[kMaxSinks];
     size_t sink_count_ = 0;
     uint32_t boot_ = 0;
     char line_[kLineBufferSize] = {};

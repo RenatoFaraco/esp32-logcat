@@ -94,7 +94,8 @@ Os blocos 🖥️ (M3, M4a, M5a) podem ser adiantados sempre que o trabalho com 
       `conformance/reply_cases.tsv` (ADR-012)
 
 ### M5b · Console — integração 🔌
-- [ ] Console na porta nativa; comandos executando de verdade
+- [x] Console na porta nativa; comandos executando de verdade (#28; `log dump` e `log clear`
+      respondem `unsupported` até o M4)
 - [ ] `esp-logcat dump` (bloco `#BEGIN/#END` com CRC) e `esp-logcat shell`
 
 ### M6 · Robustez 🔌

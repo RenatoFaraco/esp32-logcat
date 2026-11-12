@@ -1,5 +1,6 @@
 #pragma once
 
+#include <atomic>
 #include <cstddef>
 #include <cstdint>
 
@@ -27,10 +28,16 @@ public:
 
     bool empty() const;
 
+    // For `stats`. The high-water mark is sampled here, on the writer's side, so it costs the
+    // callers nothing: lines only leave through receive(), so the level peaks right before one.
+    size_t used() const;
+    uint32_t high_water() const { return high_water_.load(std::memory_order_relaxed); }
+
 private:
     StaticQueue_t control_{};
     uint8_t storage_[kDepth * sizeof(LogRecord)] = {};
     QueueHandle_t handle_ = nullptr;
+    std::atomic<uint32_t> high_water_{0};
 };
 
 }  // namespace logcat

@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Device console on the native USB port (#28): `info`, `stats`, `log level`, `log tail`,
+  `reboot` and `crash <panic|wdt>` work on the board; `log dump` and `log clear` answer
+  `unsupported` until flash storage (M4). Replies have their own queue and only the writer
+  task writes them, alternating with the log queue. `log tail` serves the last 32 lines from
+  RAM as a byte-counted block with CRC-32, with the USB out of the log meanwhile. D and V lines
+  are compiled in, so `log level <tag> D` opens a tag at run time. Manual section 8 (en/pt)
+  has every command with real output; fields are in wire-format §2.4.
 - Core `CommandParser` (#27): `parse_command` turns a console request
   (`<id> <command> [args]`) into a `Command`: `info`, `stats`, `log dump`, `log tail`,
   `log clear`, `log level <tag> <E|W|I|D|V|N>`, `reboot`, `crash <panic|wdt>`. A request is
@@ -140,6 +147,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- UART mirror no longer waits (#28): it wrote through stdout, one byte per driver call, and
+  the driver busy-waits on a full ring. Under load the writer task could stay stuck there for
+  good. Now a line goes in whole if it fits, or is refused and counted. In the UART phase of
+  the timing sweep the timer ISR's worst delay went from 99 ms to about 0.1 ms.
 - `test_replay_colors_on_a_terminal` no longer fails in a terminal with `NO_COLOR` set (rich
   honors it even on a forced terminal).
 - SECURITY: signing and hash chaining of logs are in the backlog with no version, as the PRD

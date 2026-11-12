@@ -11,10 +11,9 @@ namespace logcat {
 // the oldest one. No heap.
 //
 // Designed for two uses:
-// - `log tail` (M5): the last lines in RAM. NOT thread-safe: the writer task pushes and the
-//   console reads, so the adapter must serialize access. Pointers from at() and references
-//   given to for_each() are valid only while that lock is held: copy an item out under the
-//   lock and do slow I/O after releasing it.
+// - `log tail` (M5): the last lines in RAM (RamTail). NOT thread-safe: there the writer task
+//   both pushes and reads, so it needs no lock. Any other use from two tasks must serialize
+//   access and copy items out under the lock.
 // - Last words (M6): the same buffer placed in RTC_NOINIT memory, which survives a panic or
 //   watchdog reset. Hence:
 //   * No constructor and no member initializers: the default constructor is trivial, so no
