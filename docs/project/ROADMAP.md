@@ -83,7 +83,8 @@ Os blocos 🖥️ (M3, M4a, M5a) podem ser adiantados sempre que o trabalho com 
       p50/p99/máx por fase (`TIMING`, #13). A medição externa e o X foram para o M6 (#14)
 
 ### M4a · Persistência — lógica 🖥️
-- [ ] Interface `FileSystem` + implementação fake em memória para testes
+- [x] Interface `FileSystem` + implementação fake em memória para testes (#22): o fake
+      também simula partição cheia, falhas e queda de energia em qualquer ponto
 - [ ] `RotatingStore`: rotação, limite por arquivo, limite total, descarte
 - **Pronto quando:** testes de rotação cobrindo encher, girar e descartar.
 
