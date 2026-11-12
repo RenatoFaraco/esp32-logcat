@@ -71,7 +71,9 @@ class Reply:
         if self.verb == "crash":
             return self.restarted
         if self.verb == "reboot":
-            return self.end is not None and self.end.ok and self.restarted
+            # The "#." can be lost when the port drops at the reset: the restart is what counts.
+            # (A "#!" ends the request at once, so it never reaches a restart.)
+            return self.restarted
         return self.end is not None and self.end.ok
 
 
@@ -133,13 +135,13 @@ class Exchange:
         with self._lock:
             return list(self._pending)
 
-    def touch(self, ident: str, now: float) -> None:
+    def touch(self, ident: str, now: float, limit: float = float("inf")) -> None:
         """Bytes are arriving for this request's block: its timeout restarts (ADR-012 §6: at most
         2 s without bytes inside a block)."""
         with self._lock:
             pending = self._pending.get(ident)
-            if pending is not None and not pending.acknowledged:
-                pending.deadline = max(pending.deadline, now + self._reply_timeout)
+            if pending is not None:
+                pending.deadline = max(pending.deadline, min(now + self._reply_timeout, limit))
 
     def observe(self, event: Event, now: float) -> tuple[list[Reply], bool]:
         """Feeds one pipeline event. Returns the requests it completed, and whether the event is

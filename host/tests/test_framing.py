@@ -131,12 +131,55 @@ def test_disconnect_inside_the_block_reports_it_incomplete():
     assert framer.block_id is None
 
 
-def test_cancel_drops_the_block_and_resumes_lines():
+def test_cancel_drops_the_rest_of_the_block_without_making_lines():
+    framer = Framer(lambda ident: True)
+    framer.feed(b"#BEGIN 4 ram 40\n0000:000009 0000000090 I OLD: one")
+    framer.cancel_block()
+    # The rest of the content and its #END are dropped: old flash lines never become live ones.
+    out = framer.feed(b"\n00:010" + b"#END 4 00000000\n" + LOG)  # 33 + 7 = the 40 announced
+    assert out == [LOG]
+    assert framer.block_id is None
+
+
+def test_an_abandoned_block_is_not_kept_in_memory():
+    framer = Framer(lambda ident: True)
+    framer.feed(b"#BEGIN 4 ram 1000000\nabc")
+    framer.cancel_block()
+    framer.feed(b"x" * 10000)
+    assert len(framer._content) == 0  # a huge block abandoned must not grow memory
+
+
+def test_cancel_keeps_a_non_end_line_after_the_content_as_data():
+    framer = Framer(lambda ident: True)
+    framer.feed(b"#BEGIN 4 ram 3\nab")
+    framer.cancel_block()
+    assert framer.feed(b"c" + LOG) == [LOG]
+
+
+def test_cancel_with_no_block_is_harmless():
+    framer = Framer(lambda ident: True)
+    framer.cancel_block()
+    assert framer.feed(LOG) == [LOG]
+
+
+def test_disconnect_after_a_cancel_reports_nothing():
     framer = Framer(lambda ident: True)
     framer.feed(b"#BEGIN 4 ram 100\nabc")
     framer.cancel_block()
-    assert framer.feed(LOG) == [LOG]
-    assert framer.block_id is None
+    framer.feed(b"def")
+    assert framer.flush() == []
+
+
+def test_a_huge_announced_size_is_not_a_block():
+    out = frame([b"#BEGIN 4 ram 4294967295\n" + LOG])
+    assert out == [b"#BEGIN 4 ram 4294967295\n", LOG]
+
+
+def test_block_size_is_known_while_reading():
+    framer = Framer(lambda ident: True)
+    assert framer.block_size == 0
+    framer.feed(b"#BEGIN 4 ram 100\nabc")
+    assert framer.block_size == 100
 
 
 def test_end_line_without_newline_that_grows_too_long_is_given_up():

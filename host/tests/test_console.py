@@ -286,3 +286,25 @@ def test_block_lines_go_through_the_log_parser():
     assert isinstance(parsed[0], LogLine)
     assert isinstance(parsed[1], InvalidLine) and parsed[1].reason == "torn"
     assert isinstance(parsed[2], InvalidLine)  # erased flash with no newline
+
+
+def test_reboot_whose_ok_was_lost_still_succeeds_on_restart():
+    ex = exchange()
+    ex.start("reboot", now=0.0)
+    [reply], _ = feed(ex, Notice(NoticeKind.DISCONNECTED, "lost"))
+    assert reply.ok and reply.end is None
+
+
+def test_reboot_answered_with_an_error_is_a_failure_even_if_it_restarts():
+    ex = exchange()
+    ex.start("reboot", now=0.0)
+    [reply], _ = feed(ex, b"#! 7 busy dump in progress\n")
+    assert not reply.ok
+
+
+def test_touch_never_goes_past_its_limit():
+    ex = exchange()
+    ex.start("log tail", now=0.0)
+    ex.touch("7", now=1.5, limit=2.5)
+    assert ex.expire(now=2.4) == []
+    assert ex.expire(now=2.5)[0].failure == "no reply in 2 s"

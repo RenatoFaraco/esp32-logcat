@@ -361,6 +361,11 @@ def shell_command(args: argparse.Namespace, transport: Transport | None = None) 
         # A filter here always has its level: a mistyped command ("infoo") must not open the
         # prompt as if it were a tag filter.
         stray = [word for word in args.words if ":" not in word]
+        if stray and stray[0] in shell_module.COMMANDS:
+            args.command_parser.error(
+                f"the command comes first ({stray[0]} ...); "
+                "filters are only for the interactive shell"
+            )
         if stray:
             args.command_parser.error(
                 f"unknown command: {stray[0]} (a device command starts with one of: "
@@ -381,11 +386,35 @@ def shell_command(args: argparse.Namespace, transport: Transport | None = None) 
             err.print(f"esp-logcat: {exc}", markup=False)
             return 2
         transport = SerialTransport(port, args.baud)
-    interactive = not one_command and shell_module.stdin_is_terminal(sys.stdin)
+    interactive = (
+        not one_command
+        and shell_module.stdin_is_terminal(sys.stdin)
+        and shell_module.stdin_is_terminal(sys.stdout)
+    )
     if interactive:
-        # Printed through prompt_toolkit's stdout proxy: the console must follow sys.stdout.
-        out = Console(force_terminal=out.is_terminal, soft_wrap=True, highlight=False)
-        err = Console(stderr=True, force_terminal=err.is_terminal, soft_wrap=True, highlight=False)
+        # Printed through prompt_toolkit's stdout proxy: the console must follow sys.stdout
+        # (file=None), and write ANSI codes, never the legacy console API, which would bypass it.
+        out = _Console(
+            force_terminal=out.is_terminal,
+            soft_wrap=True,
+            highlight=False,
+            emoji=False,
+            legacy_windows=False,
+        )
+        err = _Console(
+            stderr=True,
+            force_terminal=err.is_terminal,
+            soft_wrap=True,
+            highlight=False,
+            emoji=False,
+            legacy_windows=False,
+        )
+    elif not one_command:
+        # Commands from a pipe: PowerShell may send a BOM, and Python's locale decoding would
+        # turn it into three characters instead of dropping it.
+        reconfigure = getattr(sys.stdin, "reconfigure", None)
+        if reconfigure is not None:
+            reconfigure(encoding="utf-8-sig", errors="replace")
     session = shell_module.Shell(
         transport, out, err, show_logs=not one_command, line_filter=line_filter
     )

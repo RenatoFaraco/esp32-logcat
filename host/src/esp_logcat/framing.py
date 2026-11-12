@@ -18,6 +18,9 @@ from esp_logcat.transport import MAX_PENDING, LineSplitter
 # How much of the line after the content is kept while waiting for "#END": a real one is
 # 19 bytes or less, and anything longer is not it.
 _END_LINE_LIMIT = 64
+# A #BEGIN announcing more is not a block we read: the board's flash is 4 MiB, and a corrupted
+# size must not make us swallow the stream for good.
+MAX_BLOCK_BYTES = 16 * 1024 * 1024
 
 
 class Framer:
@@ -37,6 +40,9 @@ class Framer:
         self._content = bytearray()
         self._end_line = bytearray()  # after the content: the line that should be #END
         self._cancelled = False
+        self._skipping = False  # cancelled inside a block: drop its rest, make no Block
+        self._received = 0  # content bytes so far (kept in _content unless skipping)
+        self._begin_id_skipped = ""
 
     @property
     def overflows(self) -> int:
@@ -47,7 +53,14 @@ class Framer:
         """The id of the block being read, if any."""
         return self._begin.id if self._begin is not None else None
 
+    @property
+    def block_size(self) -> int:
+        """The announced size of the block being read (0 when none)."""
+        return self._begin.size if self._begin is not None else 0
+
     def cancel_block(self) -> None:
+        """Gives up on the block being read: what is left of it, and its #END, are dropped
+        without becoming lines, so old flash lines never reach the statistics."""
         self._cancelled = True
 
     def feed(self, chunk: bytes) -> list[bytes | Block]:
@@ -57,9 +70,11 @@ class Framer:
         while position < len(chunk):
             if self._begin is None:
                 position = self._feed_lines(chunk, position, out)
-            elif len(self._content) < self._begin.size:
-                take = min(self._begin.size - len(self._content), len(chunk) - position)
-                self._content += chunk[position : position + take]
+            elif self._received < self._begin.size:
+                take = min(self._begin.size - self._received, len(chunk) - position)
+                if not self._skipping:
+                    self._content += chunk[position : position + take]
+                self._received += take
                 position += take
             else:
                 position = self._feed_end_line(chunk, position, out)
@@ -70,19 +85,26 @@ class Framer:
         out: list[bytes | Block] = []
         self._apply_cancel()
         if self._begin is not None:
-            out.append(self._finish(None, "connection lost inside the block"))
+            if self._skipping:
+                self._reset()
+            else:
+                out.append(self._finish(None, "connection lost inside the block"))
         out.extend(self._splitter.flush())
         return out
 
     def _apply_cancel(self) -> None:
         if self._cancelled:
             self._cancelled = False
-            self._reset()
+            if self._begin is not None:
+                self._skipping = True
+                self._content.clear()
 
     def _reset(self) -> None:
         self._begin = None
         self._content.clear()
         self._end_line.clear()
+        self._skipping = False
+        self._received = 0
 
     def _feed_lines(self, chunk: bytes, position: int, out: list[bytes | Block]) -> int:
         # Feed the splitter up to the next newline only: if that line opens a block, the bytes
@@ -91,10 +113,13 @@ class Framer:
         end = len(chunk) if newline < 0 else newline + 1
         for line in self._splitter.feed(chunk[position:end]):
             begin = parse_line(line) if line.startswith(b"#BEGIN ") else None
-            if isinstance(begin, DumpBegin) and self._expects_block(begin.id):
+            if (
+                isinstance(begin, DumpBegin)
+                and begin.size <= MAX_BLOCK_BYTES
+                and self._expects_block(begin.id)
+            ):
+                self._reset()
                 self._begin = begin
-                self._content.clear()
-                self._end_line.clear()
             else:
                 out.append(line)
         return end
@@ -110,6 +135,12 @@ class Framer:
             line = line[:-2] + b"\n"
         marker = parse_line(line) if line.endswith(b"\n") else None
         assert self._begin is not None
+        if self._skipping:
+            self._begin_id_skipped = self._begin.id
+            self._reset()  # an abandoned block: its #END goes too, anything else is data
+            if not (isinstance(marker, DumpEnd) and marker.id == self._begin_id_skipped):
+                out.extend(self._splitter.feed(line))
+            return end
         if isinstance(marker, DumpEnd) and marker.id == self._begin.id:
             out.append(self._finish(marker.crc32, ""))
             return end
@@ -122,8 +153,6 @@ class Framer:
     def _finish(self, crc32: int | None, problem: str) -> Block:
         assert self._begin is not None
         content = bytes(self._content)
-        if not problem and len(content) < self._begin.size:
-            problem = "content cut short"
         if not problem and crc32 != zlib.crc32(content):
             problem = f"CRC mismatch: #END says {crc32:08x}, content is {zlib.crc32(content):08x}"
         block = Block(

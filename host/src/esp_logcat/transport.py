@@ -34,6 +34,7 @@ MAX_PENDING = 1024
 
 NATIVE_USB = (0x303A, 0x1001)  # Espressif USB-Serial-JTAG
 RESET_PULSE_S = 0.2
+WRITE_TIMEOUT_S = 1.0
 
 
 class LineSplitter:
@@ -146,6 +147,7 @@ class SerialLike(Protocol):
     port: str | None
     baudrate: int
     timeout: float | None
+    write_timeout: float | None
     dtr: bool
     rts: bool
 
@@ -321,6 +323,9 @@ class SerialTransport:
         link.port = name
         link.baudrate = self._baudrate
         link.timeout = self._read_timeout
+        # A device that stops reading must not hang write() forever (pyserial waits by default),
+        # nor the reconnect behind it: the write fails and the caller reports it.
+        link.write_timeout = WRITE_TIMEOUT_S
         # Released before open(): active lines would hold the C3 in reset or download mode.
         link.dtr = False
         link.rts = False

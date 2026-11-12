@@ -19,11 +19,14 @@ from esp_logcat.events import Notice, NoticeKind, Received, ReceivedBlock
 from esp_logcat.filters import LogFilter
 from esp_logcat.framing import Framer
 from esp_logcat.parser import CommandEnd, CommandReply, DumpBegin, DumpEnd, RawLine
-from esp_logcat.pipeline import events
-from esp_logcat.render import render, render_notice
+from esp_logcat.pipeline import events, visible
+from esp_logcat.render import device_text, render, render_notice
 from esp_logcat.stats import StreamStats
 
 CONNECT_TIMEOUT_S = 3.0
+# A block's bytes extend its request only up to size / this rate + 2 s (the native port does
+# hundreds of kB/s; this is a floor, not an estimate).
+BLOCK_MIN_RATE = 20_000
 HELP = """\
 commands (the shell adds the request id):
   info                      who the device is: firmware, chip, uptime, reset reason
@@ -74,6 +77,7 @@ class Shell:
         self._connected = threading.Event()
         self._reader_done = threading.Event()
         self.waiting = ""  # the last "waiting for the port" notice, to explain a failure
+        self._reader_error = ""
         self._thread = threading.Thread(target=self._read, name="esp-logcat-reader", daemon=True)
 
     # ------------------------------------------------------------------ lifecycle
@@ -88,40 +92,85 @@ class Shell:
     def wait_connected(self, timeout: float) -> bool:
         return self._connected.wait(timeout)
 
+    @property
+    def reader_error(self) -> str:
+        """Why the reader thread stopped; empty while it runs."""
+        if not self._reader_done.is_set():
+            return ""
+        return self._reader_error or "the input ended"
+
     # ------------------------------------------------------------------ requests
 
     def request(self, command: str) -> Reply:
+        """Sends one command and waits for its reply. Ctrl+C abandons the request (and the block
+        it may be reading) and is raised again for the caller."""
+        command = " ".join(command.split())  # one line: no newline can start a second request
+        if not self._connected.is_set():
+            # After a reboot the native port re-enumerates: wait for it like at the start.
+            self.wait_connected(CONNECT_TIMEOUT_S)
         ident = self.exchange.start(command, self._clock())
         if not self._transport.write(f"{ident} {command}\n".encode("ascii", "replace")):
             reply = self.exchange.cancel(ident, "the port is not open", self._clock())
-            assert reply is not None
-            return reply
+            if reply is not None:
+                return reply
+            # Otherwise the reader ended it first (a restart or a disconnect): it is in _done.
+        try:
+            return self._wait(ident)
+        except KeyboardInterrupt:
+            self._abandon(ident, "interrupted")
+            raise
+
+    def _wait(self, ident: str) -> Reply:
         with self._changed:
             while ident not in self._done:
                 for reply in self.exchange.expire(self._clock()):
-                    if self._framer.block_id == reply.id:
-                        self._framer.cancel_block()
+                    self._drop_block(reply.id)
                     self._done[reply.id] = reply
+                if ident not in self._done and self._reader_done.is_set():
+                    self._abandon(ident, f"the reader stopped: {self.reader_error}")
                 if ident not in self._done:
                     self._changed.wait(0.05)
             return self._done.pop(ident)
 
+    def _abandon(self, ident: str, why: str) -> None:
+        reply = self.exchange.cancel(ident, why, self._clock())
+        self._drop_block(ident)
+        if reply is not None:
+            self._done[ident] = reply
+
+    def _drop_block(self, ident: str) -> None:
+        if self._framer.block_id == ident:
+            self._framer.cancel_block()
+
     # ------------------------------------------------------------------ reader thread
 
     def _chunks(self) -> Iterator[bytes | Notice]:
+        block_started: tuple[str, float] | None = None
         for item in self._transport.chunks():
-            if isinstance(item, bytes) and (block := self._framer.block_id) is not None:
-                self.exchange.touch(block, self._clock())
+            block = self._framer.block_id
+            if block is None:
+                block_started = None
+            elif isinstance(item, bytes):
+                now = self._clock()
+                if block_started is None or block_started[0] != block:
+                    block_started = (block, now)
+                # Bytes keep a block's request alive, but not forever: a block aborted inside
+                # (wire-format §3) is followed by live log, which would otherwise be read as
+                # content until <bytes> is reached.
+                limit = block_started[1] + self._framer.block_size / BLOCK_MIN_RATE + 2.0
+                self.exchange.touch(block, now, limit)
             yield item
 
     def _read(self) -> None:
         try:
-            for event in events(self._chunks(), self.stats, framer=self._framer):
+            parsed = events(self._chunks(), self.stats, framer=self._framer)
+            for event in visible(parsed, self.stats, self._filter if self._show_logs else None):
                 replies, out_of_context = self.exchange.observe(event, self._clock())
-                self._show(event, out_of_context)
                 if isinstance(event, Notice):
                     if event.kind is NoticeKind.CONNECTED:
                         self._connected.set()
+                    elif event.kind is NoticeKind.DISCONNECTED:
+                        self._connected.clear()
                     elif event.kind is NoticeKind.WAITING:
                         self.waiting = event.text
                 if replies:
@@ -129,6 +178,9 @@ class Shell:
                         for reply in replies:
                             self._done[reply.id] = reply
                         self._changed.notify_all()
+                self._show(event, out_of_context)
+        except Exception as exc:  # noqa: BLE001  (reported to the waiting request, not lost)
+            self._reader_error = f"{type(exc).__name__}: {exc}"
         finally:
             self._reader_done.set()
             with self._changed:
@@ -144,11 +196,10 @@ class Shell:
             case Received(line=line) if _is_reply_line(line):
                 pass  # part of a reply: printed with the reply
             case Received(line=line):
-                if self._filter is None or self._filter.accepts(line):
-                    self._out.print(render(line))
-            case Notice(kind=kind) if kind is not NoticeKind.FILTER:
+                self._out.print(render(line))  # visible() already applied the filter
+            case Notice():
                 self._err.print(render_notice(event))
-            case ReceivedBlock() | Notice():
+            case ReceivedBlock():
                 pass
 
 
@@ -197,7 +248,7 @@ def print_reply(reply: Reply, out: Console, err: Console, *, as_json: bool = Fal
 
 def run_one(shell: Shell, words: list[str], out: Console, err: Console, *, as_json: bool) -> int:
     if not shell.wait_connected(CONNECT_TIMEOUT_S):
-        err.print(f"esp-logcat: {shell.waiting or 'the port did not open'}", markup=False)
+        err.print(device_text(f"esp-logcat: {shell.waiting or 'the port did not open'}"))
         return 1
     return print_reply(shell.request(" ".join(words)), out, err, as_json=as_json)
 
@@ -205,7 +256,7 @@ def run_one(shell: Shell, words: list[str], out: Console, err: Console, *, as_js
 def run_lines(shell: Shell, lines: Iterable[str], out: Console, err: Console) -> int:
     """Commands from a pipe, one per line, no prompt. Exit code 1 if any of them failed."""
     if not shell.wait_connected(CONNECT_TIMEOUT_S):
-        err.print(f"esp-logcat: {shell.waiting or 'the port did not open'}", markup=False)
+        err.print(device_text(f"esp-logcat: {shell.waiting or 'the port did not open'}"))
         return 1
     code = 0
     for number, raw in enumerate(lines):
@@ -218,6 +269,9 @@ def run_lines(shell: Shell, lines: Iterable[str], out: Console, err: Console) ->
         if result is None:
             break
         code = max(code, result)
+        if shell.reader_error:
+            err.print(device_text(f"esp-logcat: {shell.reader_error}"))
+            return 1
     return code
 
 
@@ -253,10 +307,17 @@ def run_prompt(shell: Shell, out: Console, err: Console) -> int:
                 break
             if not command:
                 continue
-            result = handle(shell, command, out, err)
+            try:
+                result = handle(shell, command, out, err)
+            except KeyboardInterrupt:
+                err.print("interrupted", style="dim")
+                continue
             if result is None:
                 break
             code = max(code, result)
+            if shell.reader_error:
+                err.print(device_text(f"esp-logcat: {shell.reader_error}"))
+                return 1
     return code
 
 

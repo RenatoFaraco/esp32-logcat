@@ -101,10 +101,13 @@ def consoles() -> tuple[Console, Console, io.StringIO, io.StringIO]:
 
 
 def make_shell(
-    device: FakeDevice, **kwargs
+    device: FakeDevice, *, quick: bool = False, **kwargs
 ) -> tuple[Shell, io.StringIO, io.StringIO, Console, Console]:
+    """quick: short timeouts, for the tests that wait for one to expire. The others get long
+    ones, so a slow CI machine never turns a reply into a timeout."""
     out_console, err_console, out, err = consoles()
-    exchange = Exchange(RequestIds(start=7), reply_timeout=0.3, restart_timeout=0.5)
+    timeouts = (0.3, 0.5) if quick else (5.0, 5.0)
+    exchange = Exchange(RequestIds(start=7), reply_timeout=timeouts[0], restart_timeout=timeouts[1])
     shell = Shell(device, out_console, err_console, exchange=exchange, **kwargs)
     shell.start()
     return shell, out, err, out_console, err_console
@@ -117,8 +120,10 @@ def device():
     dev.close()
 
 
-def one(device: FakeDevice, words: list[str], *, as_json: bool = False) -> tuple[int, str, str]:
-    shell, out, err, out_console, err_console = make_shell(device)
+def one(
+    device: FakeDevice, words: list[str], *, as_json: bool = False, quick: bool = False
+) -> tuple[int, str, str]:
+    shell, out, err, out_console, err_console = make_shell(device, quick=quick)
     try:
         code = run_one(shell, words, out_console, err_console, as_json=as_json)
     finally:
@@ -167,7 +172,7 @@ def test_log_tail_prints_the_block_lines_and_its_check(device):
 def test_no_reply_is_an_error():
     device = FakeDevice(greeting=LOG_I)
     try:
-        code, _, err = one(device, ["log", "dump"])  # the fake never answers this one
+        code, _, err = one(device, ["log", "dump"], quick=True)  # the fake never answers it
     finally:
         device.close()
     assert code == 1 and "no reply in 0.3 s" in err
@@ -190,20 +195,19 @@ def test_crash_succeeds_on_restart_and_fails_without():
         device.close()
     quiet = FakeDevice(greeting=LOG_I)
     try:
-        code, _, err = one(quiet, ["crash", "wdt"])
+        code, _, err = one(quiet, ["crash", "wdt"], quick=True)
     finally:
         quiet.close()
     assert code == 1 and "no restart seen" in err
 
 
-def test_port_that_never_opens():
+def test_port_that_never_opens(monkeypatch):
     device = FakeDevice(connect=False)
+    monkeypatch.setattr(shell_module, "CONNECT_TIMEOUT_S", 0.2)
     shell, _, err, out_console, err_console = make_shell(device)
-    shell_module.CONNECT_TIMEOUT_S, saved = 0.2, shell_module.CONNECT_TIMEOUT_S
     try:
         code = run_one(shell, ["info"], out_console, err_console, as_json=False)
     finally:
-        shell_module.CONNECT_TIMEOUT_S = saved
         shell.close()
     assert code == 1 and "port busy" in err.getvalue()
 
@@ -361,3 +365,140 @@ def test_cli_dash_is_a_word_not_an_option(device, monkeypatch, capsys):
     assert device.written == [b"7 log level - D\n"] or device.written[0].endswith(
         b" log level - D\n"
     )
+
+
+# ------------------------------------------------------------------ review of #30
+
+
+class ScriptedDevice(FakeDevice):
+    """Writes answer with a scripted list of chunks instead of ANSWERS."""
+
+    def __init__(self, script, *, write_result: bool = True, **kwargs):
+        super().__init__(greeting=LOG_I, **kwargs)
+        self._script = list(script)
+        self._write_result = write_result
+
+    def write(self, data: bytes) -> bool:
+        self.written.append(data)
+        ident = data.split(b" ", 1)[0].decode()
+        for item in self._script.pop(0) if self._script else []:
+            self._queue.put(item(ident) if callable(item) else item)
+        return self._write_result
+
+
+def test_a_reply_ended_by_the_reader_before_the_write_returned_is_not_lost():
+    # The port drops right as the command goes out: the reader ends the request first, then
+    # write() reports failure. The shell must report the reader's verdict, not crash.
+    import time
+
+    device = ScriptedDevice(
+        [[Notice(NoticeKind.DISCONNECTED, "COM6: connection lost")]], write_result=False
+    )
+    shell, *_ = make_shell(device)
+    original = device.write
+
+    def slow_write(data):
+        result = original(data)
+        time.sleep(0.2)  # the reader handles the notice meanwhile
+        return result
+
+    device.write = slow_write
+    try:
+        shell.wait_connected(2)
+        reply = shell.request("reboot")
+    finally:
+        shell.close()
+        device.close()
+    assert reply.ok and reply.restarted
+
+
+def test_reader_that_dies_ends_the_waiting_request():
+    class Exploding(FakeDevice):
+        def chunks(self):
+            yield Notice(NoticeKind.CONNECTED, "connected to COM6")
+            raise RuntimeError("boom")
+
+    device = Exploding()
+    shell, *_ = make_shell(device)
+    try:
+        shell.wait_connected(2)
+        reply = shell.request("info")
+    finally:
+        shell.close()
+    assert not reply.ok and "RuntimeError: boom" in reply.failure
+    assert "boom" in shell.reader_error
+
+
+def test_after_a_reboot_the_next_command_waits_for_the_port():
+    connected = Notice(NoticeKind.CONNECTED, "connected to COM6")
+    lost = Notice(NoticeKind.DISCONNECTED, "COM6: connection lost")
+    device = ScriptedDevice(
+        [
+            [lambda i: f"#. {i} ok\n".encode(), lost],
+            [lambda i: f"#> {i} fw=v0.3.0\n#. {i} ok\n".encode()],
+        ]
+    )
+    shell, out, _, out_console, err_console = make_shell(device, show_logs=False)
+    writes = []
+    original = device.write
+
+    def write_when_back(data):
+        writes.append(shell._connected.is_set())
+        if len(writes) == 1:
+            result = original(data)
+            device._queue.put(connected)  # the port comes back after the reset
+            return result
+        return original(data)
+
+    device.write = write_when_back
+    try:
+        code = run_lines(shell, ["reboot", "info"], out_console, err_console)
+    finally:
+        shell.close()
+        device.close()
+    assert code == 0 and "fw" in out.getvalue()
+
+
+def test_ctrl_c_during_a_request_abandons_it(monkeypatch):
+    device = FakeDevice(greeting=LOG_I)
+    shell, *_ = make_shell(device)
+
+    def interrupted(ident):
+        raise KeyboardInterrupt
+
+    monkeypatch.setattr(shell, "_wait", interrupted)
+    try:
+        shell.wait_connected(2)
+        with pytest.raises(KeyboardInterrupt):
+            shell.request("log dump")
+        assert shell.exchange.pending == []
+    finally:
+        shell.close()
+        device.close()
+
+
+def test_filtered_lines_count_as_hidden_in_the_summary(device):
+    shell, out, _, out_console, err_console = make_shell(
+        device, show_logs=True, line_filter=LogFilter.parse(["*:E"])
+    )
+    try:
+        run_lines(shell, ["stats"], out_console, err_console)
+    finally:
+        shell.close()
+    assert shell.stats.hidden >= 1 and "hidden by filter" in shell.stats.summary()
+
+
+def test_a_newline_inside_a_command_cannot_start_a_second_request(device):
+    shell, *_ = make_shell(device)
+    try:
+        shell.wait_connected(2)
+        shell.request("info\n9 reboot")
+    finally:
+        shell.close()
+    assert device.written == [b"7 info 9 reboot\n"]
+
+
+def test_cli_command_after_a_filter_says_the_command_comes_first(capsys):
+    with pytest.raises(SystemExit):
+        cli.main(["shell", "*:W", "info"])
+    assert "the command comes first" in capsys.readouterr().err
