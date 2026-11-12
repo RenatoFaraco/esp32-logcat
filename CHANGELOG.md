@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-11-11
+
+Milestones **M2 · Capture & write** and **M3 · Host tool**, plus the device side of the
+**M5 · Console**. Every `ESP_LOGx` on the board now goes through the logcat core without ever
+blocking whoever logs, out on the native USB port and mirrored on the UART; `esp-logcat` reads it
+live or from a file, with filters, sessions and an interactive TUI; and the board answers console
+commands (`info`, `stats`, `log level`, `log tail`, `reboot`, `crash`). The external timing
+measurement with the logic analyzer (#14) moved to M6; the internal one (#13) is here. Still to
+come in M5: `esp-logcat dump` (#29) and `esp-logcat shell` (#30).
+
 ### Added
 
 - Device console on the native USB port (#28): `info`, `stats`, `log level`, `log tail`,
@@ -235,6 +245,7 @@ No logging functionality yet.
 - Repository basics: MIT license, `.gitignore`, `.gitattributes` (LF everywhere),
   `.clang-format`.
 
-[Unreleased]: https://github.com/RenatoFaraco/esp32-logcat/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/RenatoFaraco/esp32-logcat/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/RenatoFaraco/esp32-logcat/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/RenatoFaraco/esp32-logcat/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/RenatoFaraco/esp32-logcat/releases/tag/v0.1.0
