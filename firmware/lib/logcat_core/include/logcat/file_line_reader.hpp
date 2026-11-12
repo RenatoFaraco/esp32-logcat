@@ -19,6 +19,8 @@ namespace logcat {
 // new line. A last piece without '\n' is torn. The file is read in blocks of kReadBlock bytes
 // (each FileSystem::read by name may open and seek the file).
 //
+// About 760 bytes: keep it static or as a member, never on the writer task's stack.
+//
 // The size is taken when the reader is made: a file that grows meanwhile is read up to that
 // point (sync it first if it is the open one, see FileSystem).
 class FileLineReader {
@@ -31,12 +33,15 @@ public:
     // status is Ok (parse_line's rule); line() and length() hold the raw bytes either way.
     bool next(ParseStatus& status, LogRecord& out);
 
-    const char* line() const { return line_; }
+    const char* line() const { return line_; }  // not NUL-terminated: use length()
     size_t length() const { return length_; }
 
     // How many lines got each status so far.
     uint32_t count(ParseStatus status) const { return counts_[static_cast<size_t>(status)]; }
     uint32_t file_size() const { return size_; }
+    // A read failed before the end: what was read is all there is, and it is not the whole file
+    // (the dump must not call it complete).
+    bool failed() const { return failed_; }
 
 private:
     bool fill();
@@ -51,6 +56,7 @@ private:
     char line_[kLineBufferSize] = {};
     size_t length_ = 0;
     bool skipping_ = false;  // inside the rest of an overlong line
+    bool failed_ = false;
     uint32_t counts_[6] = {};
 };
 

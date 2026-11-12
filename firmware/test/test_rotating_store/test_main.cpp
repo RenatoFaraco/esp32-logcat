@@ -146,7 +146,7 @@ void test_never_passes_the_total_and_keeps_the_newest_in_order() {
 
 void test_default_limits_fit_littlefs_blocks() {
     // 512 KB partition, 4 KB blocks, a few metadata blocks: the default 448 KB budget fits.
-    MemoryFileSystem fs(512 * 1024, 4096, 8);
+    MemoryFileSystem fs(512 * 1024, 4096, 8, 4088);  // 4088 data bytes per 4096-byte block
     RotatingStore store(fs);
     store.begin();
     const std::string long_line = make_line(0, std::string(127, 'x'));
@@ -337,7 +337,7 @@ void test_flush_reports_a_failed_sync() {
     put_line(store, make_line(1));
     fs.fail_next_sync = true;
     TEST_ASSERT_FALSE(store.flush());
-    TEST_ASSERT_TRUE(store.flush());
+    TEST_ASSERT_TRUE(store.flush());  // closed after the failure: nothing pending now
 }
 
 // ---------------------------------------------------------------- after log_999
@@ -521,17 +521,33 @@ void test_a_line_over_the_total_with_one_file_never_tries_to_remove_it() {
 }
 
 void test_the_repair_counts_toward_the_total() {
-    MemoryFileSystem fs;
     const std::string line = make_line(1);
-    fs.put("log_000.txt", line);
-    fs.put("log_001.txt", "torn");  // the current file, cut inside a line
     // Room for the line but not for the line plus DEL + '\n': the oldest must go.
     const uint32_t limit = static_cast<uint32_t>(line.size() + 4 + line.size() + 1);
+    // A partition of exactly that size: a repair written before making room would be short.
+    MemoryFileSystem fs(limit);
+    fs.put("log_000.txt", line);
+    fs.put("log_001.txt", "torn");  // the current file, cut inside a line
     RotatingStore store(fs, small(100000, limit));
     store.begin();
     TEST_ASSERT_TRUE(put_line(store, make_line(2)));
     TEST_ASSERT_FALSE(fs.exists("log_000.txt"));
     TEST_ASSERT_TRUE(store.stats().bytes <= limit);
+}
+
+// The repair alone does not fit: room is made for it first, so it goes in whole.
+void test_room_is_made_for_the_repair_itself() {
+    const std::string line = make_line(1);
+    const uint32_t limit = static_cast<uint32_t>(line.size() + 5);  // the oldest + "torn" + 1
+    MemoryFileSystem fs(limit);
+    fs.put("log_000.txt", line);
+    fs.put("log_001.txt", "torn");
+    RotatingStore store(fs, small(100000, limit));
+    store.begin();
+    put_line(store, make_line(2));  // the line itself may not fit: only the repair matters
+    TEST_ASSERT_EQUAL_UINT32(1, store.stats().repaired);
+    TEST_ASSERT_FALSE(fs.exists("log_000.txt"));
+    TEST_ASSERT_TRUE(fs.used() <= limit);
 }
 
 void test_at_most_16_files_are_kept_even_when_the_total_allows_more() {
@@ -561,13 +577,241 @@ void test_only_log_nnn_txt_names_are_ours() {
     TEST_ASSERT_FALSE(store.file_name(1, first));
 }
 
+// ---------------------------------------------------------------- review of #23
+
+// A full file that ends torn: the line goes to a new file, but the old one is closed first.
+void test_a_torn_tail_is_closed_even_when_the_line_rotates() {
+    MemoryFileSystem fs;
+    const std::string line = make_line(1);
+    fs.put("log_000.txt", line + "0000:000002 00");  // torn, and too full for another line
+    RotatingStore store(fs, small(static_cast<uint32_t>(line.size() + 20), 100000));
+    store.begin();
+    TEST_ASSERT_TRUE(put_line(store, make_line(3)));
+    store.flush();
+    const std::string old_file = fs.content("log_000.txt");
+    TEST_ASSERT_EQUAL_STRING("\x7f\n", old_file.substr(old_file.size() - 2).c_str());
+    TEST_ASSERT_EQUAL_size_t(2, store.file_count());
+    TEST_ASSERT_EQUAL_UINT32(1, store.stats().repaired);
+}
+
+// An orphan the scan could not remove must not block the renumbering after log_999.
+void test_an_orphan_does_not_block_the_renumbering() {
+    MemoryFileSystem fs;
+    const size_t line = make_line(1).size();
+    fs.put(name_of(0), "orphan\n");  // will be beyond the 16 newest
+    for (uint32_t index = 984; index <= 999; ++index) {
+        fs.put(name_of(index), make_line(index));
+    }
+    fs.fail_next_remove = true;  // the scan cannot remove the orphan
+    RotatingStore store(fs, small(static_cast<uint32_t>(line), 10000000));
+    store.begin();
+    TEST_ASSERT_EQUAL_UINT32(1, store.stats().failed_removes);
+    TEST_ASSERT_TRUE(put_line(store, make_line(5000)));  // rotates past 999: renumbers over log_000
+    TEST_ASSERT_EQUAL_UINT32(1, store.stats().renumbered);
+    store.flush();  // the open file shows only synced bytes to a reader
+    TEST_ASSERT_EQUAL_UINT32(5000, all_seqs(fs, store).back());
+}
+
+void test_file_limit_is_clamped_to_the_total() {
+    MemoryFileSystem fs;
+    const size_t line = make_line(1).size();
+    RotatingStore store(fs, small(100000, static_cast<uint32_t>(3 * line)));
+    store.begin();
+    for (uint32_t seq = 0; seq < 10; ++seq) {
+        TEST_ASSERT_TRUE(put_line(store, make_line(seq)));
+        TEST_ASSERT_TRUE(store.stats().bytes <= 3 * line);
+    }
+}
+
+// A newest file with data that will not open: logging moves on to the next index instead of
+// stopping for good.
+void test_a_newest_file_that_will_not_open_is_skipped() {
+    MemoryFileSystem fs;
+    fs.put("log_000.txt", make_line(1));
+    RotatingStore store(fs);
+    fs.fail_next_open = true;
+    TEST_ASSERT_FALSE(store.begin());
+    fs.fail_next_open = true;  // and again at the first line
+    TEST_ASSERT_TRUE(put_line(store, make_line(2)));
+    store.flush();
+    TEST_ASSERT_EQUAL_size_t(2, store.file_count());
+    TEST_ASSERT_EQUAL_UINT32(2, all_seqs(fs, store).back());
+}
+
+void test_an_empty_file_that_will_not_open_is_not_skipped() {
+    MemoryFileSystem fs;
+    RotatingStore store(fs);
+    store.begin();
+    store.flush();
+    fs.power_cut();
+    RotatingStore again(fs);
+    fs.fail_next_open = true;
+    again.begin();
+    fs.fail_next_open = true;
+    TEST_ASSERT_FALSE(put_line(again, make_line(1)));  // refused, but no new index
+    TEST_ASSERT_EQUAL_size_t(1, again.file_count());
+    TEST_ASSERT_TRUE(put_line(again, make_line(2)));
+}
+
+// A size the scan cannot read: charged as a full file, and repaired on open.
+class SizeFails final : public logcat::FileSystem {
+public:
+    explicit SizeFails(MemoryFileSystem& inner) : inner_(inner) {}
+    bool open_append(const char* name) override { return inner_.open_append(name); }
+    size_t write(const char* data, size_t length) override { return inner_.write(data, length); }
+    bool sync() override { return inner_.sync(); }
+    void close() override { inner_.close(); }
+    int32_t size(const char* name) override { return failing ? -1 : inner_.size(name); }
+    size_t read(const char* name, uint32_t offset, char* out, size_t length) override {
+        return inner_.read(name, offset, out, length);
+    }
+    bool remove(const char* name) override { return inner_.remove(name); }
+    bool rename(const char* from, const char* to) override { return inner_.rename(from, to); }
+    size_t list(logcat::NameVisitor& visitor) override { return inner_.list(visitor); }
+    bool failing = true;
+
+private:
+    MemoryFileSystem& inner_;
+};
+
+void test_an_unreadable_size_is_charged_full_and_repaired() {
+    MemoryFileSystem inner;
+    inner.put("log_000.txt", "0000:000001 000");  // torn
+    SizeFails fs(inner);
+    RotatingStore store(fs, small(1000, 100000));
+    store.begin();
+    TEST_ASSERT_EQUAL_UINT32(1000, store.stats().bytes);  // charged as full
+    fs.failing = false;
+    TEST_ASSERT_TRUE(put_line(store, make_line(2)));
+    store.flush();
+    TEST_ASSERT_EQUAL_UINT32(1, store.stats().repaired);
+}
+
+void test_flush_with_nothing_open_has_nothing_to_do() {
+    MemoryFileSystem fs;
+    RotatingStore store(fs);
+    TEST_ASSERT_TRUE(store.flush());  // before begin(): nothing pending
+    TEST_ASSERT_FALSE(store.is_open());
+}
+
+void test_a_failed_flush_closes_the_file_and_counts_the_loss() {
+    MemoryFileSystem fs;
+    RotatingStore store(fs);
+    store.begin();
+    put_line(store, make_line(1));
+    store.flush();
+    put_line(store, make_line(2));
+    TEST_ASSERT_EQUAL_UINT32(make_line(2).size(), store.unsynced_bytes());
+    fs.fail_next_sync = true;
+    TEST_ASSERT_FALSE(store.flush());
+    TEST_ASSERT_FALSE(store.is_open());
+    TEST_ASSERT_EQUAL_UINT32(1, store.stats().sync_failures);
+    TEST_ASSERT_TRUE(put_line(store, make_line(3)));  // reopened
+    TEST_ASSERT_TRUE(store.flush());
+    TEST_ASSERT_EQUAL_UINT32(0, store.unsynced_bytes());
+    const std::vector<uint32_t> seqs = all_seqs(fs, store);
+    TEST_ASSERT_EQUAL_UINT32(3, seqs.back());
+}
+
+void test_a_short_write_counts_the_unsynced_bytes_it_drops() {
+    MemoryFileSystem fs;
+    RotatingStore store(fs);
+    store.begin();
+    put_line(store, make_line(1));  // never synced
+    fs.fail_next_write = true;
+    fs.short_write = 5;
+    TEST_ASSERT_FALSE(put_line(store, make_line(2)));
+    TEST_ASSERT_EQUAL_UINT32(make_line(1).size() + 5, store.stats().lost_bytes);
+}
+
+void test_file_sizes_for_the_dump() {
+    MemoryFileSystem fs;
+    const size_t line = make_line(1).size();
+    RotatingStore store(fs, small(static_cast<uint32_t>(line), 100000));
+    store.begin();
+    put_line(store, make_line(1));
+    put_line(store, make_line(2));
+    TEST_ASSERT_EQUAL_UINT32(line, store.file_size(0));
+    TEST_ASSERT_EQUAL_UINT32(line, store.file_size(1));
+    TEST_ASSERT_EQUAL_UINT32(0, store.file_size(2));
+}
+
+void test_write_before_begin_is_refused() {
+    MemoryFileSystem fs;
+    RotatingStore store(fs);
+    TEST_ASSERT_FALSE(put_line(store, make_line(1)));
+    TEST_ASSERT_EQUAL_size_t(0, fs.file_count());
+}
+
+void test_rotation_past_999_with_16_files_renumbers_and_removes() {
+    MemoryFileSystem fs;
+    const size_t line = make_line(1).size();
+    for (uint32_t index = 984; index <= 999; ++index) {
+        fs.put(name_of(index), make_line(index));
+    }
+    RotatingStore store(fs, small(static_cast<uint32_t>(line), 10000000));
+    store.begin();
+    TEST_ASSERT_TRUE(put_line(store, make_line(5000)));
+    TEST_ASSERT_EQUAL_size_t(logcat::kMaxStoreFiles, store.file_count());
+    store.flush();
+    const std::vector<uint32_t> seqs = all_seqs(fs, store);
+    TEST_ASSERT_EQUAL_UINT32(985, seqs.front());  // 984 was the oldest: removed
+    TEST_ASSERT_EQUAL_UINT32(5000, seqs.back());
+}
+
+void test_reader_says_when_a_read_fails_in_the_middle() {
+    MemoryFileSystem fs;
+    std::string content;
+    for (uint32_t seq = 0; seq < 40; ++seq) {
+        content += make_line(seq);
+    }
+    fs.put("f.txt", content);
+    FileLineReader reader(fs, "f.txt");
+    ParseStatus status;
+    logcat::LogRecord record{};
+    TEST_ASSERT_TRUE(reader.next(status, record));  // the first block is in
+    fs.fail_next_read = true;
+    while (reader.next(status, record)) {
+    }
+    TEST_ASSERT_TRUE(reader.failed());
+    MemoryFileSystem clean;
+    clean.put("f.txt", content);
+    FileLineReader whole(clean, "f.txt");
+    while (whole.next(status, record)) {
+    }
+    TEST_ASSERT_FALSE(whole.failed());
+}
+
+void test_reader_refuses_a_name_too_long_for_the_port() {
+    MemoryFileSystem fs;
+    const std::string longest(logcat::kMaxFileName, 'n');
+    fs.put(longest, make_line(1));
+    TEST_ASSERT_EQUAL_size_t(1, parse_file(fs, longest).statuses.size());
+    TEST_ASSERT_EQUAL_size_t(0, parse_file(fs, longest + "x").statuses.size());
+}
+
 int main() {
     UNITY_BEGIN();
+    RUN_TEST(test_a_torn_tail_is_closed_even_when_the_line_rotates);
+    RUN_TEST(test_an_orphan_does_not_block_the_renumbering);
+    RUN_TEST(test_file_limit_is_clamped_to_the_total);
+    RUN_TEST(test_a_newest_file_that_will_not_open_is_skipped);
+    RUN_TEST(test_an_empty_file_that_will_not_open_is_not_skipped);
+    RUN_TEST(test_an_unreadable_size_is_charged_full_and_repaired);
+    RUN_TEST(test_flush_with_nothing_open_has_nothing_to_do);
+    RUN_TEST(test_a_failed_flush_closes_the_file_and_counts_the_loss);
+    RUN_TEST(test_a_short_write_counts_the_unsynced_bytes_it_drops);
+    RUN_TEST(test_file_sizes_for_the_dump);
+    RUN_TEST(test_write_before_begin_is_refused);
+    RUN_TEST(test_rotation_past_999_with_16_files_renumbers_and_removes);
+    RUN_TEST(test_reader_says_when_a_read_fails_in_the_middle);
+    RUN_TEST(test_reader_refuses_a_name_too_long_for_the_port);
     RUN_TEST(test_an_unreadable_last_byte_is_repaired_rather_than_trusted);
     RUN_TEST(test_rotation_at_the_exact_file_limit);
     RUN_TEST(test_a_line_longer_than_the_file_limit_goes_into_an_empty_file);
     RUN_TEST(test_a_line_over_the_total_with_one_file_never_tries_to_remove_it);
     RUN_TEST(test_the_repair_counts_toward_the_total);
+    RUN_TEST(test_room_is_made_for_the_repair_itself);
     RUN_TEST(test_at_most_16_files_are_kept_even_when_the_total_allows_more);
     RUN_TEST(test_only_log_nnn_txt_names_are_ours);
     RUN_TEST(test_file_names);

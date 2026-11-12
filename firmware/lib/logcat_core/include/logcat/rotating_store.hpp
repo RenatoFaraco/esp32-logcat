@@ -10,6 +10,8 @@ namespace logcat {
 
 // Size limits of the store (ARCHITECTURE §5): 64 KB per file, 448 KB in all, which leaves
 // room for LittleFS's own blocks in the 512 KB `logs` partition.
+// file_limit is clamped to total_limit. A line that does not fit the total even in an empty
+// partition (total_limit < one line + 2) is always refused.
 struct StoreConfig {
     uint32_t file_limit = 64 * 1024;
     uint32_t total_limit = 448 * 1024;
@@ -31,6 +33,8 @@ struct StoreStats {
     uint32_t failed_writes;   // lines that did not go in whole
     uint32_t failed_removes;  // oldest files that could not be removed (lines refused)
     uint32_t renumbered;      // times the files were renamed back to log_000 after log_999
+    uint32_t sync_failures;   // flush() calls that did not make the data durable
+    uint32_t lost_bytes;      // unsynced bytes dropped by a short write or a failed sync
 };
 
 // The log lines in flash (PRD F5): a Sink of the Writer that appends to the newest of
@@ -55,28 +59,44 @@ public:
     // At boot: finds the log files, removes the oldest beyond the limits, opens the newest
     // (creating log_000.txt on an empty partition) and repairs its tail. false: no file could
     // be opened; write() keeps trying.
-    bool begin();
+    bool begin();  // write() before begin() refuses every line
 
     bool write(const char* line, size_t length) override;
     const char* name() const override { return "flash"; }
 
-    // Makes what was written durable. false: it may not be.
+    // Makes what was written durable. true when nothing is pending (nothing open). false: it
+    // may not be; the file is then closed (port contract: in error) and reopened, with its tail
+    // repaired, before the next line.
     bool flush();
+
+    bool is_open() const { return open_; }
+    // Bytes written since the last sync or close: what a reset now would lose (#26 uses it to
+    // skip empty syncs).
+    uint32_t unsynced_bytes() const { return pending_; }
 
     StoreStats stats() const;
 
     // The files, oldest first (for the dump, #29). false past the end.
     size_t file_count() const { return count_; }
     bool file_name(size_t position, char (&out)[kStoreNameCapacity]) const;
+    // The size the store counts for that file (including unsynced bytes of the open one: flush()
+    // first for what a reader would see). 0 past the end.
+    uint32_t file_size(size_t position) const {
+        return position < count_ ? files_[position].size : 0;
+    }
 
 private:
     struct Entry {
         uint32_t index;
         uint32_t size;
+        bool size_unknown;  // the scan could not read it: charged as full, repaired on open
     };
 
     void scan();
     bool open_current();
+    bool reopen();
+    bool repair();
+    void lose_pending();
     bool rotate();
     bool renumber();
     bool make_room(size_t length);
@@ -91,6 +111,7 @@ private:
     size_t count_ = 0;
     bool open_ = false;
     bool needs_repair_ = false;
+    uint32_t pending_ = 0;  // written since the last sync or close
     StoreStats stats_ = {};
 };
 

@@ -57,7 +57,8 @@ public:
     // is full: see "in error" above) or 0 (nothing open, an error).
     virtual size_t write(const char* data, size_t length) = 0;
 
-    // Makes what was written durable. false: it may not be (the data stays pending).
+    // Makes what was written durable. false: it may not be (the data stays pending), or
+    // nothing is open.
     virtual bool sync() = 0;
 
     // Closes the open file, if any, syncing it.

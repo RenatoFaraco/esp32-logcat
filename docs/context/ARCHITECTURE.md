@@ -150,8 +150,14 @@ app_main()
   arquivo antigo que não se deixa apagar faz a linha ser recusada (e contada), nunca o limite
   ser passado.
 - Uma linha, um `write()`. Ao abrir o arquivo corrente (no boot ou depois de uma escrita
-  curta), se o último byte não é `\n`, o store acrescenta `DEL` + `\n`: o pedaço vira uma
-  linha `torn` e nunca gruda no próximo registro.
+  curta), se o último byte não é `\n`, o store acrescenta `DEL` + `\n` antes da próxima linha,
+  mesmo que essa linha vá para um arquivo novo: o pedaço vira uma linha `torn` e nunca gruda no
+  próximo registro, nem num dump que junte os arquivos.
+- Um arquivo mais novo com dados que não abre é pulado (próximo índice), uma vez só: um FS
+  quebrado não consome os índices apagando o histórico.
+- Com blocos de 4 KB do LittleFS (cada um guarda ~4088 bytes do arquivo), 448 KB de log ocupam
+  quase todos os 128 blocos da partição: a conta fecha no modelo do fake, e precisa ser
+  confirmada na placa (#24). Se a folga for pequena, o limite total cai para 384 KB.
 - Depois de `log_999`, os arquivos são renomeados para `log_000…` na mesma ordem (em ordem
   crescente, então um corte no meio deixa os índices ainda em ordem).
 - Uma escrita curta perde, no LittleFS, o que o arquivo tinha recebido desde o último `sync`:

@@ -5,9 +5,13 @@
 namespace logcat {
 
 static_assert(static_cast<size_t>(ParseStatus::Overlong) == 5, "counts_ has one slot per status");
+// ~760 B on the target: a static or a member of whoever dumps, never a local of the writer
+// task (4 KB of stack).
+static_assert(sizeof(FileLineReader) <= 832, "FileLineReader grew: check where it lives");
 
 FileLineReader::FileLineReader(FileSystem& fs, const char* name) : fs_(fs) {
-    if (name != nullptr) {
+    // A name too long for the port is refused, never cut (a cut one could be another file).
+    if (name != nullptr && std::strlen(name) <= kMaxFileName) {
         std::strncpy(name_, name, kMaxFileName);
         const int32_t size = fs_.size(name_);
         size_ = size < 0 ? 0u : static_cast<uint32_t>(size);
@@ -26,7 +30,8 @@ bool FileLineReader::fill() {
     block_position_ = 0;
     offset_ += static_cast<uint32_t>(block_length_);
     if (block_length_ == 0) {
-        offset_ = size_;  // a read error ends the file here
+        offset_ = size_;  // a read error ends the file here, and says so
+        failed_ = true;
         return false;
     }
     return true;
