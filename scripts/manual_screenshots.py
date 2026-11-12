@@ -22,8 +22,8 @@ from pathlib import Path
 
 from esp_logcat.console import Exchange, RequestIds
 from esp_logcat.events import Notice, NoticeKind, Received
-from esp_logcat.framing import Framer
 from esp_logcat.filters import LogFilter
+from esp_logcat.framing import Framer
 from esp_logcat.parser import InvalidLine, InvalidReason
 from esp_logcat.pipeline import events, visible
 from esp_logcat.render import device_text, render, render_notice
