@@ -11,9 +11,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Core `FileSystem` port (#22): append to one open file, `sync` as the only durability
   point, read by offset, size, remove, rename and list (through a visitor, no heap). The
-  in-memory fake for the native tests (`test/support/memory_fs.hpp`) models a full
-  partition (short writes), failures on demand and power cuts that keep the synced part
-  of each file plus any number of later bytes, so a file can end torn anywhere.
+  contract is the strict side of LittleFS, so what works on the fake works on the board: a
+  size or read of the open file sees only synced bytes, a short write puts the file in error
+  until it is reopened, the open file cannot be removed or renamed, and rename never replaces
+  a file. The in-memory fake for the native tests (`test/support/memory_fs.hpp`) also models
+  LittleFS-like blocks, failures on demand, and power cuts that roll every file back to its
+  last sync (optionally keeping later bytes, for defensive tests).
 - `esp-logcat shell` (#30, PRD H4): `esp-logcat shell info` runs one command and exits 0 or 1,
   `--json` prints the reply as an object (digits become numbers); without a command it opens a
   prompt where log lines print above the line being typed, filtered like `stream`; from a pipe
