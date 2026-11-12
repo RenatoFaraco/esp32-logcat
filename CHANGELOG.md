@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `esp-logcat shell` (#30, PRD H4): `esp-logcat shell info` runs one command and exits 0 or 1,
+  `--json` prints the reply as an object (digits become numbers); without a command it opens a
+  prompt where log lines print above the line being typed, filtered like `stream`; from a pipe
+  it runs one command per line. The shell numbers the requests (rotating from a random start),
+  waits 2 s for a reply, counts a restart as the success of `reboot` and `crash`, and shows
+  reply lines nobody asked for as raw. `log tail` blocks are read by byte count and their
+  CRC-32 checked (`framing.py`, reusable by `dump`). New dependency: `prompt_toolkit`.
+- The `stream` summary counts console reply lines (`N replies`).
+
 ## [0.3.0] - 2026-11-11
 
 Milestones **M2 · Capture & write** and **M3 · Host tool**, plus the device side of the

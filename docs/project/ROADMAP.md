@@ -102,7 +102,9 @@ Os blocos 🖥️ (M3, M4a, M5a) podem ser adiantados sempre que o trabalho com 
 ### M5b · Console — integração 🔌
 - [x] Console na porta nativa, com 7 dos 9 comandos do F9 funcionando na placa (#28)
 - [ ] `log dump` e `log clear` de verdade: dependem da flash (M4); até lá, `unsupported`
-- [ ] `esp-logcat dump` (bloco `#BEGIN/#END` com CRC) e `esp-logcat shell`
+- [x] `esp-logcat shell`: um comando (com `--json`), prompt interativo com logs filtrados, ou
+      pipe (#30)
+- [ ] `esp-logcat dump` (bloco `#BEGIN/#END` com CRC; o `Framer` da #30 já lê o bloco)
 
 ### M6 · Robustez 🔌
 - [ ] `RtcLastWords` com mágico + CRC
