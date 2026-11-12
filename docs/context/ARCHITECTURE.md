@@ -70,8 +70,17 @@ conhece adaptador.
 struct Clock      { virtual uint32_t uptime_ms() = 0; };
 struct Sink       { virtual void write(const char* line, size_t len) = 0;
                     virtual void flush() = 0; };
-struct FileSystem { virtual bool open_append(const char* path) = 0; /* ...
-                    write, size, remove, rename, list */ };
+class FileSystem {  // logcat/file_system.hpp (#22)
+    virtual bool   open_append(const char* name) = 0;   // um aberto por vez, para acrescentar
+    virtual size_t write(const char* data, size_t len) = 0;  // pode ser curta (partição cheia)
+    virtual bool   sync() = 0;                           // só o que passou por sync é durável
+    virtual void   close() = 0;
+    virtual int32_t size(const char* name) = 0;          // -1 se não existe
+    virtual size_t read(const char* name, uint32_t offset, char* out, size_t len) = 0;
+    virtual bool   remove(const char* name) = 0;
+    virtual bool   rename(const char* from, const char* to) = 0;
+    virtual size_t list(NameVisitor& visitor) = 0;       // sem heap: um visitante por arquivo
+};
 struct BootInfo   { virtual uint32_t boot_count() = 0;
                     virtual ResetReason reset_reason() = 0; };
 ```
