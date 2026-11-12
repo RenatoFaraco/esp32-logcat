@@ -37,4 +37,29 @@ class Received:
     pc_time: datetime | None  # None: unknown (a plain log replayed)
 
 
-Event = Received | Notice
+@dataclass(frozen=True, slots=True)
+class Block:
+    """The content of one dump block, and whether it arrived whole."""
+
+    id: str
+    name: str
+    size: int  # as announced by #BEGIN
+    content: bytes  # exactly `size` bytes when complete
+    crc32: int | None  # from #END; None when no #END followed the content
+    problem: str = ""  # empty when the block is good
+
+    @property
+    def ok(self) -> bool:
+        return not self.problem
+
+
+@dataclass(frozen=True, slots=True)
+class ReceivedBlock:
+    """A dump block (wire-format §3), read by byte count. Its lines are old ones: they never
+    count for the stream's continuity."""
+
+    block: Block
+    pc_time: datetime | None
+
+
+Event = Received | Notice | ReceivedBlock

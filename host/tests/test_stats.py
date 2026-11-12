@@ -1,7 +1,7 @@
 import pytest
 
 from esp_logcat.events import NoticeKind
-from esp_logcat.parser import IdfLine, InvalidLine, InvalidReason, LogLine, RawLine
+from esp_logcat.parser import IdfLine, InvalidLine, InvalidReason, LogLine, RawLine, parse_line
 from esp_logcat.stats import REORDER_WINDOW, StreamStats
 
 
@@ -261,3 +261,10 @@ def test_first_connection_is_not_a_reconnect(calls):
     for _ in range(calls):
         stats.connected()
     assert stats.reconnects == calls - 1
+
+
+def test_summary_counts_reply_lines():
+    stats = StreamStats()
+    for raw in (b"#> 7 a=1\n", b"#. 7 ok\n", b"#! 8 full\n", b"0000:000001 0000000010 I T: x\n"):
+        stats.observe(parse_line(raw))
+    assert "4 lines, 1 log, 0 esp-idf, 0 raw, 0 invalid, 3 replies |" in stats.summary()
