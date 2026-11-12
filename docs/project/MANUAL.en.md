@@ -516,37 +516,67 @@ esp-logcat replay FILE [TAG:L ...]      replay a saved log, with filters (sectio
     --save FILE                          save it again as a session
 esp-logcat tui [options] [TAG:L ...]    interactive interface (section 3.11):
     --port, --reset, --save, --replay FILE, --lenient
+esp-logcat shell [COMMAND | TAG:L ...]  board commands (section 8): one, or the prompt
+    --json                               one command: the reply as JSON
+    --port, --baud
 esp-logcat --version
 ```
 
-Not implemented yet: `dump` and `shell` (milestone M5). The commands the board understands are
-in [section 8](#8-console-commands).
+Not implemented yet: `dump` (milestone M5). The commands the board understands are in
+[section 8](#8-console-commands).
 
 ---
 
 ## 8. Console commands
 
-The board takes commands on the **native port** (the same one as `stream`). Each request is one
-line, `<id> <command> [arguments]`, and every reply line repeats the id. When typing by hand, use
-`-` as the id. The exact contract is in `docs/context/spec/wire-format.md` sections 2 and 3.
+The board takes commands on the **native port** (the same one as `stream`), and
+`esp-logcat shell` is what talks to it. The exact contract is in
+`docs/context/spec/wire-format.md` sections 2 and 3.
 
 ### 8.1 Sending a command
 
-`esp-logcat shell` does not exist yet (#30). Until then, in PowerShell (in cmd, type `powershell`
-first), replace `COM6` with your native port and `- info` with the command:
+**One command**: the reply is printed and the program ends. The exit code is 0 when it worked
+and 1 when it did not, handy for scripts:
 
 ```powershell
-$p = [System.IO.Ports.SerialPort]::new("COM6", 115200)
-$p.NewLine = "`n"; $p.ReadTimeout = 2000; $p.Open()
-$p.WriteLine("- info")
-do { $l = $p.ReadLine(); if ($l -match '^#') { $l } } until ($l -match '^#[.!] ')
-$p.Close()
+esp-logcat shell info
+esp-logcat shell log level APP D
+esp-logcat shell stats --json
 ```
 
-Opening the port this way does not reset the board. Windows allows one program per port at a
-time: close `esp-logcat stream` first. Log lines arriving in between are skipped by `-match '^#'`.
+![esp-logcat shell with one command](manual/img/shell.svg)
 
-### 8.2 Reading the reply
+**Interactive**: without a command, a prompt opens. Log lines keep appearing above what you type,
+with the same filters as `stream` (section 3.8):
+
+```
+esp-logcat shell "*:W"
+logcat> stats
+logcat> log level HEARTBEAT D
+logcat> quit
+```
+
+Here only `HEARTBEAT` shows; its `D` lines appear after `log level HEARTBEAT D` and go away
+after `I`:
+
+![esp-logcat shell interactive](manual/img/shell_prompt.svg)
+
+At the prompt, `help` lists the commands, the arrow keys bring back earlier ones, and Ctrl+D (or
+`quit`) leaves.
+
+**Several commands from a script**: one per line, on standard input.
+
+```powershell
+"info`nlog level APP D`nstats" | esp-logcat shell "*:E"
+```
+
+The shell numbers the requests itself: you type `info`, it sends `5312 info` and waits for the
+reply with that number. It waits 2 s for a reply; `reboot` and `crash` wait up to 10 s for the
+restart. Windows allows one program per port at a time: close `stream` or `tui` first.
+
+### 8.2 What goes over the wire
+
+The shell shows the reply in a readable form. Underneath, the board sends:
 
 | Line | What it is |
 |------|------------|
@@ -555,18 +585,23 @@ time: close `esp-logcat stream` first. Log lines arriving in between are skipped
 | `#! <id> <code> <text>` | end, failure |
 | `#BEGIN <id> ram <bytes>` … `#END <id> <crc32>` | a block holding whole log lines |
 
-Every reply ends in exactly one `#.` or `#!` (except `crash`, which does not reply).
+Every reply ends in exactly one `#.` or `#!` (except `crash`, which does not reply). `--json`
+builds an object from those fields; numbers become numbers.
 
 ### 8.3 Each command, with real output
 
-The output below was captured on the board.
+The output below was captured on the board with `esp-logcat shell` itself.
 
 **`info`**: who the board is.
 
 ```
-> 1 info
-#> 1 fw=v0.2.0-56-gcbb9213 proto=1 chip=esp32c3 idf=6.1.0 uptime_ms=10413 reset=USB
-#. 1 ok
+> esp-logcat shell info
+fw         v0.3.0-2-g4419c5e
+proto      1
+chip       esp32c3
+idf        6.1.0
+uptime_ms  16017
+reset      USB
 ```
 
 | Field | Meaning |
@@ -584,11 +619,24 @@ arrives with persistence (M4).
 **`stats`**: the logging engine's counters. Read-only: it clears nothing.
 
 ```
-> 2 stats
-#> 2 dropped=42 queue=0/32 queue_max=32 capture_cycles=17578/32460 writer_stack_free=3084 console_stack_free=3044 not_sent.usb=57 not_sent.console=40 not_sent.ram=0
-#> 2 tail_skipped=0 reply_failed=0
-#. 2 ok
+> esp-logcat shell stats
+dropped             42
+queue               0/32
+queue_max           32
+capture_cycles      7052/32460
+writer_stack_free   3084
+console_stack_free  3044
+not_sent.usb        421
+not_sent.console    40
+not_sent.ram        0
+tail_skipped        0
+reply_failed        0
 ```
+
+As JSON (`esp-logcat shell stats --json`):
+
+![esp-logcat shell stats --json](manual/img/shell_json.svg)
+
 
 | Field | Meaning |
 |-------|---------|
@@ -607,8 +655,8 @@ Counters only go up; for a rate, read twice and subtract.
 `D`, `V`, or `N` to silence it. The tag `*` changes the default level.
 
 ```
-> 5 log level HEARTBEAT D
-#. 5 ok
+> esp-logcat shell log level HEARTBEAT D
+ok
 ```
 
 After that, the `D` lines of that tag show up in `stream`:
@@ -621,8 +669,8 @@ The board keeps up to 16 tags. The 17th is an error, and those already in the ta
 change:
 
 ```
-> 113 log level TAG13 W
-#! 113 full tag table full (16 tags)
+> esp-logcat shell log level TAG14 W
+error: full: tag table full (16 tags)
 ```
 
 The level does not survive a restart. The tag is compared with the name used in the code, not
@@ -630,58 +678,63 @@ with what the line shows: in the log, a space or `:` in a tag appears as `_`.
 
 **`log tail`**: the last 32 lines kept in RAM, as a block.
 
-```
-> 8 log tail
-#BEGIN 8 ram 1504
-0000:000662 0000021299 I LOAD: tick 884 line 0
-... (32 lines, 1504 bytes in total)
-0000:000693 0000021610 I LOAD: tick 915 line 0
-#END 8 4cf3e184
-#. 8 ok
-```
+![esp-logcat shell log tail](manual/img/shell_tail.svg)
 
-`1504` is the exact size of the content and `4cf3e184` its CRC-32. While the block goes out, the
-live log stays off the USB. After a block under load you may see
+
+The shell reads the block by the size announced in `#BEGIN` and checks the CRC-32 before
+showing the lines. While the block goes out, the live log stays off the USB. After a block under load you may see
 `W LOGCAT: N lines not sent to usb: no reader`: those are the lines of that interval.
 
 **`log dump`** and **`log clear`**: work on the logs in flash, which arrive in M4. For now:
 
 ```
-> 10 log dump
-#! 10 unsupported needs flash storage (M4)
+> esp-logcat shell log dump
+error: unsupported: needs flash storage (M4)
 ```
 
-**`reboot`**: replies and restarts. The next `info` shows `reset=SW`.
+**`reboot`**: replies and restarts; the shell waits to see the restart. The next `info`
+shows `reset SW`.
 
 ```
-> 20 reboot
-#. 20 ok
+> esp-logcat shell reboot
+ok: the device restarted
 ```
 
 **`crash panic`** and **`crash wdt`**: bring the board down on purpose, to test recovery. They do
-not reply. After the restart, `info` shows `reset=PANIC` or `reset=INT_WDT`:
+not reply: the shell counts the restart as success. Afterwards, `info` shows `reset PANIC` or
+`reset INT_WDT`:
 
 ```
-> 21 crash panic
-(the board restarts)
-> 900 info
-#> 900 fw=v0.2.0-56-gcbb9213 proto=1 chip=esp32c3 idf=6.1.0 uptime_ms=1814 reset=PANIC
-#. 900 ok
+> esp-logcat shell crash panic
+ok: the device restarted
+> esp-logcat shell info
+fw         v0.3.0-2-g4419c5e
+proto      1
+chip       esp32c3
+idf        6.1.0
+uptime_ms  175
+reset      PANIC
 ```
 
 ### 8.4 Errors
 
-| Code | When | Example |
-|------|------|--------------|
-| `bad_command` | unknown command | `#! 12 bad_command try: info stats log reboot crash` |
-| `bad_args` | missing, extra or invalid argument | `#! 13 bad_args wrong arguments` |
-| `bad_args` with id `-` | the first word is not an id (`info` with no id, `07 info`) | `#! - bad_args the first word is the id: 1-9999 or -` |
-| `bad_args` with id `-` | a line over 64 bytes, or with a control byte | `#! - bad_args wrong arguments` |
-| `full` | tag table full | `#! 113 full tag table full (16 tags)` |
-| `unsupported` | this firmware does not do that yet | `#! 10 unsupported needs flash storage (M4)` |
-| `timeout` | the reply could not go out in time | `#! 7 timeout host not reading` |
+Every error goes to stderr, and the exit code is 1.
 
-A blank line gets no reply. Commands are lowercase with no abbreviations; levels are uppercase.
+| What you see | When |
+|--------------|------|
+| `error: bad_args: wrong arguments` | missing, extra or invalid argument (`log level APP x`) |
+| `error: full: tag table full (16 tags)` | the tag table is full |
+| `error: unsupported: needs flash storage (M4)` | this firmware does not do that yet |
+| `error: timeout: host not reading` | the board could not send the reply in time |
+| `error: no reply in 2 s` | no reply at all: a hung board, or firmware without a console |
+| `error: no reply: the device restarted` | the board restarted during the request (or `the port closed`) |
+| `error: no restart seen in 10 s` | `reboot` or `crash` without a restart |
+| `error: dump block damaged: ...` | the `log tail` block arrived incomplete or with a wrong CRC |
+| `unknown command: ...` | the word is not a board command; the shell does not send it |
+
+The codes `bad_args`, `full`, `unsupported` and `timeout` come from the board; the others from
+the shell. A board that gets a command it does not know answers `bad_command`, but the shell
+stops that earlier. Commands are lowercase with no abbreviations; levels are uppercase.
 
 ---
 
@@ -692,7 +745,10 @@ A blank line gets no reply. Commands are lowercase with no abbreviations; levels
    the time of each. The recordings live in `docs/project/manual/sessions/`.
 2. `scripts/manual_screenshots.py` runs each recording through the same pipeline and renderer
    as `esp-logcat stream` and exports the terminal window as SVG into `docs/project/manual/img/`. Cuts
-   in long sessions show up as `...`.
+   in long sessions show up as `...`. The `shell` pictures come from
+   `scripts/record_shell.py <port> <out.json>`, which records real shell runs (the bytes
+   received and the commands sent); the script replays them through the shell's own code
+   (reply matching, blocks, `print_reply`).
 3. `scripts/readme_cover.py` draws the README cover (`docs/project/img/cover.svg`) with real output
    from the same recordings.
 

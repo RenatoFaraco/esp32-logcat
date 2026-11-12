@@ -8,8 +8,9 @@ import re
 from collections.abc import Callable, Iterable, Iterator
 from datetime import datetime
 
-from esp_logcat.events import Event, Notice, NoticeKind, Received
+from esp_logcat.events import Block, Event, Notice, NoticeKind, Received, ReceivedBlock
 from esp_logcat.filters import LogFilter
+from esp_logcat.framing import Framer
 from esp_logcat.parser import parse_line
 from esp_logcat.session import HEADER, SessionWriter, parse_metadata, split_timed
 from esp_logcat.stats import StreamStats
@@ -71,6 +72,7 @@ def events(
     lenient: bool = False,
     saved_file: bool = False,
     recorder: SessionWriter | None = None,
+    framer: Framer | None = None,
 ) -> Iterator[Event]:
     """Bytes and transport notices to events.
 
@@ -87,10 +89,19 @@ def events(
     ``recorder`` saves the input as it enters the processing (each splitter line with its PC
     time, and the transport notices), so a replay of the session runs the same input through
     the same code and shows the same thing. A write error is reported once as SAVE_FAILED.
+
+    ``framer`` (the shell, the dump) replaces the line splitter so that dump blocks are read by
+    byte count and come out as ReceivedBlock. Not with ``recorder``: a session file holds lines.
     """
+    if framer is not None and (recorder is not None or saved_file):
+        raise ValueError("a framer reads a live device: no recorder, no saved file")
     # Session records can be longer than device lines (a cut 1024-byte line is 2 KiB of hex):
     # a saved file is split with a wide cap, and plain-log lines are cut at 1024 in received().
-    splitter = LineSplitter(MAX_PENDING * 64 if saved_file else MAX_PENDING)
+    splitter: LineSplitter | Framer = (
+        framer
+        if framer is not None
+        else LineSplitter(MAX_PENDING * 64 if saved_file else MAX_PENDING)
+    )
     # Bytes since the last CONNECTED; None before any (a file has no FIFO).
     since_connect: int | None = None
     first_line = True
@@ -127,9 +138,12 @@ def events(
             f"over {MAX_PENDING} bytes without a newline: line cut, rest discarded",
         )
 
-    def received(raw_lines: list[bytes]) -> Iterator[Event]:
+    def received(raw_lines: list[bytes] | list[bytes | Block]) -> Iterator[Event]:
         nonlocal first_line, session
         for raw in raw_lines:
+            if isinstance(raw, Block):
+                yield ReceivedBlock(raw, clock())
+                continue
             pc_time: datetime | None = None
             if saved_file:
                 if first_line:

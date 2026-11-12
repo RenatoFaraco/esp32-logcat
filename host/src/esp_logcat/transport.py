@@ -16,6 +16,7 @@ import contextlib
 import errno
 import os
 import sys
+import threading
 import time
 from collections.abc import Callable, Generator, Iterator, Sequence
 from dataclasses import dataclass
@@ -33,6 +34,7 @@ MAX_PENDING = 1024
 
 NATIVE_USB = (0x303A, 0x1001)  # Espressif USB-Serial-JTAG
 RESET_PULSE_S = 0.2
+WRITE_TIMEOUT_S = 1.0
 
 
 class LineSplitter:
@@ -145,6 +147,7 @@ class SerialLike(Protocol):
     port: str | None
     baudrate: int
     timeout: float | None
+    write_timeout: float | None
     dtr: bool
     rts: bool
 
@@ -156,6 +159,8 @@ class SerialLike(Protocol):
     def close(self) -> None: ...
 
     def read(self, size: int) -> bytes: ...
+
+    def write(self, data: bytes) -> int | None: ...
 
 
 def set_rts(link: SerialLike, state: bool) -> None:
@@ -205,9 +210,29 @@ class SerialTransport:
         self._read_timeout = read_timeout
         self._identity: PortInfo | None = None
         self._closed = False
+        # The open link, for write() from another thread (the shell); None while waiting.
+        self._link: SerialLike | None = None
+        self._write_lock = threading.Lock()
 
     def close(self) -> None:
         self._closed = True
+
+    @property
+    def connected(self) -> bool:
+        return self._link is not None
+
+    def write(self, data: bytes) -> bool:
+        """Sends `data` to the device, from any thread. False when the port is not open (waiting
+        or reconnecting) or the write fails: the caller decides what that means."""
+        with self._write_lock:
+            link = self._link
+            if link is None:
+                return False
+            try:
+                link.write(data)
+            except (serial.SerialException, OSError):
+                return False
+            return True
 
     def chunks(self) -> Iterator[bytes | Notice]:
         while not self._closed:
@@ -219,6 +244,8 @@ class SerialTransport:
             # Everything after open() is inside try/finally, so the port is closed on every
             # path: read error, close(), the consumer stopping (GeneratorExit), Ctrl+C.
             try:
+                with self._write_lock:
+                    self._link = link
                 yield connected
                 if self._reset_pending:
                     self._reset_pending = False
@@ -231,6 +258,8 @@ class SerialTransport:
                 lost = True
                 yield Notice(NoticeKind.DISCONNECTED, f"{self.port}: connection lost ({exc})")
             finally:
+                with self._write_lock:
+                    self._link = None
                 _close_quietly(link)
             if lost:
                 # A device being removed may still open and then fail at once: do not spin.
@@ -294,6 +323,9 @@ class SerialTransport:
         link.port = name
         link.baudrate = self._baudrate
         link.timeout = self._read_timeout
+        # A device that stops reading must not hang write() forever (pyserial waits by default),
+        # nor the reconnect behind it: the write fails and the caller reports it.
+        link.write_timeout = WRITE_TIMEOUT_S
         # Released before open(): active lines would hold the C3 in reset or download mode.
         link.dtr = False
         link.rts = False

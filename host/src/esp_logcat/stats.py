@@ -39,6 +39,9 @@ def _lines(count: int) -> str:
     return f"{count} line{'s' if count != 1 else ''}"
 
 
+REPLY_KINDS = ("CommandReply", "CommandEnd", "DumpBegin", "DumpEnd")
+
+
 class StreamStats:
     def __init__(self) -> None:
         self.kinds: Counter[str] = Counter()
@@ -174,6 +177,9 @@ class StreamStats:
                 f"{reason} {count}" for reason, count in sorted(self.invalid.items())
             )
             parts[-1] += f" ({reasons})"
+        # Console reply lines and dump markers (ADR-012): not log lines, but part of the total.
+        replies = sum(self.kinds[kind] for kind in REPLY_KINDS)
+        parts.append(f"{replies} replies")
         events = [
             f"lost {self.lost}",
             f"missed before connecting {self.missed}",

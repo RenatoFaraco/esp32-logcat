@@ -232,3 +232,35 @@ def test_saved_file_drops_the_pc_time_column_only_when_asked():
     live = [e.line for e in events(data, StreamStats()) if isinstance(e, Received)]
     assert isinstance(saved[0], LogLine)
     assert isinstance(live[0], RawLine)  # a live device line is never rewritten
+
+
+# ------------------------------------------------------------------ dump blocks (the shell, #30)
+
+
+def test_framer_turns_a_block_into_one_event_outside_the_statistics():
+    import zlib
+
+    import pytest
+
+    from esp_logcat.events import ReceivedBlock
+    from esp_logcat.framing import Framer
+
+    content = b"0000:000009 0000000090 I OLD: from the tail\n"
+    stream = (
+        b"0000:000001 0000000010 I T: a\n"
+        + f"#BEGIN 4 ram {len(content)}\n".encode()
+        + content
+        + f"#END 4 {zlib.crc32(content):08x}\n".encode()
+        + b"#. 4 ok\n"
+        + b"0000:000002 0000000011 I T: b\n"
+    )
+    stats = StreamStats()
+    out = list(events([stream], stats, clock=lambda: T0, framer=Framer(lambda ident: ident == "4")))
+    blocks = [event for event in out if isinstance(event, ReceivedBlock)]
+    assert len(blocks) == 1 and blocks[0].block.content == content and blocks[0].pc_time == T0
+    # seq 9 inside the block would be a "reorder" and a "gap" if it counted: it does not.
+    assert not [event for event in out if isinstance(event, Notice)]
+    assert stats.kinds["LogLine"] == 2 and stats.kinds["CommandEnd"] == 1
+
+    with pytest.raises(ValueError):
+        list(events([b""], StreamStats(), framer=Framer(lambda ident: True), saved_file=True))

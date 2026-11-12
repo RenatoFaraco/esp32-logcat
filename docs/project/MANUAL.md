@@ -515,37 +515,65 @@ esp-logcat replay ARQUIVO [TAG:L ...]   reproduz um log salvo, com filtros (seç
     --save ARQUIVO                       grava de novo como sessão
 esp-logcat tui [opções] [TAG:L ...]     interface interativa (seção 3.11):
     --port, --reset, --save, --replay ARQUIVO, --lenient
+esp-logcat shell [COMANDO | TAG:L ...]  comandos da placa (seção 8): um só, ou o prompt
+    --json                               um comando: resposta em JSON
+    --port, --baud
 esp-logcat --version
 ```
 
-Ainda não implementados: `dump` e `shell` (marco M5). Os comandos que a placa entende estão
-na [seção 8](#8-comandos-do-console).
+Ainda não implementado: `dump` (marco M5). Os comandos que a placa entende estão na
+[seção 8](#8-comandos-do-console).
 
 ---
 
 ## 8. Comandos do console
 
-A placa aceita comandos pela **porta nativa** (a mesma do `stream`). Cada pedido é uma linha,
-`<id> <comando> [argumentos]`, e toda linha da resposta repete o id. Digitando à mão, use `-`
-como id. O contrato exato está em `docs/context/spec/wire-format.md` §2 e §3.
+A placa aceita comandos pela **porta nativa** (a mesma do `stream`), e o `esp-logcat shell` é
+quem fala com ela. O contrato exato está em `docs/context/spec/wire-format.md` §2 e §3.
 
 ### 8.1 Como mandar um comando
 
-O `esp-logcat shell` ainda não existe (#30). Até lá, no PowerShell (no cmd, digite `powershell`
-antes), troque `COM6` pela sua porta nativa e `- info` pelo comando:
+**Um comando só**: a resposta aparece e o programa termina. O código de saída é 0 quando deu
+certo e 1 quando não deu, bom para scripts:
 
 ```powershell
-$p = [System.IO.Ports.SerialPort]::new("COM6", 115200)
-$p.NewLine = "`n"; $p.ReadTimeout = 2000; $p.Open()
-$p.WriteLine("- info")
-do { $l = $p.ReadLine(); if ($l -match '^#') { $l } } until ($l -match '^#[.!] ')
-$p.Close()
+esp-logcat shell info
+esp-logcat shell log level APP D
+esp-logcat shell stats --json
 ```
 
-Abrir a porta assim não reinicia a placa. O Windows só deixa um programa por vez na porta: feche
-o `esp-logcat stream` antes. As linhas de log que chegam no meio são ignoradas pelo `-match '^#'`.
+![esp-logcat shell com um comando](manual/img/shell.svg)
 
-### 8.2 Como ler a resposta
+**Interativo**: sem comando, abre um prompt. As linhas de log continuam aparecendo acima do que
+você digita, com os mesmos filtros do `stream` (seção 3.8):
+
+```
+esp-logcat shell "*:W"
+logcat> stats
+logcat> log level HEARTBEAT D
+logcat> quit
+```
+
+Aqui só o `HEARTBEAT` aparece; as linhas `D` dele surgem depois do `log level HEARTBEAT D` e
+somem depois do `I`:
+
+![esp-logcat shell interativo](manual/img/shell_prompt.svg)
+
+No prompt, `help` lista os comandos, as setas trazem os anteriores, e Ctrl+D (ou `quit`) sai.
+
+**Vários comandos de um script**: um por linha, pela entrada padrão.
+
+```powershell
+"info`nlog level APP D`nstats" | esp-logcat shell "*:E"
+```
+
+O shell numera os pedidos sozinho: você digita `info`, e ele manda `5312 info` e espera a resposta
+com aquele número. Ele espera 2 s pela resposta; `reboot` e `crash` esperam até 10 s pelo
+reinício. O Windows só deixa um programa por vez na porta: feche o `stream` ou o `tui` antes.
+
+### 8.2 O que passa no fio
+
+O shell mostra a resposta de forma legível. Por baixo, a placa manda:
 
 | Linha | O que é |
 |-------|---------|
@@ -554,18 +582,23 @@ o `esp-logcat stream` antes. As linhas de log que chegam no meio são ignoradas 
 | `#! <id> <código> <texto>` | fim, deu errado |
 | `#BEGIN <id> ram <bytes>` … `#END <id> <crc32>` | um bloco com linhas de log inteiras |
 
-Toda resposta termina em exatamente um `#.` ou `#!` (menos `crash`, que não responde).
+Toda resposta termina em exatamente um `#.` ou `#!` (menos `crash`, que não responde). O
+`--json` monta um objeto a partir desses campos; números viram números.
 
 ### 8.3 Cada comando, com a saída real
 
-As saídas abaixo foram capturadas na placa.
+As saídas abaixo foram capturadas na placa com o próprio `esp-logcat shell`.
 
 **`info`**: quem é a placa.
 
 ```
-> 1 info
-#> 1 fw=v0.2.0-56-gcbb9213 proto=1 chip=esp32c3 idf=6.1.0 uptime_ms=10413 reset=USB
-#. 1 ok
+> esp-logcat shell info
+fw         v0.3.0-2-g4419c5e
+proto      1
+chip       esp32c3
+idf        6.1.0
+uptime_ms  16017
+reset      USB
 ```
 
 | Campo | Significado |
@@ -583,11 +616,24 @@ entra com a persistência (M4).
 **`stats`**: os contadores do motor de log. Só lê: não zera nada.
 
 ```
-> 2 stats
-#> 2 dropped=42 queue=0/32 queue_max=32 capture_cycles=17578/32460 writer_stack_free=3084 console_stack_free=3044 not_sent.usb=57 not_sent.console=40 not_sent.ram=0
-#> 2 tail_skipped=0 reply_failed=0
-#. 2 ok
+> esp-logcat shell stats
+dropped             42
+queue               0/32
+queue_max           32
+capture_cycles      7052/32460
+writer_stack_free   3084
+console_stack_free  3044
+not_sent.usb        421
+not_sent.console    40
+not_sent.ram        0
+tail_skipped        0
+reply_failed        0
 ```
+
+Em JSON (`esp-logcat shell stats --json`):
+
+![esp-logcat shell stats --json](manual/img/shell_json.svg)
+
 
 | Campo | Significado |
 |-------|-------------|
@@ -606,8 +652,8 @@ Os contadores só sobem; para ter uma taxa, leia duas vezes e subtraia.
 `D`, `V`, ou `N` para silenciar. A tag `*` muda o nível padrão.
 
 ```
-> 5 log level HEARTBEAT D
-#. 5 ok
+> esp-logcat shell log level HEARTBEAT D
+ok
 ```
 
 Depois disso as linhas `D` dessa tag aparecem no `stream`:
@@ -619,8 +665,8 @@ Depois disso as linhas `D` dessa tag aparecem no `stream`:
 A placa guarda até 16 tags. A 17ª dá erro, e as que já estão na tabela continuam mudando:
 
 ```
-> 113 log level TAG13 W
-#! 113 full tag table full (16 tags)
+> esp-logcat shell log level TAG14 W
+error: full: tag table full (16 tags)
 ```
 
 O nível não sobrevive a um reinício. A tag é comparada com o nome usado no código, não com o
@@ -628,59 +674,63 @@ que a linha mostra: no log, espaço e `:` da tag aparecem como `_`.
 
 **`log tail`**: as últimas 32 linhas guardadas em RAM, num bloco.
 
-```
-> 8 log tail
-#BEGIN 8 ram 1504
-0000:000662 0000021299 I LOAD: tick 884 line 0
-... (32 linhas, 1504 bytes no total)
-0000:000693 0000021610 I LOAD: tick 915 line 0
-#END 8 4cf3e184
-#. 8 ok
-```
+![esp-logcat shell log tail](manual/img/shell_tail.svg)
 
-`1504` é o tamanho exato do conteúdo, e `4cf3e184` é o CRC-32 dele. Enquanto o bloco sai, o log
-ao vivo não vai para a USB. Depois de um bloco sob carga, pode aparecer
+
+O shell lê o bloco pelo tamanho anunciado no `#BEGIN` e confere o CRC-32 antes de mostrar as
+linhas. Enquanto o bloco sai, o log ao vivo não vai para a USB. Depois de um bloco sob carga, pode aparecer
 `W LOGCAT: N lines not sent to usb: no reader`: são as linhas desse intervalo.
 
 **`log dump`** e **`log clear`**: trabalham com os logs da flash, que chegam no M4. Por enquanto:
 
 ```
-> 10 log dump
-#! 10 unsupported needs flash storage (M4)
+> esp-logcat shell log dump
+error: unsupported: needs flash storage (M4)
 ```
 
-**`reboot`**: responde e reinicia. O `info` seguinte mostra `reset=SW`.
+**`reboot`**: responde e reinicia; o shell espera ver o reinício. O `info` seguinte mostra
+`reset SW`.
 
 ```
-> 20 reboot
-#. 20 ok
+> esp-logcat shell reboot
+ok: the device restarted
 ```
 
 **`crash panic`** e **`crash wdt`**: derrubam a placa de propósito, para testar a recuperação. Não
-respondem. Depois de reiniciar, o `info` mostra `reset=PANIC` ou `reset=INT_WDT`:
+respondem: o shell considera o reinício o sucesso. Depois, o `info` mostra `reset PANIC` ou
+`reset INT_WDT`:
 
 ```
-> 21 crash panic
-(a placa reinicia)
-> 900 info
-#> 900 fw=v0.2.0-56-gcbb9213 proto=1 chip=esp32c3 idf=6.1.0 uptime_ms=1814 reset=PANIC
-#. 900 ok
+> esp-logcat shell crash panic
+ok: the device restarted
+> esp-logcat shell info
+fw         v0.3.0-2-g4419c5e
+proto      1
+chip       esp32c3
+idf        6.1.0
+uptime_ms  175
+reset      PANIC
 ```
 
 ### 8.4 Erros
 
-| Código | Quando | Exemplo |
-|--------|--------|--------------|
-| `bad_command` | comando desconhecido | `#! 12 bad_command try: info stats log reboot crash` |
-| `bad_args` | argumento faltando, sobrando ou inválido | `#! 13 bad_args wrong arguments` |
-| `bad_args` com id `-` | a primeira palavra não é um id (`info` sem id, `07 info`) | `#! - bad_args the first word is the id: 1-9999 or -` |
-| `bad_args` com id `-` | linha com mais de 64 bytes, ou com byte de controle | `#! - bad_args wrong arguments` |
-| `full` | tabela de tags cheia | `#! 113 full tag table full (16 tags)` |
-| `unsupported` | este firmware ainda não faz isso | `#! 10 unsupported needs flash storage (M4)` |
-| `timeout` | a resposta não conseguiu sair a tempo | `#! 7 timeout host not reading` |
+Todo erro sai no stderr, e o código de saída é 1.
 
-Uma linha em branco não tem resposta. Comandos são em minúsculas e sem abreviação; os níveis
-são em maiúsculas.
+| O que aparece | Quando |
+|---------------|--------|
+| `error: bad_args: wrong arguments` | argumento faltando, sobrando ou inválido (`log level APP x`) |
+| `error: full: tag table full (16 tags)` | a tabela de tags está cheia |
+| `error: unsupported: needs flash storage (M4)` | este firmware ainda não faz isso |
+| `error: timeout: host not reading` | a placa não conseguiu mandar a resposta a tempo |
+| `error: no reply in 2 s` | nenhuma resposta: placa travada, ou firmware sem console |
+| `error: no reply: the device restarted` | a placa reiniciou no meio do pedido (ou `the port closed`) |
+| `error: no restart seen in 10 s` | `reboot` ou `crash` sem reinício |
+| `error: dump block damaged: ...` | o bloco do `log tail` chegou incompleto ou com CRC errado |
+| `unknown command: ...` | a palavra não é um comando da placa; o shell nem manda |
+
+Os códigos `bad_args`, `full`, `unsupported` e `timeout` vêm da placa; os outros, do shell. Uma
+placa que recebe um comando que não conhece responde `bad_command`, mas o shell já barra isso
+antes. Comandos são em minúsculas e sem abreviação; os níveis são em maiúsculas.
 
 ---
 
@@ -692,6 +742,9 @@ são em maiúsculas.
 2. `scripts/manual_screenshots.py` passa cada gravação pelo mesmo pipeline e pelo mesmo
    renderer do `esp-logcat stream` e exporta a janela de terminal em SVG para
    `docs/project/manual/img/`. Cortes em sessões longas aparecem como `...`.
+   As imagens do `shell` vêm de `scripts/record_shell.py <porta> <saida.json>`, que grava
+   execuções reais do shell (os bytes recebidos e os comandos enviados); o script as passa
+   pelo mesmo código do shell (casamento de respostas, blocos, `print_reply`).
 3. `scripts/readme_cover.py` desenha a capa do README (`docs/project/img/cover.svg`) com saída real
    das mesmas gravações.
 

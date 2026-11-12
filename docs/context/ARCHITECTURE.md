@@ -167,31 +167,39 @@ tipos; linha de protocolo malformada, ou que não casa com nenhum tipo, é exibi
 ## 7. Ferramenta host (`host/`)
 
 ```
-transport (bytes) → parser (Line) → stats/filters → render (rich Text) → { cli stream | tui }
+transport (bytes) → parser (Line) → stats/filters → render (rich Text) → { cli stream | tui | shell }
+                  ↘ framing (blocos de dump) → console (pedidos e respostas) ↗
 ```
 
 ```
 src/esp_logcat/
   cli.py          argparse: stream | replay | dump | shell | tui
-  transport.py    SerialTransport (pyserial) | FileTransport (replay)
+  transport.py    SerialTransport (pyserial, lê num gerador e escreve de outra thread) |
+                  FileTransport (replay)
+  framing.py      Framer: como o LineSplitter, mas lê um bloco #BEGIN pela contagem de bytes
+                  e confere o CRC do #END (wire-format §3)
+  console.py      ids dos pedidos, respostas casadas por id, timeout, reinício como sucesso
+                  de reboot/crash, linhas fora de contexto; JSON da resposta (ADR-012 §6)
   parser.py       bytes → LogLine | InvalidLine | IdfLine | CommandReply | DumpBegin/End | RawLine
   stats.py        lacunas e reordenação de seq, uptime que regride, mudança de boot
   filters.py      sintaxe estilo logcat: "*:W" "PRESSURE:D"
   render.py       Line → rich.text.Text: cores por nível, timestamp do PC ao lado do uptime
   session.py      sessão salva (--save): cada linha com a data/hora do PC, avisos do
                   transporte; o replay a lê de volta e mostra o mesmo
+  shell.py        frontend do console: um comando só, prompt (prompt_toolkit) ou pipe
   tui/            frontend interativo (Textual): log, filtro, contadores, estado da porta
 ```
 
-Camadas (ADR-008): só `render` importa `rich` e só `tui/` importa `textual`; o resto é
-Python puro, testado sem terminal. `stream` e `replay` continuam texto em stdout (pipe,
+Camadas (ADR-008): só `render` e os frontends (`cli`, `shell`) importam `rich`, só `tui/`
+importa `textual` e só `shell` importa `prompt_toolkit`; o resto é Python puro, testado sem
+terminal. `stream` e `replay` continuam texto em stdout (pipe,
 `> arquivo`); o TUI é um consumidor a mais do mesmo backend. O texto da placa é dado, nunca
 markup: o renderer monta `Text` com estilos explícitos e troca caracteres de controle e de
 formatação por escapes ASCII (`\x1b`, `\u202E`). O texto do `Text` é a linha original sem o
 `\n`; quem imprime usa `soft_wrap=True` para o `Console` não quebrar a linha em 80 colunas
 fora do terminal.
 
-Dependências: `pyserial`, `rich`, `textual` (quando o TUI entrar). Parser, filtros e
+Dependências: `pyserial`, `rich`, `textual` (TUI), `prompt_toolkit` (prompt do shell). Parser, filtros e
 estatísticas são funções puras → fáceis de testar.
 
 ## 8. Orçamento de memória (estimativa inicial, validar no M2)

@@ -16,6 +16,7 @@ from esp_logcat.filters import FilterSpecError, LogFilter
 from esp_logcat.pipeline import events, visible
 from esp_logcat.render import device_text, render, render_notice
 from esp_logcat.session import SessionWriter
+from esp_logcat.shell import Transport
 from esp_logcat.stats import StreamStats
 from esp_logcat.transport import (
     FileTransport,
@@ -28,8 +29,21 @@ from esp_logcat.transport import (
 # subcommand -> (help text, milestone that implements it)
 SUBCOMMANDS: dict[str, tuple[str, str]] = {
     "dump": ("download logs persisted in flash", "M5"),
-    "shell": ("send console commands to the device", "M5"),
 }
+
+SHELL_HELP = """\
+one command, then exit (0 when it worked, 1 otherwise):
+  esp-logcat shell info
+  esp-logcat shell log level APP D
+  esp-logcat shell stats --json
+interactive (log lines show between the replies, filtered like stream):
+  esp-logcat shell
+  esp-logcat shell "*:W"
+from a pipe, one command per line:
+  "info`nstats" | esp-logcat shell          (PowerShell)
+The shell adds the request id. Type help at the prompt for the list of commands.
+
+"""
 
 
 REPLAY_HELP = """\
@@ -140,6 +154,26 @@ def build_parser() -> argparse.ArgumentParser:
     tui.add_argument("--save", metavar="FILE", help=SAVE_HELP)
     tui.set_defaults(command_parser=tui)
 
+    shell = subparsers.add_parser(
+        "shell",
+        help="send console commands to the device",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog=SHELL_HELP + FILTER_HELP,
+    )
+    shell.add_argument(
+        "words",
+        nargs="*",
+        metavar="COMMAND | TAG:L",
+        help="a device command (info, stats, log ..., reboot, crash ...) to run once, "
+        "or filters for the log lines of the interactive shell",
+    )
+    shell.add_argument("--port", help="serial port (default: the native USB port, if unique)")
+    shell.add_argument(
+        "--baud", type=_positive_int, default=115200, help="baud rate (default: 115200)"
+    )
+    shell.add_argument("--json", action="store_true", help="one command: print the reply as JSON")
+    shell.set_defaults(command_parser=shell)
+
     subparsers.add_parser("ports", help="list serial ports")
 
     for name, (help_text, _) in SUBCOMMANDS.items():
@@ -162,11 +196,14 @@ def main(argv: Sequence[str] | None = None) -> int:
     # parse_known_args: argparse cannot mix a nargs="*" positional with options (filters after
     # an option are left over), so leftovers that are not options join the filters.
     args, extras = parser.parse_known_args(argv)
-    if args.command in ("stream", "replay", "tui"):
-        options = [extra for extra in extras if extra.startswith("-")]
+    if args.command in ("stream", "replay", "tui", "shell"):
+        options = [extra for extra in extras if extra.startswith("-") and extra != "-"]
         if options:
             args.command_parser.error(f"unrecognized arguments: {' '.join(options)}")
-        args.filterspecs = [*args.filterspecs, *extras]
+        if args.command == "shell":
+            args.words = [*args.words, *extras]
+        else:
+            args.filterspecs = [*args.filterspecs, *extras]
     elif extras:
         parser.error(f"unrecognized arguments: {' '.join(extras)}")
     if args.command is None:
@@ -189,6 +226,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         return stream_command(args) if args.command == "stream" else replay_command(args)
     if args.command == "ports":
         return ports_command()
+    if args.command == "shell":
+        return shell_command(args)
     milestone = SUBCOMMANDS[args.command][1]
     print(f"esp-logcat {args.command}: not implemented yet ({milestone})", file=sys.stderr)
     return 1
@@ -306,6 +345,93 @@ def tui_command(args: argparse.Namespace) -> int:
             recorder.close()
     _console(sys.stderr).print(app.stats.summary(), markup=False, style="dim")
     return app.return_code or (1 if failed() else 0)
+
+
+def shell_command(args: argparse.Namespace, transport: Transport | None = None) -> int:
+    from esp_logcat import shell as shell_module
+
+    if args.words == ["help"]:
+        print(shell_module.HELP)
+        return 0
+    one_command = shell_module.is_command(args.words)
+    line_filter = None
+    if not one_command:
+        if args.json:
+            args.command_parser.error("--json goes with one command: esp-logcat shell stats --json")
+        # A filter here always has its level: a mistyped command ("infoo") must not open the
+        # prompt as if it were a tag filter.
+        stray = [word for word in args.words if ":" not in word]
+        if stray and stray[0] in shell_module.COMMANDS:
+            args.command_parser.error(
+                f"the command comes first ({stray[0]} ...); "
+                "filters are only for the interactive shell"
+            )
+        if stray:
+            args.command_parser.error(
+                f"unknown command: {stray[0]} (a device command starts with one of: "
+                "info stats log reboot crash; a filter is TAG:L)"
+            )
+        try:
+            line_filter = LogFilter.parse(args.words)
+        except FilterSpecError as exc:
+            args.command_parser.error(
+                f"{exc} (a device command starts with one of: info stats log reboot crash)"
+            )
+    out = _console(sys.stdout)
+    err = _console(sys.stderr)
+    if transport is None:
+        try:
+            port = args.port or find_port(list_ports())
+        except PortSelectionError as exc:
+            err.print(f"esp-logcat: {exc}", markup=False)
+            return 2
+        transport = SerialTransport(port, args.baud)
+    interactive = (
+        not one_command
+        and shell_module.stdin_is_terminal(sys.stdin)
+        and shell_module.stdin_is_terminal(sys.stdout)
+    )
+    if interactive:
+        # Printed through prompt_toolkit's stdout proxy: the console must follow sys.stdout
+        # (file=None), and write ANSI codes, never the legacy console API, which would bypass it.
+        out = _Console(
+            force_terminal=out.is_terminal,
+            soft_wrap=True,
+            highlight=False,
+            emoji=False,
+            legacy_windows=False,
+        )
+        err = _Console(
+            stderr=True,
+            force_terminal=err.is_terminal,
+            soft_wrap=True,
+            highlight=False,
+            emoji=False,
+            legacy_windows=False,
+        )
+    elif not one_command:
+        # Commands from a pipe: PowerShell may send a BOM, and Python's locale decoding would
+        # turn it into three characters instead of dropping it.
+        reconfigure = getattr(sys.stdin, "reconfigure", None)
+        if reconfigure is not None:
+            reconfigure(encoding="utf-8-sig", errors="replace")
+    session = shell_module.Shell(
+        transport, out, err, show_logs=not one_command, line_filter=line_filter
+    )
+    session.start()
+    try:
+        if one_command:
+            return shell_module.run_one(session, args.words, out, err, as_json=args.json)
+        if interactive:
+            code = shell_module.run_prompt(session, out, err)
+        else:
+            code = shell_module.run_lines(session, sys.stdin, out, err)
+        err.print(session.stats.summary(), markup=False, style="dim")
+        return code
+    except KeyboardInterrupt:
+        return 130
+    finally:
+        session.close()
 
 
 def _open_session(args: argparse.Namespace) -> SessionWriter | None:

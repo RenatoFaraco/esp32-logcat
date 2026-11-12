@@ -153,6 +153,8 @@ class FakeBus:
         self.sleeps: list[float] = []
         self.on_sleep = None
         self.in_waiting_errors: dict[str, Exception] = {}
+        self.written: list[tuple[str | None, bytes]] = []
+        self.write_errors: dict[str, Exception] = {}
 
     def serial(self) -> "FakeSerial":
         link = FakeSerial(self)
@@ -224,6 +226,13 @@ class FakeSerial:
         if isinstance(item, Exception):
             raise item
         return item
+
+    def write(self, data: bytes) -> int:
+        error = self.bus.write_errors.pop(self.port, None)
+        if error is not None:
+            raise error
+        self.bus.written.append((self.port, data))
+        return len(data)
 
     def close(self) -> None:
         self.closed = True
@@ -641,3 +650,39 @@ def test_stdin_from_a_terminal_says_how_to_end(monkeypatch):
     monkeypatch.setattr(sys, "stdin", stdin)
     notice = next(FileTransport.open("-").chunks())
     assert "from the terminal" in notice.text and "Ctrl+Z" in notice.text
+
+
+# ------------------------------------------------------------------ write (the shell, #30)
+
+
+def test_write_before_connecting_is_refused():
+    bus = FakeBus([NATIVE])
+    transport = make_transport(bus)
+    assert not transport.connected
+    assert transport.write(b"1 info\n") is False
+    assert bus.written == []
+
+
+def test_write_goes_to_the_open_port_and_stops_when_it_closes():
+    bus = FakeBus([NATIVE])
+    bus.reads["COM6"] = [b"hello\n"]
+    transport = make_transport(bus)
+    chunks = transport.chunks()
+    assert next(chunks).kind is NoticeKind.CONNECTED
+    assert transport.connected
+    assert transport.write(b"1 info\n") is True
+    assert bus.written == [("COM6", b"1 info\n")]
+    collect(chunks)  # the script ends: the port is closed
+    assert not transport.connected
+    assert transport.write(b"2 info\n") is False
+
+
+def test_a_failing_write_is_reported_not_raised():
+    bus = FakeBus([NATIVE])
+    bus.reads["COM6"] = [b"hello\n"]
+    bus.write_errors["COM6"] = SerialException("write failed")
+    transport = make_transport(bus)
+    chunks = transport.chunks()
+    next(chunks)
+    assert transport.write(b"1 info\n") is False
+    chunks.close()

@@ -13,6 +13,7 @@ dependencies = [
     "pyserial>=3.5",
     "rich>=13.7",
     "textual>=8.2,<9",  # the TUI only (ADR-008); breaking API changes between majors
+    "prompt_toolkit>=3.0.43,<4",  # the shell prompt: log lines print above the line being typed
 ]
 
 [project.optional-dependencies]
