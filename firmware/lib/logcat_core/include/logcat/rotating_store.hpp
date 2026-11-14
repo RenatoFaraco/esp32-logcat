@@ -70,6 +70,9 @@ public:
     bool flush();
 
     bool is_open() const { return open_; }
+    // The current file ends inside a line and will get DEL + '\n' before the next one.
+    bool tail_torn() const { return needs_repair_; }
+    const StoreConfig& config() const { return config_; }
     // Bytes written since the last sync or close: what a reset now would lose (#26 uses it to
     // skip empty syncs).
     uint32_t unsynced_bytes() const { return pending_; }

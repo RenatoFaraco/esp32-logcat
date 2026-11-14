@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- The log kept in flash on the board (#24): LittleFS (`joltwallet/littlefs` 1.23) on the
+  512 KB `logs` partition, the `RotatingStore` as the fourth sink, a sync every 5 s and
+  before `reboot`. A boot line says what was found (`flash: mounted, 7 files, ...`),
+  `stats` gains `flash.*` and `fs.*`, `info` gains `flash`. The adapter is tested on the
+  board (`pio test -e esp32c3 -f test_target_littlefs`): the port's contract on real
+  LittleFS, and the 448 KB budget against the partition (32 KB left at the peak). Manual
+  section 9 (en/pt).
 - Core `RotatingStore` (#23, PRD F5): a sink that appends to the newest of `log_000.txt`
   … `log_999.txt`, starts a new file at 64 KB and removes the oldest so the files never
   pass 448 KB, not even for one line (criterion 4). One write per line; a file whose last
@@ -32,10 +39,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `--json` prints the reply as an object (digits become numbers); without a command it opens a
   prompt where log lines print above the line being typed, filtered like `stream`; from a pipe
   it runs one command per line. The shell numbers the requests (rotating from a random start),
-  waits 2 s for a reply, counts a restart as the success of `reboot` and `crash`, and shows
+  waits 2 s for a reply, counts a restart (the port closing, seq or uptime going back, or the
+  ROM banner) as the success of `reboot` and `crash`, and shows
   reply lines nobody asked for as raw. `log tail` blocks are read by byte count and their
   CRC-32 checked (`framing.py`, reusable by `dump`). New dependency: `prompt_toolkit`.
 - The `stream` summary counts console reply lines (`N replies`).
+
+### Changed
+
+- Flash auto suspend on (`CONFIG_SPI_FLASH_AUTO_SUSPEND`): writing to flash stalled the
+  1 kHz critical task for 20-25 ms; now 0.2-1 ms, with no missed period.
+- The timing sweep moved to its own build (`pio run -e esp32c3_timing`), once per boot: every
+  line now also goes to flash, and a sweep writes about 2 MB, which would push out the logs a
+  crash left in the previous boot.
 
 ## [0.3.0] - 2026-11-11
 

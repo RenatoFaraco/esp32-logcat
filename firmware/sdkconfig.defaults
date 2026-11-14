@@ -22,3 +22,17 @@ CONFIG_ESP_CONSOLE_SECONDARY_NONE=y
 # The default level stays INFO: until someone asks, a D line costs ESP-IDF's level lookup
 # (a short mutex and a search in its tag cache), and never reaches the hook.
 CONFIG_LOG_MAXIMUM_LEVEL_VERBOSE=y
+
+# LittleFS for the `logs` partition (#24): no modification time, which would write an
+# attribute on every sync (wear for nothing: the lines carry their own time).
+# CONFIG_LITTLEFS_USE_MTIME is not set
+
+# Writing the log to flash (#24) disables the cache for a sector erase or a page program; with
+# nothing else, the 1 kHz critical task (#13) saw 20-25 ms stalls and up to 2251 missed periods
+# per phase. Auto suspend pauses the erase/program when the CPU needs the cache: measured on this
+# board (ESP32-C3, embedded XMC flash), max wake 0.2-1 ms and no missed period, the on-board
+# LittleFS tests still pass. Not an optimization but a boot dependency: with a flash chip that
+# does not support suspend, the firmware asserts at startup and resets in a loop. Another chip or
+# module needs this checked first (ESP-IDF guide: "Optional Features for Flash", auto suspend;
+# per board in v2). docs/context/hardware.md item 9.
+CONFIG_SPI_FLASH_AUTO_SUSPEND=y

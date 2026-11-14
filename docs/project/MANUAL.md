@@ -48,6 +48,7 @@ máquina, sem o ambiente criado ou sem firmware gravado: seção 1.
 6. [Solução de problemas](#6-solução-de-problemas)
 7. [Referência rápida](#7-referência-rápida)
 8. [Comandos do console](#8-comandos-do-console)
+9. [O log na flash](#9-o-log-na-flash)
 
 ---
 
@@ -593,12 +594,13 @@ As saídas abaixo foram capturadas na placa com o próprio `esp-logcat shell`.
 
 ```
 > esp-logcat shell info
-fw         v0.3.0-2-g4419c5e
+fw         v0.3.0-17-gb3f7b25
 proto      1
 chip       esp32c3
 idf        6.1.0
-uptime_ms  16017
+uptime_ms  19348
 reset      USB
+flash      mounted
 ```
 
 | Campo | Significado |
@@ -609,6 +611,7 @@ reset      USB
 | `idf` | versão do ESP-IDF |
 | `uptime_ms` | tempo desde o boot, em ms |
 | `reset` | por que reiniciou: `POWERON` (ligou), `USB` (reset pela USB), `EXT` (pino EN), `SW` (`reboot`), `PANIC` (crash), `INT_WDT`, `TASK_WDT` ou `WDT` (watchdogs), `BROWNOUT` (tensão baixa), `DEEPSLEEP`, `SDIO`, `JTAG` |
+| `flash` | o log na flash: `mounted`, `formatted` ou `failed` (seção 9) |
 
 Campo que a placa não sabe medir não aparece: nunca vem como `0`. O contador de boots (`boot`)
 entra com a persistência (M4).
@@ -617,17 +620,31 @@ entra com a persistência (M4).
 
 ```
 > esp-logcat shell stats
-dropped             42
+dropped             74
 queue               0/32
 queue_max           32
-capture_cycles      7052/32460
-writer_stack_free   3084
-console_stack_free  3044
-not_sent.usb        421
-not_sent.console    40
+capture_cycles      22264/43685
+writer_stack_free   2688
+console_stack_free  2664
+not_sent.usb        23
+not_sent.console    2
 not_sent.ram        0
+not_sent.flash      0
 tail_skipped        0
 reply_failed        0
+heap_min            291472
+flash.files         1
+flash.bytes         28392
+flash.limit         458752
+flash.unsynced      447
+flash.rotations     0
+flash.removed       0
+flash.repaired      0
+flash.failed        0
+flash.sync_failed   0
+flash.lost          0
+fs.used             65536
+fs.total            524288
 ```
 
 Em JSON (`esp-logcat shell stats --json`):
@@ -642,9 +659,11 @@ Em JSON (`esp-logcat shell stats --json`):
 | `queue_max` | o máximo que a fila já teve desde o boot |
 | `capture_cycles` | custo de logar para quem loga, em ciclos de CPU: último / máximo |
 | `writer_stack_free`, `console_stack_free` | menor folga de stack já vista em cada tarefa, em bytes |
-| `not_sent.<saída>` | linhas que aquela saída recusou desde o boot (`usb`, `console` = espelho UART, `ram`) |
+| `not_sent.<saída>` | linhas que aquela saída recusou desde o boot (`usb`, `console` = espelho UART, `ram`, `flash`) |
 | `tail_skipped` | linhas que não entraram no `log tail` porque um bloco estava sendo enviado |
 | `reply_failed` | respostas ou linhas de resposta que não conseguiram sair |
+| `heap_min` | o menor heap livre já visto desde o boot, em bytes |
+| `flash.*`, `fs.*` | o log guardado na flash: veja a seção 9.4 |
 
 Os contadores só sobem; para ter uma taxa, leia duas vezes e subtraia.
 
@@ -704,12 +723,13 @@ respondem: o shell considera o reinício o sucesso. Depois, o `info` mostra `res
 > esp-logcat shell crash panic
 ok: the device restarted
 > esp-logcat shell info
-fw         v0.3.0-2-g4419c5e
+fw         v0.3.0-17-gb3f7b25
 proto      1
 chip       esp32c3
 idf        6.1.0
 uptime_ms  175
 reset      PANIC
+flash      mounted
 ```
 
 ### 8.4 Erros
@@ -731,6 +751,81 @@ Todo erro sai no stderr, e o código de saída é 1.
 Os códigos `bad_args`, `full`, `unsupported` e `timeout` vêm da placa; os outros, do shell. Uma
 placa que recebe um comando que não conhece responde `bad_command`, mas o shell já barra isso
 antes. Comandos são em minúsculas e sem abreviação; os níveis são em maiúsculas.
+
+---
+
+## 9. O log na flash
+
+A placa guarda tudo o que loga numa partição de 512 KB da própria flash (LittleFS). O log
+sobrevive a um `reboot`, a um crash e a um corte de energia; ele só aparece no PC pela USB (como
+sempre) e, quando o `dump` chegar (#29), também baixado da flash.
+
+### 9.1 Onde e quanto
+
+- Arquivos `log_000.txt`, `log_001.txt`… de até 64 KB cada, no máximo 448 KB juntos. Quando
+  enche, o mais antigo é apagado: fica sempre o log mais recente.
+- Cada linha é a mesma que aparece no `stream`. Ao reabrir um arquivo que terminou no meio de
+  uma linha (um corte de energia na hora errada), a placa fecha o pedaço com um byte especial,
+  e ele aparece como `!! torn` quando for lido, nunca grudado na linha seguinte.
+
+### 9.2 A linha de boot
+
+No começo de cada boot, a placa diz o que achou na flash:
+
+```
+0000:000000 0000000072 I LOGCAT: flash: mounted, 7 files, 422730 bytes of 458752, last line whole, littlefs 448/512 KB
+```
+
+| Parte | Significado |
+|-------|-------------|
+| `mounted` | achou a partição com o log anterior. `formatted (first use)`: a partição estava em branco e foi formatada. Se ela não montar por outro motivo, antes vem `W LOGCAT: flash: FORMATTED: ... the previous logs are lost`. `mount failed`: o log não é guardado nesta execução |
+| `7 files, 422730 bytes of 458752` | quanto log está guardado, e o limite |
+| `last line whole` | o último arquivo terminava numa linha inteira. `last line torn: closed` quer dizer que ele terminava no meio de uma linha, e a placa a fechou |
+| `littlefs 448/512 KB` | quanto da partição o próprio LittleFS usa (blocos e metadados) |
+
+Para ver essa linha, abra o stream com `--reset`: sem ele, ela já passou quando a porta abre.
+
+### 9.3 O que se perde, e quando
+
+A placa grava na flash de verdade (sync) a cada 5 s, e antes de um `reboot`. Um crash ou um
+corte de energia perde **no máximo os últimos 5 s** de log; o resto fica. A política completa
+(gravar na hora uma linha de ERROR, um comando para gravar) vem na #26.
+
+| Situação | O que fica na flash |
+|----------|---------------------|
+| `esp-logcat shell reboot` | tudo até o reboot |
+| `crash panic`, `crash wdt`, travamento | tudo até o último sync (até ~6 s antes; o `crash` imita um crash de verdade e não grava nada antes) |
+| Corte de energia | tudo até o último sync (até 5 s antes) |
+| Partição cheia | não acontece: o mais antigo é apagado antes |
+
+### 9.4 Acompanhando pelo `stats`
+
+O `esp-logcat shell stats` (seção 8.3) mostra a flash nos campos `flash.*` e `fs.*`:
+
+| Campo | Significado |
+|-------|-------------|
+| `flash.files`, `flash.bytes`, `flash.limit` | arquivos, bytes guardados e o limite |
+| `flash.unsynced` | bytes escritos que ainda não foram para a flash (o que um corte agora perderia) |
+| `flash.rotations`, `flash.removed` | arquivos novos começados, e antigos apagados para caber |
+| `flash.repaired` | linhas cortadas que a placa fechou ao reabrir um arquivo |
+| `flash.failed`, `flash.sync_failed`, `flash.lost` | linhas que não entraram, gravações que falharam, bytes perdidos por isso. Esperado: 0 |
+| `fs.used`, `fs.total` | o que o LittleFS usa da partição, e o tamanho dela |
+
+O `info` ganhou `flash`: `mounted`, `formatted` ou `failed`.
+
+### 9.5 A medição de tempo (build separado)
+
+A medição de quanto o log atrasa uma tarefa de 1 kHz (linhas `TIMING`, da #13) não roda mais no
+firmware normal: ela loga 1000 linhas/s, que iriam para a flash (~2 MB por boot) e empurrariam
+para fora o log do boot anterior, justamente o que um crash deixou. Ela tem um build próprio:
+
+```powershell
+C:\.platformio\penv\Scripts\pio.exe run -d firmware -e esp32c3_timing -t upload --upload-port COM6
+```
+
+Nesse build ela roda uma vez por boot. Com a flash ligada, a tarefa de log fica mais lenta que
+1000 linhas/s e aparecem linhas `dropped N lines: log queue full`: o excesso é descartado e
+contado, nunca trava a aplicação.
 
 ---
 

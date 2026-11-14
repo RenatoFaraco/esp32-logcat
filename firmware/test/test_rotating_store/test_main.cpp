@@ -790,8 +790,51 @@ void test_reader_refuses_a_name_too_long_for_the_port() {
     TEST_ASSERT_EQUAL_size_t(0, parse_file(fs, longest + "x").statuses.size());
 }
 
+// ---------------------------------------------------------------- review of #24
+
+// The partition fills although the budget says there is room (LittleFS's blocks take more than
+// counted): the oldest file goes, so logging carries on instead of failing forever.
+void test_a_full_partition_frees_the_oldest_file() {
+    const size_t line = make_line(1).size();
+    MemoryFileSystem fs(static_cast<uint32_t>(5 * line));  // smaller than the budget below
+    RotatingStore store(fs, small(static_cast<uint32_t>(2 * line), 100000));
+    store.begin();
+    size_t refused = 0;
+    uint32_t last_accepted = 0;
+    for (uint32_t seq = 0; seq < 30; ++seq) {
+        // Synced at once: a failed write then loses only itself (otherwise, per the port, it
+        // also takes the unsynced lines before it).
+        if (put_line(store, make_line(seq))) {
+            last_accepted = seq;
+        } else {
+            ++refused;
+        }
+        store.flush();
+    }
+    TEST_ASSERT_TRUE(refused > 0);   // each fill costs a line...
+    TEST_ASSERT_TRUE(refused < 15);  // ...but not every other line: room is made
+    TEST_ASSERT_TRUE(store.stats().removed > 0);
+    store.flush();
+    TEST_ASSERT_EQUAL_UINT32(last_accepted, all_seqs(fs, store).back());
+}
+
+// A sync that fails when the file is rotated is counted, not lost silently.
+void test_a_failed_sync_at_rotation_is_counted() {
+    MemoryFileSystem fs;
+    const size_t line = make_line(1).size();
+    RotatingStore store(fs, small(static_cast<uint32_t>(line), 100000));
+    store.begin();
+    put_line(store, make_line(1));
+    fs.fail_next_sync = true;
+    put_line(store, make_line(2));  // rotates: the old file's sync fails
+    TEST_ASSERT_EQUAL_UINT32(1, store.stats().sync_failures);
+    TEST_ASSERT_EQUAL_UINT32(line, store.stats().lost_bytes);
+}
+
 int main() {
     UNITY_BEGIN();
+    RUN_TEST(test_a_full_partition_frees_the_oldest_file);
+    RUN_TEST(test_a_failed_sync_at_rotation_is_counted);
     RUN_TEST(test_a_torn_tail_is_closed_even_when_the_line_rotates);
     RUN_TEST(test_an_orphan_does_not_block_the_renumbering);
     RUN_TEST(test_file_limit_is_clamped_to_the_total);

@@ -3,6 +3,7 @@
 #include "adapters/console_sink.hpp"
 #include "adapters/console_task.hpp"
 #include "adapters/esp_clock.hpp"
+#include "adapters/flash_store.hpp"
 #include "adapters/idf_log_hook.hpp"
 #include "adapters/log_queue.hpp"
 #include "adapters/reply_queue.hpp"
@@ -42,8 +43,10 @@ static logcat::GatedSink usb_log(usb_sink);  // out of the log while a dump bloc
 static logcat::RamTail ram_tail;             // what `log tail` returns
 static logcat::FreeRtosReplyQueue reply_queue;
 static logcat::ReplyServer reply_server(usb_sink, usb_log, ram_tail);
+// The log in flash (#24): LittleFS on the `logs` partition, synced every 5 s.
+static logcat::FlashStore flash_store;
 static logcat::EspConsolePlatform console_platform(reply_queue, log_queue, writer, reply_server,
-                                                   ram_tail);
+                                                   ram_tail, flash_store);
 static logcat::Console console(console_platform, tag_filter);
 
 // Continuous output to follow in `esp-logcat stream`. Also shows the hook's cost in the caller
@@ -63,6 +66,28 @@ static void heartbeat_task(void*) {
     }
 }
 
+// What the board found in flash, as the first line it keeps there.
+static void log_flash_at_boot(logcat::MountResult mount) {
+    if (mount == logcat::MountResult::Failed) {
+        ESP_LOGE("LOGCAT", "flash: mount failed: logs are not kept");
+        return;
+    }
+    if (mount == logcat::MountResult::Formatted && !flash_store.was_blank()) {
+        ESP_LOGW("LOGCAT", "flash: FORMATTED: it could not be mounted, the previous logs are lost");
+    }
+    const logcat::FlashSnapshot flash = flash_store.snapshot();
+    size_t used = 0;
+    size_t total = 0;
+    flash_store.usage(used, total);
+    ESP_LOGI("LOGCAT", "flash: %s, %lu files, %lu bytes of %lu, %s, littlefs %u/%u KB",
+             mount == logcat::MountResult::Formatted ? "formatted (first use)"
+                                                     : logcat::to_string(mount),
+             static_cast<unsigned long>(flash.store.files),
+             static_cast<unsigned long>(flash.store.bytes), static_cast<unsigned long>(flash.limit),
+             flash_store.tail_was_torn() ? "last line torn: closed" : "last line whole",
+             static_cast<unsigned>(used / 1024), static_cast<unsigned>(total / 1024));
+}
+
 extern "C" void app_main(void) {
     // Sinks, writer task, then the hook: from there on every ESP_LOGx goes through the core.
     // Anything logged before (the driver install below) keeps the ESP-IDF format, on UART.
@@ -78,13 +103,23 @@ extern "C" void app_main(void) {
         ESP_LOGE(TAG, "uart driver install failed: no console mirror");
     }
     writer.add_sink(ram_tail);
+    // Mounted before the writer task, which is the store's only user from then on. LittleFS's
+    // own logs come from inside the writer task, where they go to the ROM printer (UART) at
+    // ~7 ms a line: only warnings and errors, even after `log level * V`.
+    esp_log_level_set("esp_littlefs", ESP_LOG_WARN);
+    const logcat::MountResult mount = flash_store.begin();
+    if (mount != logcat::MountResult::Failed) {
+        writer.add_sink(flash_store.sink());
+    }
     log_queue.begin();
     reply_queue.begin();
-    if (logcat::start_writer_task(writer, log_queue, reply_server, reply_queue) == nullptr) {
+    if (logcat::start_writer_task(writer, log_queue, reply_server, reply_queue,
+                                  [] { flash_store.on_idle(); }) == nullptr) {
         ESP_LOGE(TAG, "writer task not created: logs stay in the ESP-IDF format");
         return;
     }
     logcat::install_idf_log_hook(sequencer, tag_filter, log_queue);
+    log_flash_at_boot(mount);
 
     ESP_LOGI(TAG, "esp32-logcat hook installed");
     ESP_LOGW(TAG, "a warning, letter W");
@@ -131,9 +166,13 @@ extern "C" void app_main(void) {
         ESP_LOGE(TAG, "heartbeat task not created (out of heap)");
     }
 
-    // 1 kHz critical task + log load in phases, for the timing criterion (#13, #14).
+#if defined(LOGCAT_TIMING_SWEEP)
+    // 1 kHz critical task + log load in phases, for the timing criterion (#13, #14). Only in the
+    // esp32c3_timing build: it writes ~2 MB to flash, which would push the logs of the previous
+    // boot (the ones a crash left) out of the 448 KB, and wear the flash.
     vTaskDelay(pdMS_TO_TICKS(2000));  // let the burst drain and a host connect
     if (!app::start_timing_sweep(uart_mirror)) {
         ESP_LOGE(TAG, "timing sweep not started");
     }
+#endif
 }

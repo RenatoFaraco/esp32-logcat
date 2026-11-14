@@ -1,5 +1,6 @@
 #pragma once
 
+#include "adapters/flash_store.hpp"
 #include "adapters/log_queue.hpp"
 #include "adapters/reply_queue.hpp"
 #include "freertos/FreeRTOS.h"
@@ -15,8 +16,13 @@ namespace logcat {
 class EspConsolePlatform final : public ConsolePlatform {
 public:
     EspConsolePlatform(FreeRtosReplyQueue& replies, FreeRtosLogQueue& log_queue, Writer& writer,
-                       ReplyServer& server, RamTail& tail)
-        : replies_(replies), log_queue_(log_queue), writer_(writer), server_(server), tail_(tail) {}
+                       ReplyServer& server, RamTail& tail, FlashStore& flash)
+        : replies_(replies),
+          log_queue_(log_queue),
+          writer_(writer),
+          server_(server),
+          tail_(tail),
+          flash_(flash) {}
 
     bool send(const ReplyMessage& message) override;
     void fill_info(ReplyFields& fields) override;
@@ -32,6 +38,7 @@ private:
     Writer& writer_;
     ReplyServer& server_;
     RamTail& tail_;
+    FlashStore& flash_;
     uint32_t queue_timeouts_ = 0;  // only the console task touches it
 };
 
