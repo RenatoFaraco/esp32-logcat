@@ -17,7 +17,8 @@ commits em inglês.
 - Placa alvo: ESP32-C3 rev v0.4 com 4 MB de flash embutida e duas USB-C: uma no
   USB-Serial-JTAG nativo, outra numa ponte CH340K na UART0. Hardware chegou em 06/nov/2026;
   fatos, portas e armadilhas em `docs/context/hardware.md` (leia antes de mexer em gravação/serial).
-- Portas neste PC: COM5 = CH340K (UART0), COM6 = USB-Serial-JTAG nativo (via hub). O número da
+- Portas neste PC: COM10 = CH340K (UART0; era COM5 até meados de nov/2026), COM6 =
+  USB-Serial-JTAG nativo (via hub). O número da
   COM muda de máquina para máquina: nunca fixar no `platformio.ini`.
 - Núcleo e host continuam testados no PC (`env:native`, pytest); a placa valida adaptadores.
 

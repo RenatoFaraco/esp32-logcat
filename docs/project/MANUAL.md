@@ -469,7 +469,7 @@ Os filtros da ferramenta combinam com tudo isto: `esp-logcat stream "*:W" > avis
 
 ## 5. As duas portas da placa
 
-| | **Nativa (COM6)** — o logcat | **Ponte UART (COM5)** — o console |
+| | **Nativa (COM6)** — o logcat | **Ponte UART (COM10)** — o console |
 |---|---|---|
 | ROM, bootloader, início do boot (formato do IDF) | sim | sim |
 | Linhas do logcat | sim, com `\n` | sim (espelho), com `\r\n` |
@@ -477,8 +477,8 @@ Os filtros da ferramenta combinam com tudo isto: `esp-logcat stream "*:W" > avis
 | Avisos `W LOGCAT` | sim | sim |
 | Abrir a porta reseta a placa? | não | não, se aberta com DTR/RTS soltos (o esp-logcat e o `pio device monitor` deste projeto fazem isso) |
 
-Use a **nativa** para o logcat. Use a **COM5** quando precisar do console completo
-(`esp-logcat stream --port COM5` também funciona) ou quando estiver gravando pela nativa.
+Use a **nativa** para o logcat. Use a **COM10** quando precisar do console completo
+(`esp-logcat stream --port COM10` também funciona) ou quando estiver gravando pela nativa.
 
 ---
 
@@ -493,7 +493,7 @@ Use a **nativa** para o logcat. Use a **COM5** quando precisar do console comple
 | A porta nativa sumiu depois de um reset pela CH340K; o Windows mostra "Dispositivo USB Desconhecido" | placa atrás de um hub (`hardware.md`, item 5) | desconecte e reconecte o cabo; ligue a nativa direto no PC |
 | Muitos `lines lost` com tráfego alto | a aplicação loga mais de ~70 linhas/s (limite do espelho na UART) | esperado: as perdas são contadas, nunca travam a aplicação. O app de 1 kHz (#13) vai desligar o espelho |
 | `W LOGCAT: N lines not sent to usb` | a porta nativa ficou fechada | normal: são as linhas do período em que ninguém lia |
-| Nada aparece na COM6, mas a COM5 mostra os logs | firmware antigo, de antes do logcat | grave o firmware atual (seção 1.3) |
+| Nada aparece na COM6, mas a COM10 mostra os logs | firmware antigo, de antes do logcat | grave o firmware atual (seção 1.3) |
 | Gravar falha com a porta aberta | o `stream` está segurando a COM | pare o `stream` (`Ctrl+C`) antes de gravar, ou grave pela outra porta |
 
 ---
@@ -505,7 +505,7 @@ esp-logcat ports                         lista as portas e marca a nativa
 esp-logcat stream [opções] [TAG:L ...]   logs ao vivo, com filtros opcionais (seção 3.8)
     "*:W"  "*:S" "TAG:D"  ...            filtros do logcat: níveis E W I D V, S/N silencia
     --port COMx                          porta (padrão: a nativa, se houver só uma)
-    --baud N                             baud rate (padrão 115200; só importa na COM5)
+    --baud N                             baud rate (padrão 115200; só importa na COM10)
     --reset                              reinicia a placa ao conectar
     --time                               mostra a hora do PC em cada linha
     --save ARQUIVO                       grava a sessão inteira (seção 3.10)

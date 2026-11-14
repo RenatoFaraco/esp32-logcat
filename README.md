@@ -4,9 +4,11 @@
 
 Persistent, `adb logcat`-style logging for embedded firmware.
 
-> **Status:** early development. On the ESP32-C3 every `ESP_LOGx` already goes through the
-> core and a non-blocking queue to the native USB port, and `esp-logcat stream` shows it live
-> (milestones M2/M3). Persistence in flash, the console and crash recovery are next.
+> **Status:** working toward v1.0. On the ESP32-C3 every `ESP_LOGx` goes through the core and
+> a non-blocking queue to the native USB port; `esp-logcat stream` and the TUI show it live, and
+> `esp-logcat shell` drives the board's console (milestones M2, M3, M5). The log is kept in flash
+> with a boot counter (M4, most of it done); still to come: the flush policy, `esp-logcat dump`,
+> and crash recovery with the timing measurement (M6).
 
 ## User manual
 

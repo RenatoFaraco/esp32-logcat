@@ -21,7 +21,7 @@ A tabela de partições (`firmware/partitions.csv`, 4 MB) cabe e foi confirmada 
 
 | Porta | Ligação no chip | Identificação no Windows | COM neste PC |
 |-------|-----------------|--------------------------|--------------|
-| Ponte UART | **CH340K** → UART0 (GPIO 20/21) | "USB-SERIAL CH340K", `VID_1A86&PID_7522` | COM5 |
+| Ponte UART | **CH340K** → UART0 (GPIO 20/21) | "USB-SERIAL CH340K", `VID_1A86&PID_7522` | COM10 (era COM5 até meados de nov/2026: o Windows renumerou a porta; confira no Gerenciador de Dispositivos) |
 | Nativa | **USB-Serial-JTAG** do próprio chip | "Dispositivo Serial USB", `VID_303A&PID_1001` (driver genérico) | COM6 (via hub) |
 
 O número da COM muda de PC para PC e de porta para porta: por isso não está no
@@ -34,7 +34,7 @@ Get-CimInstance Win32_PnPEntity | Where-Object { $_.Name -match '\(COM\d+\)' } |
 
 O que sai em cada porta (desde #11/#12, firmware com `CONFIG_ESP_CONSOLE_SECONDARY_NONE=y`):
 
-| | Nativa (COM6) — o stream do logcat | Ponte UART (COM5) — o console |
+| | Nativa (COM6) — o stream do logcat | Ponte UART (COM10) — o console |
 |---|---|---|
 | ROM, bootloader e logs do início do app (formato do IDF) | sim (a ROM imprime nas duas) | sim |
 | Linhas do logcat (formato da spec, wire-format §1) | sim, pelo driver, só `\n` | sim, espelho, com `\r\n` |
@@ -49,7 +49,7 @@ ninguém lia a porta nativa (#12) e disputaria a FIFO com o driver: foi desligad
 
 ```sh
 cd firmware
-pio run -e esp32c3 -t upload --upload-port COM5   # ou a porta nativa (COM6): as duas gravam
+pio run -e esp32c3 -t upload --upload-port COM10   # ou a porta nativa (COM6): as duas gravam
 ```
 
 Para acompanhar a placa, use a ferramenta do projeto, que já trata as armadilhas abaixo
@@ -58,17 +58,17 @@ Para acompanhar a placa, use a ferramenta do projeto, que já trata as armadilha
 ```sh
 host/.venv/Scripts/esp-logcat ports                    # lista as portas e marca a nativa
 host/.venv/Scripts/esp-logcat stream                   # nativa, se houver só uma
-host/.venv/Scripts/esp-logcat stream --port COM5 --reset --time
+host/.venv/Scripts/esp-logcat stream --port COM10 --reset --time
 ```
 
 O stdout recebe só as linhas da placa; avisos (conexão, lacunas, reinício) e o resumo vão
-para o stderr. `pio device monitor --port COM5 -b 115200` continua funcionando.
+para o stderr. `pio device monitor --port COM10 -b 115200` continua funcionando.
 
 `scripts/serial_capture.py` reinicia a placa e grava o boot das duas portas ao mesmo tempo,
 sem interação (útil para registrar evidências):
 
 ```sh
-host/.venv/Scripts/python scripts/serial_capture.py COM5 COM6 6 boot
+host/.venv/Scripts/python scripts/serial_capture.py COM10 COM6 6 boot
 ```
 
 ## Comportamentos que importam para o projeto
