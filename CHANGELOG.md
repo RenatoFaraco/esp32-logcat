@@ -39,7 +39,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `--json` prints the reply as an object (digits become numbers); without a command it opens a
   prompt where log lines print above the line being typed, filtered like `stream`; from a pipe
   it runs one command per line. The shell numbers the requests (rotating from a random start),
-  waits 2 s for a reply, counts a restart as the success of `reboot` and `crash`, and shows
+  waits 2 s for a reply, counts a restart (the port closing, seq or uptime going back, or the
+  ROM banner) as the success of `reboot` and `crash`, and shows
   reply lines nobody asked for as raw. `log tail` blocks are read by byte count and their
   CRC-32 checked (`framing.py`, reusable by `dump`). New dependency: `prompt_toolkit`.
 - The `stream` summary counts console reply lines (`N replies`).

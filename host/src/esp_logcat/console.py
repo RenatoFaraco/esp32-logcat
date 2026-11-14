@@ -11,7 +11,8 @@ Rules from ADR-012 §1 and §6:
   (it may be the cut end of something older); a reply to a request sent after connecting cannot
   be older than the connection, and on a quiet device it is the first line;
 - a restart of the device while `reboot` or `crash` is pending is their success; for any other
-  command it means the reply is lost.
+  command it means the reply is lost. A restart is seen by the port closing, by seq/uptime
+  going back, or by the ROM banner (`ESP-ROM:`), which needs no log line before it.
 """
 
 import random
@@ -20,7 +21,8 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 
 from esp_logcat.events import Block, Event, Notice, NoticeKind, Received, ReceivedBlock
-from esp_logcat.parser import CommandEnd, CommandReply, DumpBegin, DumpEnd, parse_line
+from esp_logcat.parser import CommandEnd, CommandReply, DumpBegin, DumpEnd, RawLine, parse_line
+from esp_logcat.stats import ROM_BANNER
 
 # The first word of every command the device knows (wire-format §2.1).
 COMMANDS = frozenset({"info", "stats", "log", "reboot", "crash"})
@@ -163,6 +165,11 @@ class Exchange:
                     fresh, self._fresh = self._fresh, False
                     if isinstance(line, CommandReply | CommandEnd | DumpBegin | DumpEnd):
                         return self._reply_line(line, now, fresh)
+                    if isinstance(line, RawLine) and line.text.startswith(ROM_BANNER):
+                        # The ROM prints it at every reset. A one-command shell may see no log
+                        # line before a `reboot` lands (~0.1 s after `ok`), so the seq/uptime
+                        # check has nothing to compare and the banner is the only sign.
+                        return self._restart_or_lose("the device restarted", now), False
                     return [], False
                 case _:
                     return [], False
