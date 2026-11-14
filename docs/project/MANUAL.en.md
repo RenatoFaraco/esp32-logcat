@@ -597,12 +597,13 @@ The output below was captured on the board with `esp-logcat shell` itself.
 
 ```
 > esp-logcat shell info
-fw         v0.3.0-2-g4419c5e
+fw         v0.3.0-16-g9eeaf2e
 proto      1
 chip       esp32c3
 idf        6.1.0
-uptime_ms  16017
+uptime_ms  19348
 reset      USB
+flash      mounted
 ```
 
 | Field | Meaning |
@@ -612,8 +613,8 @@ reset      USB
 | `chip` | the chip |
 | `idf` | ESP-IDF version |
 | `uptime_ms` | time since boot, in ms |
-| `flash` | the log in flash: `mounted`, `formatted` or `failed` (section 9) |
 | `reset` | why it restarted: `POWERON` (power-up), `USB` (reset over USB), `EXT` (EN pin), `SW` (`reboot`), `PANIC` (crash), `INT_WDT`, `TASK_WDT` or `WDT` (watchdogs), `BROWNOUT` (low voltage), `DEEPSLEEP`, `SDIO`, `JTAG` |
+| `flash` | the log in flash: `mounted`, `formatted` or `failed` (section 9) |
 
 A field the board cannot measure is left out: it never comes as `0`. The boot counter (`boot`)
 arrives with persistence (M4).
@@ -622,17 +623,31 @@ arrives with persistence (M4).
 
 ```
 > esp-logcat shell stats
-dropped             42
+dropped             74
 queue               0/32
 queue_max           32
-capture_cycles      7052/32460
-writer_stack_free   3084
-console_stack_free  3044
-not_sent.usb        421
-not_sent.console    40
+capture_cycles      22264/43685
+writer_stack_free   2688
+console_stack_free  2664
+not_sent.usb        23
+not_sent.console    2
 not_sent.ram        0
+not_sent.flash      0
 tail_skipped        0
 reply_failed        0
+heap_min            291472
+flash.files         1
+flash.bytes         28392
+flash.limit         458752
+flash.unsynced      447
+flash.rotations     0
+flash.removed       0
+flash.repaired      0
+flash.failed        0
+flash.sync_failed   0
+flash.lost          0
+fs.used             65536
+fs.total            524288
 ```
 
 As JSON (`esp-logcat shell stats --json`):
@@ -647,9 +662,10 @@ As JSON (`esp-logcat shell stats --json`):
 | `queue_max` | the most the queue has held since boot |
 | `capture_cycles` | cost of logging to whoever logs, in CPU cycles: last / maximum |
 | `writer_stack_free`, `console_stack_free` | smallest stack headroom seen in each task, in bytes |
-| `not_sent.<output>` | lines that output refused since boot (`usb`, `console` = UART mirror, `ram`) |
+| `not_sent.<output>` | lines that output refused since boot (`usb`, `console` = UART mirror, `ram`, `flash`) |
 | `tail_skipped` | lines left out of `log tail` because a block was being sent |
 | `reply_failed` | replies or reply lines that could not go out |
+| `heap_min` | the lowest free heap seen since boot, in bytes |
 | `flash.*`, `fs.*` | the log kept in flash: see section 9.4 |
 
 Counters only go up; for a rate, read twice and subtract.
@@ -711,12 +727,13 @@ not reply: the shell counts the restart as success. Afterwards, `info` shows `re
 > esp-logcat shell crash panic
 ok: the device restarted
 > esp-logcat shell info
-fw         v0.3.0-2-g4419c5e
+fw         v0.3.0-16-g9eeaf2e
 proto      1
 chip       esp32c3
 idf        6.1.0
 uptime_ms  175
 reset      PANIC
+flash      mounted
 ```
 
 ### 8.4 Errors
