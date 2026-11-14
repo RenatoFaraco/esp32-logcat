@@ -106,8 +106,9 @@ Os blocos 🖥️ (M3, M4a, M5a) podem ser adiantados sempre que o trabalho com 
 ### M5b · Console — integração 🔌
 - [x] Console na porta nativa, com 7 dos 9 comandos do F9 funcionando na placa (#28)
 - [ ] `log dump` e `log clear` de verdade: dependem da flash (M4); até lá, `unsupported`
+      (os dois na #29)
 - [x] `esp-logcat shell`: um comando (com `--json`), prompt interativo com logs filtrados, ou
-      pipe (#30)
+      pipe (#30) → **release `v0.4.0`**
 - [ ] `esp-logcat dump` (bloco `#BEGIN/#END` com CRC; o `Framer` da #30 já lê o bloco)
 
 ### M6 · Robustez 🔌
@@ -133,6 +134,7 @@ telemetria vira só mais um `Sink` sobre ele. Os ADRs 009–011 estão como **pr
 
 | Versão | Ideia | Por quê | Decisão |
 |--------|-------|---------|---------|
+| v1.x | Log e console pela rede: Wi-Fi (TCP/WebSocket, mDNS) e BLE (GATT), o mesmo protocolo do cabo. Zigbee/Thread precisam do rádio 802.15.4 (C6/H2), então ficam na v2 | O rádio é o diferencial do ESP: ver a placa sem cabo | #85 (precisa de um PRD v1.x antes) |
 | v1.1 | Core dump, comando `log grep` no dispositivo | — | — |
 | v2 | Componente ESP-IDF multichip (família Espressif) publicado no IDF Component Registry | O chip muda de produto para produto | ADR-009 · [PRD v2](../context/prd/v2-multichip.md) |
 | v2.x | Host em Go (CLI + TUI), binário único por SO, validado por suíte de conformidade | Instalar sem Python nem `.venv` | ADR-010 · [PRD v2.x](../context/prd/v2x-go-host.md) |

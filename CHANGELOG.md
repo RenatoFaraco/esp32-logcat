@@ -41,16 +41,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   a file. The in-memory fake for the native tests (`test/support/memory_fs.hpp`) also models
   LittleFS-like blocks, failures on demand, and power cuts that roll every file back to its
   last sync (optionally keeping later bytes, for defensive tests).
-- `esp-logcat shell` (#30, PRD H4): `esp-logcat shell info` runs one command and exits 0 or 1,
-  `--json` prints the reply as an object (digits become numbers); without a command it opens a
-  prompt where log lines print above the line being typed, filtered like `stream`; from a pipe
-  it runs one command per line. The shell numbers the requests (rotating from a random start),
-  waits 2 s for a reply, counts a restart (the port closing, seq or uptime going back, or the
-  ROM banner) as the success of `reboot` and `crash`, and shows
-  reply lines nobody asked for as raw. A line the shell cuts by closing the port is dropped,
-  never shown as torn (#82). `log tail` blocks are read by byte count and their
-  CRC-32 checked (`framing.py`, reusable by `dump`). New dependency: `prompt_toolkit`.
-- The `stream` summary counts console reply lines (`N replies`).
+
+### Fixed
+
+- `esp-logcat shell` sees a restart at the ROM banner (`ESP-ROM:`): `reboot` from a
+  one-command shell no longer fails with `no restart seen in 10 s`, and a restart is counted
+  once when a command follows during the boot.
+- The shell drops a line it cut by closing the port (never shown as `!! torn`), and prints
+  its summary after the reader stopped, so nothing comes after it (#82).
 
 ### Changed
 
@@ -59,6 +57,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The timing sweep moved to its own build (`pio run -e esp32c3_timing`), once per boot: every
   line now also goes to flash, and a sweep writes about 2 MB, which would push out the logs a
   crash left in the previous boot.
+
+## [0.4.0] - 2026-11-14
+
+Milestone **M5 · Console**, host side: `esp-logcat shell`. The release is the merge of #30,
+before any of M4 (persistence), which comes in the next release.
+
+### Added
+
+- `esp-logcat shell` (#30, PRD H4): `esp-logcat shell info` runs one command and exits 0 or 1,
+  `--json` prints the reply as an object (digits become numbers); without a command it opens a
+  prompt where log lines print above the line being typed, filtered like `stream`; from a pipe
+  it runs one command per line. The shell numbers the requests (rotating from a random start),
+  waits 2 s for a reply, counts a restart as the success of `reboot` and `crash`, and shows
+  reply lines nobody asked for as raw. `log tail` blocks are read by byte count and their
+  CRC-32 checked (`framing.py`, reusable by `dump`). New dependency: `prompt_toolkit`.
+- The `stream` summary counts console reply lines (`N replies`).
+
+### Known issues (fixed in the next release)
+
+- `esp-logcat shell reboot` can fail with `no restart seen in 10 s` although the board
+  restarted: with no log line before the restart, the shell had nothing to compare.
+- A line the shell cuts by closing the port can print after the summary as `!! torn: 0`
+  (#82).
 
 ## [0.3.0] - 2026-11-11
 
@@ -298,7 +319,8 @@ No logging functionality yet.
 - Repository basics: MIT license, `.gitignore`, `.gitattributes` (LF everywhere),
   `.clang-format`.
 
-[Unreleased]: https://github.com/RenatoFaraco/esp32-logcat/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/RenatoFaraco/esp32-logcat/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/RenatoFaraco/esp32-logcat/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/RenatoFaraco/esp32-logcat/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/RenatoFaraco/esp32-logcat/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/RenatoFaraco/esp32-logcat/releases/tag/v0.1.0

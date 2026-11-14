@@ -470,7 +470,7 @@ The tool's filters combine with all of this: `esp-logcat stream "*:W" > warnings
 
 ## 5. The board's two ports
 
-| | **Native (COM6)** — the logcat | **UART bridge (COM5)** — the console |
+| | **Native (COM6)** — the logcat | **UART bridge (COM10)** — the console |
 |---|---|---|
 | ROM, bootloader, early boot (ESP-IDF format) | yes | yes |
 | Logcat lines | yes, with `\n` | yes (mirror), with `\r\n` |
@@ -478,8 +478,8 @@ The tool's filters combine with all of this: `esp-logcat stream "*:W" > warnings
 | `W LOGCAT` notices | yes | yes |
 | Does opening the port reset the board? | no | no, if opened with DTR/RTS released (esp-logcat and this project's `pio device monitor` do that) |
 
-Use the **native** port for the logcat. Use **COM5** when you need the full console
-(`esp-logcat stream --port COM5` works too) or while flashing through the native port.
+Use the **native** port for the logcat. Use **COM10** when you need the full console
+(`esp-logcat stream --port COM10` works too) or while flashing through the native port.
 
 ---
 
@@ -494,7 +494,7 @@ Use the **native** port for the logcat. Use **COM5** when you need the full cons
 | The native port vanished after a reset through the CH340K; Windows shows "Unknown USB Device" | the board is behind a hub (`hardware.md`, item 5) | unplug and replug the cable; plug the native port straight into the PC |
 | Many `lines lost` under heavy traffic | the application logs more than ~70 lines/s (the UART mirror's limit) | expected: losses are counted and never stall the application. The 1 kHz app (#13) will turn the mirror off |
 | `W LOGCAT: N lines not sent to usb` | the native port stayed closed | normal: those are the lines from while nobody was reading |
-| Nothing on COM6, but COM5 shows the logs | old firmware, from before the logcat | flash the current firmware (section 1.3) |
+| Nothing on COM6, but COM10 shows the logs | old firmware, from before the logcat | flash the current firmware (section 1.3) |
 | Flashing fails with the port open | `stream` is holding the COM port | stop `stream` (`Ctrl+C`) before flashing, or flash through the other port |
 
 ---
@@ -506,7 +506,7 @@ esp-logcat ports                         list the ports and mark the native one
 esp-logcat stream [options] [TAG:L ...]  live logs, with optional filters (section 3.8)
     "*:W"  "*:S" "TAG:D"  ...            logcat filters: levels E W I D V, S/N silences
     --port COMx                          port (default: the native one, if there is exactly one)
-    --baud N                             baud rate (default 115200; only matters on COM5)
+    --baud N                             baud rate (default 115200; only matters on COM10)
     --reset                              restart the board when connecting
     --time                               show the PC time on each line
     --save FILE                          save the whole session (section 3.10)
