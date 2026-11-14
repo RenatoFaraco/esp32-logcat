@@ -198,6 +198,11 @@ Medido em 14/nov (#24), LittleFS `joltwallet/littlefs` 1.23.1 na partição `log
   bloco parcial (um apagamento de 4 KB). Com o heartbeat de 1 linha/s, a estimativa é ~17 mil
   apagamentos por dia em 128 blocos, uns 2 anos de vida: a #26 mede e decide o período. `CONFIG_LITTLEFS_USE_MTIME` está desligado: ele gravaria um
   atributo de data a cada sync.
+- **Contador de boots na NVS (#25).** Uma gravação de 4 bytes por boot (`nvs_set_u32` +
+  `nvs_commit`), espalhada pelo wear leveling da própria NVS nos 24 KB da partição `nvs`:
+  desgaste desprezível, mesmo num boot loop. A NVS é iniciada no `app_main`, antes do hook de
+  log; se ela estiver cheia ou for de outra versão, é apagada inteira (a recuperação
+  documentada do ESP-IDF) e o contador volta a 1, com aviso na linha de boot.
 
 ## Boot capturado (06/nov, reset pela USB nativa, trecho)
 

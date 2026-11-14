@@ -15,10 +15,7 @@ BootInfo next_boot(BootStore& store) {
         case BootLoad::Found:
             break;
     }
-    info.boot = previous + 1;  // unsigned: UINT32_MAX + 1 wraps to 0...
-    if (info.boot == kUnknownBoot) {
-        info.boot = 1;  // ...which is reserved for "unknown"
-    }
+    info.boot = previous < kMaxBoot ? previous + 1 : 1;
     info.saved = store.save(info.boot);
     return info;
 }

@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Boot counter (#25, PRD F7): kept in NVS, stamped on every line (`0003:...`, until now
+  always `0000`), in `info` (`boot`) and in a boot line, `I LOGCAT: boot=3 reason=SW
+  fw=...`. It runs 1 to 9999 and starts again at 1, so `0000` always means the counter could not
+  be read. The core's
+  `next_boot()` is tested on the PC, the NVS adapter on the board
+  (`pio test -e esp32c3 -f test_target_nvs`).
 - The log kept in flash on the board (#24): LittleFS (`joltwallet/littlefs` 1.23) on the
   512 KB `logs` partition, the `RotatingStore` as the fourth sink, a sync every 5 s and
   before `reboot`. A boot line says what was found (`flash: mounted, 7 files, ...`),

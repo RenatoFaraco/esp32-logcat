@@ -75,9 +75,11 @@ static void heartbeat_task(void*) {
 static void log_boot(const logcat::BootInfo& boot, bool nvs_erased) {
     if (boot.boot == logcat::kUnknownBoot) {
         ESP_LOGE("LOGCAT", "boot counter unavailable: lines carry boot 0000");
-    } else if (nvs_erased) {
+    }
+    if (nvs_erased) {
         ESP_LOGW("LOGCAT", "boot counter restarted: NVS was erased");
-    } else if (!boot.saved) {
+    }
+    if (boot.boot != logcat::kUnknownBoot && !boot.saved) {
         ESP_LOGW("LOGCAT", "boot counter not saved: the next boot may repeat %lu",
                  static_cast<unsigned long>(boot.boot));
     }

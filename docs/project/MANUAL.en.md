@@ -150,7 +150,7 @@ That's it: the logcat is running.
 │    │      │          └─ level: E error · W warning · I info · D debug · V verbose
 │    │      └─ uptime: milliseconds since boot (10 digits)
 │    └─ seq: line number in this boot (6 digits, wraps to 0 after 999999)
-└─ boot: boot counter (always 0000 until milestone M4)
+└─ boot: boot counter, kept on the board (1 to 9999, then 1 again; 0000 = unknown)
 ```
 
 `seq` is the key piece: **every line the firmware accepted gets a number**, in order. If a
@@ -616,8 +616,8 @@ flash      mounted
 | `reset` | why it restarted: `POWERON` (power-up), `USB` (reset over USB), `EXT` (EN pin), `SW` (`reboot`), `PANIC` (crash), `INT_WDT`, `TASK_WDT` or `WDT` (watchdogs), `BROWNOUT` (low voltage), `DEEPSLEEP`, `SDIO`, `JTAG` |
 | `flash` | the log in flash: `mounted`, `formatted` or `failed` (section 9) |
 
-A field the board cannot measure is left out: it never comes as `0`. The boot counter (`boot`)
-arrives with persistence (M4).
+A field the board cannot measure is left out: it never comes as `0`. `boot` is the same number
+that starts the lines; it is left out if the board could not read the counter.
 
 **`stats`**: the logging engine's counters. Read-only: it clears nothing.
 
@@ -774,11 +774,26 @@ once `dump` arrives (#29), also downloaded from flash.
 
 ### 9.2 The boot line
 
-At the start of every boot, the board says what it found in flash:
+At the start of every boot, the board says which boot this is and what it found in flash:
 
 ```
-0000:000000 0000000072 I LOGCAT: flash: mounted, 7 files, 422730 bytes of 458752, last line whole, littlefs 448/512 KB
+0003:000000 0000000060 I LOGCAT: boot=3 reason=SW fw=v0.3.0-22-g7f40c6a
+0003:000001 0000000064 I LOGCAT: flash: mounted, 7 files, 422730 bytes of 458752, last line whole, littlefs 448/512 KB
 ```
+
+In the first line:
+
+| Part | Meaning |
+|------|---------|
+| `boot=3` | the boot counter, kept in NVS: it goes up by 1 at every boot, whatever the reason. It is the same number that starts every line (`0003:`), which tells one boot's log from another's in flash |
+| `reason=SW` | why it restarted: the same names as `info` (section 8.3); `UNKNOWN` if the chip did not say |
+| `fw=...` | the firmware version running |
+
+If NVS was erased (full, or from another ESP-IDF version), `W LOGCAT: boot counter restarted:
+NVS was erased` comes first, and the count starts again at 1. If the board could not read the
+counter, `E LOGCAT: boot counter unavailable: lines carry boot 0000` comes instead.
+
+In the second:
 
 | Part | Meaning |
 |------|---------|

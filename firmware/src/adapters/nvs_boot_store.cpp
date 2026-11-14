@@ -11,6 +11,12 @@ constexpr char kKey[] = "boot";
 
 }  // namespace
 
+NvsBootStore::~NvsBootStore() {
+    if (open_) {
+        nvs_close(handle_);
+    }
+}
+
 bool NvsBootStore::begin() {
     esp_err_t err = nvs_flash_init();
     if (err == ESP_ERR_NVS_NO_FREE_PAGES || err == ESP_ERR_NVS_NEW_VERSION_FOUND) {

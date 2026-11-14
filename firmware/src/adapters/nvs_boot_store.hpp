@@ -16,6 +16,9 @@ namespace logcat {
 class NvsBootStore final : public BootStore {
 public:
     explicit NvsBootStore(const char* name_space = "logcat") : namespace_(name_space) {}
+    ~NvsBootStore();  // closes the handle (the firmware's instance is static: never)
+    NvsBootStore(const NvsBootStore&) = delete;
+    NvsBootStore& operator=(const NvsBootStore&) = delete;
 
     bool begin();
     bool erased() const { return erased_; }

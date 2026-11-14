@@ -95,7 +95,7 @@ struct BootInfo   { virtual uint32_t boot_count() = 0;
 | `UartSink` | `Sink` | `uart` driver (porta da ponte USB-UART) |
 | `LittleFsFileSystem` | `FileSystem` | `esp_littlefs` na partição `logs`, por descritores POSIX (#24) |
 | `FlashStore` | — | monta a partição, liga o `RotatingStore` como sink, sync a cada 5 s pela `WriterTask`, publica os números para o `stats` |
-| `NvsBootInfo` | `BootInfo` | NVS + `esp_reset_reason()` |
+| `NvsBootStore` | `BootStore` | o contador de boots na NVS (namespace `logcat`, chave `boot`); `next_boot()` no núcleo soma 1, vai de 1 a 9999 (o que a linha mostra) e reserva o 0 para "desconhecido" (#25). O motivo vem de `esp_reset_reason()` (`reset_reason.hpp`) |
 | `RtcLastWords` | último suspiro | buffer em `RTC_NOINIT_ATTR` |
 | `EspClock` | `Clock` | `esp_timer_get_time()` |
 

@@ -12,6 +12,7 @@
 #include "freertos/task.h"
 #include "logcat/boot_counter.hpp"
 #include "nvs.h"
+#include "nvs_flash.h"
 
 using logcat::BootLoad;
 using logcat::NvsBootStore;
@@ -30,13 +31,14 @@ void erase_namespace() {
 
 }  // namespace
 
-void setUp() {}
+void setUp() {
+    erase_namespace();  // every test starts with no key: order does not matter
+}
 void tearDown() {}
 
 void test_begin() {
     NvsBootStore store(kNamespace);
     TEST_ASSERT_TRUE(store.begin());
-    erase_namespace();
 }
 
 void test_a_missing_key_is_missing_not_failed() {
@@ -60,6 +62,7 @@ void test_the_counter_goes_up_across_instances() {
     {
         NvsBootStore first(kNamespace);
         TEST_ASSERT_TRUE(first.begin());
+        TEST_ASSERT_TRUE(first.save(41));
         TEST_ASSERT_EQUAL_UINT32(42, logcat::next_boot(first).boot);
     }
     NvsBootStore second(kNamespace);
@@ -78,7 +81,8 @@ void test_load_before_begin_fails() {
 }
 
 extern "C" void app_main(void) {
-    vTaskDelay(pdMS_TO_TICKS(2000));  // let the host open the port
+    vTaskDelay(pdMS_TO_TICKS(2000));    // let the host open the port
+    ESP_ERROR_CHECK(nvs_flash_init());  // setUp needs NVS before the first test's begin()
     UNITY_BEGIN();
     RUN_TEST(test_begin);
     RUN_TEST(test_a_missing_key_is_missing_not_failed);

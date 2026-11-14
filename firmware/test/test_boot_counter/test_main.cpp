@@ -94,12 +94,23 @@ void test_a_failed_save_keeps_the_number_and_says_so() {
     TEST_ASSERT_FALSE(info.saved);
 }
 
-void test_the_counter_wraps_to_one_never_to_zero() {
+// The line shows boot % 10000: the counter stays in 1..9999 so a line's `0000` always means
+// "unknown", never boot 10000.
+void test_the_counter_wraps_after_9999_to_one() {
+    FakeBootStore store;
+    store.stored = 9998;
+    store.present = true;
+    TEST_ASSERT_EQUAL_UINT32(9999, next_boot(store).boot);
+    TEST_ASSERT_EQUAL_UINT32(1, next_boot(store).boot);
+    TEST_ASSERT_EQUAL_UINT32(1, store.stored);
+}
+
+// A value out of range (another firmware wrote it) restarts the count, never gives 0.
+void test_a_stored_value_out_of_range_restarts_at_one() {
     FakeBootStore store;
     store.stored = UINT32_MAX;
     store.present = true;
     TEST_ASSERT_EQUAL_UINT32(1, next_boot(store).boot);
-    TEST_ASSERT_EQUAL_UINT32(1, store.stored);
 }
 
 // A stored 0 cannot come from this code; whatever wrote it, the boot is a real one.
@@ -118,7 +129,8 @@ int main() {
     RUN_TEST(test_each_boot_adds_one_and_saves_it);
     RUN_TEST(test_a_failed_load_is_unknown_and_saves_nothing);
     RUN_TEST(test_a_failed_save_keeps_the_number_and_says_so);
-    RUN_TEST(test_the_counter_wraps_to_one_never_to_zero);
+    RUN_TEST(test_the_counter_wraps_after_9999_to_one);
+    RUN_TEST(test_a_stored_value_out_of_range_restarts_at_one);
     RUN_TEST(test_a_stored_zero_counts_as_a_real_previous_boot);
     return UNITY_END();
 }
