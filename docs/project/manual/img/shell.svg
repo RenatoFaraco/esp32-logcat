@@ -19,95 +19,95 @@
         font-weight: 700;
     }
 
-    .terminal-714259518-matrix {
+    .terminal-2686171676-matrix {
         font-family: Fira Code, monospace;
         font-size: 20px;
         line-height: 24.4px;
         font-variant-east-asian: full-width;
     }
 
-    .terminal-714259518-title {
+    .terminal-2686171676-title {
         font-size: 18px;
         font-weight: bold;
         font-family: arial;
     }
 
-    .terminal-714259518-r1 { fill: #9d65ff;font-weight: bold }
-.terminal-714259518-r2 { fill: #d9d9d9 }
-.terminal-714259518-r3 { fill: #d9d9d9;font-weight: bold }
-.terminal-714259518-r4 { fill: #98e024 }
-.terminal-714259518-r5 { fill: #f4005f;font-weight: bold }
+    .terminal-2686171676-r1 { fill: #9d65ff;font-weight: bold }
+.terminal-2686171676-r2 { fill: #d9d9d9 }
+.terminal-2686171676-r3 { fill: #d9d9d9;font-weight: bold }
+.terminal-2686171676-r4 { fill: #98e024 }
+.terminal-2686171676-r5 { fill: #f4005f;font-weight: bold }
     </style>
 
     <defs>
-    <clipPath id="terminal-714259518-clip-terminal">
+    <clipPath id="terminal-2686171676-clip-terminal">
       <rect x="0" y="0" width="1707.0" height="340.59999999999997" />
     </clipPath>
-    <clipPath id="terminal-714259518-line-0">
+    <clipPath id="terminal-2686171676-line-0">
     <rect x="0" y="1.5" width="1708" height="24.65"/>
             </clipPath>
-<clipPath id="terminal-714259518-line-1">
+<clipPath id="terminal-2686171676-line-1">
     <rect x="0" y="25.9" width="1708" height="24.65"/>
             </clipPath>
-<clipPath id="terminal-714259518-line-2">
+<clipPath id="terminal-2686171676-line-2">
     <rect x="0" y="50.3" width="1708" height="24.65"/>
             </clipPath>
-<clipPath id="terminal-714259518-line-3">
+<clipPath id="terminal-2686171676-line-3">
     <rect x="0" y="74.7" width="1708" height="24.65"/>
             </clipPath>
-<clipPath id="terminal-714259518-line-4">
+<clipPath id="terminal-2686171676-line-4">
     <rect x="0" y="99.1" width="1708" height="24.65"/>
             </clipPath>
-<clipPath id="terminal-714259518-line-5">
+<clipPath id="terminal-2686171676-line-5">
     <rect x="0" y="123.5" width="1708" height="24.65"/>
             </clipPath>
-<clipPath id="terminal-714259518-line-6">
+<clipPath id="terminal-2686171676-line-6">
     <rect x="0" y="147.9" width="1708" height="24.65"/>
             </clipPath>
-<clipPath id="terminal-714259518-line-7">
+<clipPath id="terminal-2686171676-line-7">
     <rect x="0" y="172.3" width="1708" height="24.65"/>
             </clipPath>
-<clipPath id="terminal-714259518-line-8">
+<clipPath id="terminal-2686171676-line-8">
     <rect x="0" y="196.7" width="1708" height="24.65"/>
             </clipPath>
-<clipPath id="terminal-714259518-line-9">
+<clipPath id="terminal-2686171676-line-9">
     <rect x="0" y="221.1" width="1708" height="24.65"/>
             </clipPath>
-<clipPath id="terminal-714259518-line-10">
+<clipPath id="terminal-2686171676-line-10">
     <rect x="0" y="245.5" width="1708" height="24.65"/>
             </clipPath>
-<clipPath id="terminal-714259518-line-11">
+<clipPath id="terminal-2686171676-line-11">
     <rect x="0" y="269.9" width="1708" height="24.65"/>
             </clipPath>
-<clipPath id="terminal-714259518-line-12">
+<clipPath id="terminal-2686171676-line-12">
     <rect x="0" y="294.3" width="1708" height="24.65"/>
             </clipPath>
     </defs>
 
-    <rect fill="#0c0c0c" stroke="rgba(255,255,255,0.35)" stroke-width="1" x="1" y="1" width="1724" height="389.6" rx="8"/><text class="terminal-714259518-title" fill="#d9d9d9" text-anchor="middle" x="862" y="27">esp-logcat&#160;shell</text>
+    <rect fill="#0c0c0c" stroke="rgba(255,255,255,0.35)" stroke-width="1" x="1" y="1" width="1724" height="389.6" rx="8"/><text class="terminal-2686171676-title" fill="#d9d9d9" text-anchor="middle" x="862" y="27">esp-logcat&#160;shell</text>
             <g transform="translate(26,22)">
             <circle cx="0" cy="0" r="7" fill="#ff5f57"/>
             <circle cx="22" cy="0" r="7" fill="#febc2e"/>
             <circle cx="44" cy="0" r="7" fill="#28c840"/>
             </g>
         
-    <g transform="translate(9, 41)" clip-path="url(#terminal-714259518-clip-terminal)">
+    <g transform="translate(9, 41)" clip-path="url(#terminal-2686171676-clip-terminal)">
     
-    <g class="terminal-714259518-matrix">
-    <text class="terminal-714259518-r1" x="0" y="20" textLength="292.8" clip-path="url(#terminal-714259518-line-0)">PS&#160;C:\dev\esp32-logcat&gt;&#160;</text><text class="terminal-714259518-r1" x="292.8" y="20" textLength="256.2" clip-path="url(#terminal-714259518-line-0)">esp-logcat&#160;shell&#160;info</text><text class="terminal-714259518-r2" x="1708" y="20" textLength="12.2" clip-path="url(#terminal-714259518-line-0)">
-</text><text class="terminal-714259518-r3" x="0" y="44.4" textLength="427" clip-path="url(#terminal-714259518-line-1)">fw&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;v0.3.0-15-g11a2647-dirty</text><text class="terminal-714259518-r2" x="1708" y="44.4" textLength="12.2" clip-path="url(#terminal-714259518-line-1)">
-</text><text class="terminal-714259518-r3" x="0" y="68.8" textLength="146.4" clip-path="url(#terminal-714259518-line-2)">proto&#160;&#160;&#160;&#160;&#160;&#160;1</text><text class="terminal-714259518-r2" x="1708" y="68.8" textLength="12.2" clip-path="url(#terminal-714259518-line-2)">
-</text><text class="terminal-714259518-r3" x="0" y="93.2" textLength="219.6" clip-path="url(#terminal-714259518-line-3)">chip&#160;&#160;&#160;&#160;&#160;&#160;&#160;esp32c3</text><text class="terminal-714259518-r2" x="1708" y="93.2" textLength="12.2" clip-path="url(#terminal-714259518-line-3)">
-</text><text class="terminal-714259518-r3" x="0" y="117.6" textLength="195.2" clip-path="url(#terminal-714259518-line-4)">idf&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;6.1.0</text><text class="terminal-714259518-r2" x="1708" y="117.6" textLength="12.2" clip-path="url(#terminal-714259518-line-4)">
-</text><text class="terminal-714259518-r3" x="0" y="142" textLength="195.2" clip-path="url(#terminal-714259518-line-5)">uptime_ms&#160;&#160;52873</text><text class="terminal-714259518-r2" x="1708" y="142" textLength="12.2" clip-path="url(#terminal-714259518-line-5)">
-</text><text class="terminal-714259518-r3" x="0" y="166.4" textLength="170.8" clip-path="url(#terminal-714259518-line-6)">reset&#160;&#160;&#160;&#160;&#160;&#160;USB</text><text class="terminal-714259518-r2" x="1708" y="166.4" textLength="12.2" clip-path="url(#terminal-714259518-line-6)">
-</text><text class="terminal-714259518-r3" x="0" y="190.8" textLength="219.6" clip-path="url(#terminal-714259518-line-7)">flash&#160;&#160;&#160;&#160;&#160;&#160;mounted</text><text class="terminal-714259518-r2" x="1708" y="190.8" textLength="12.2" clip-path="url(#terminal-714259518-line-7)">
-</text><text class="terminal-714259518-r2" x="1708" y="215.2" textLength="12.2" clip-path="url(#terminal-714259518-line-8)">
-</text><text class="terminal-714259518-r1" x="0" y="239.6" textLength="292.8" clip-path="url(#terminal-714259518-line-9)">PS&#160;C:\dev\esp32-logcat&gt;&#160;</text><text class="terminal-714259518-r1" x="292.8" y="239.6" textLength="463.6" clip-path="url(#terminal-714259518-line-9)">esp-logcat&#160;shell&#160;log&#160;level&#160;HEARTBEAT&#160;D</text><text class="terminal-714259518-r2" x="1708" y="239.6" textLength="12.2" clip-path="url(#terminal-714259518-line-9)">
-</text><text class="terminal-714259518-r4" x="0" y="264" textLength="24.4" clip-path="url(#terminal-714259518-line-10)">ok</text><text class="terminal-714259518-r2" x="1708" y="264" textLength="12.2" clip-path="url(#terminal-714259518-line-10)">
-</text><text class="terminal-714259518-r2" x="1708" y="288.4" textLength="12.2" clip-path="url(#terminal-714259518-line-11)">
-</text><text class="terminal-714259518-r1" x="0" y="312.8" textLength="292.8" clip-path="url(#terminal-714259518-line-12)">PS&#160;C:\dev\esp32-logcat&gt;&#160;</text><text class="terminal-714259518-r1" x="292.8" y="312.8" textLength="390.4" clip-path="url(#terminal-714259518-line-12)">esp-logcat&#160;shell&#160;log&#160;level&#160;APP&#160;x</text><text class="terminal-714259518-r2" x="1708" y="312.8" textLength="12.2" clip-path="url(#terminal-714259518-line-12)">
-</text><text class="terminal-714259518-r5" x="0" y="337.2" textLength="390.4" clip-path="url(#terminal-714259518-line-13)">error:&#160;bad_args:&#160;wrong&#160;arguments</text><text class="terminal-714259518-r2" x="1708" y="337.2" textLength="12.2" clip-path="url(#terminal-714259518-line-13)">
+    <g class="terminal-2686171676-matrix">
+    <text class="terminal-2686171676-r1" x="0" y="20" textLength="292.8" clip-path="url(#terminal-2686171676-line-0)">PS&#160;C:\dev\esp32-logcat&gt;&#160;</text><text class="terminal-2686171676-r1" x="292.8" y="20" textLength="256.2" clip-path="url(#terminal-2686171676-line-0)">esp-logcat&#160;shell&#160;info</text><text class="terminal-2686171676-r2" x="1708" y="20" textLength="12.2" clip-path="url(#terminal-2686171676-line-0)">
+</text><text class="terminal-2686171676-r3" x="0" y="44.4" textLength="353.8" clip-path="url(#terminal-2686171676-line-1)">fw&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;v0.3.0-17-gb3f7b25</text><text class="terminal-2686171676-r2" x="1708" y="44.4" textLength="12.2" clip-path="url(#terminal-2686171676-line-1)">
+</text><text class="terminal-2686171676-r3" x="0" y="68.8" textLength="146.4" clip-path="url(#terminal-2686171676-line-2)">proto&#160;&#160;&#160;&#160;&#160;&#160;1</text><text class="terminal-2686171676-r2" x="1708" y="68.8" textLength="12.2" clip-path="url(#terminal-2686171676-line-2)">
+</text><text class="terminal-2686171676-r3" x="0" y="93.2" textLength="219.6" clip-path="url(#terminal-2686171676-line-3)">chip&#160;&#160;&#160;&#160;&#160;&#160;&#160;esp32c3</text><text class="terminal-2686171676-r2" x="1708" y="93.2" textLength="12.2" clip-path="url(#terminal-2686171676-line-3)">
+</text><text class="terminal-2686171676-r3" x="0" y="117.6" textLength="195.2" clip-path="url(#terminal-2686171676-line-4)">idf&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;6.1.0</text><text class="terminal-2686171676-r2" x="1708" y="117.6" textLength="12.2" clip-path="url(#terminal-2686171676-line-4)">
+</text><text class="terminal-2686171676-r3" x="0" y="142" textLength="183" clip-path="url(#terminal-2686171676-line-5)">uptime_ms&#160;&#160;5767</text><text class="terminal-2686171676-r2" x="1708" y="142" textLength="12.2" clip-path="url(#terminal-2686171676-line-5)">
+</text><text class="terminal-2686171676-r3" x="0" y="166.4" textLength="170.8" clip-path="url(#terminal-2686171676-line-6)">reset&#160;&#160;&#160;&#160;&#160;&#160;USB</text><text class="terminal-2686171676-r2" x="1708" y="166.4" textLength="12.2" clip-path="url(#terminal-2686171676-line-6)">
+</text><text class="terminal-2686171676-r3" x="0" y="190.8" textLength="219.6" clip-path="url(#terminal-2686171676-line-7)">flash&#160;&#160;&#160;&#160;&#160;&#160;mounted</text><text class="terminal-2686171676-r2" x="1708" y="190.8" textLength="12.2" clip-path="url(#terminal-2686171676-line-7)">
+</text><text class="terminal-2686171676-r2" x="1708" y="215.2" textLength="12.2" clip-path="url(#terminal-2686171676-line-8)">
+</text><text class="terminal-2686171676-r1" x="0" y="239.6" textLength="292.8" clip-path="url(#terminal-2686171676-line-9)">PS&#160;C:\dev\esp32-logcat&gt;&#160;</text><text class="terminal-2686171676-r1" x="292.8" y="239.6" textLength="463.6" clip-path="url(#terminal-2686171676-line-9)">esp-logcat&#160;shell&#160;log&#160;level&#160;HEARTBEAT&#160;D</text><text class="terminal-2686171676-r2" x="1708" y="239.6" textLength="12.2" clip-path="url(#terminal-2686171676-line-9)">
+</text><text class="terminal-2686171676-r4" x="0" y="264" textLength="24.4" clip-path="url(#terminal-2686171676-line-10)">ok</text><text class="terminal-2686171676-r2" x="1708" y="264" textLength="12.2" clip-path="url(#terminal-2686171676-line-10)">
+</text><text class="terminal-2686171676-r2" x="1708" y="288.4" textLength="12.2" clip-path="url(#terminal-2686171676-line-11)">
+</text><text class="terminal-2686171676-r1" x="0" y="312.8" textLength="292.8" clip-path="url(#terminal-2686171676-line-12)">PS&#160;C:\dev\esp32-logcat&gt;&#160;</text><text class="terminal-2686171676-r1" x="292.8" y="312.8" textLength="390.4" clip-path="url(#terminal-2686171676-line-12)">esp-logcat&#160;shell&#160;log&#160;level&#160;APP&#160;x</text><text class="terminal-2686171676-r2" x="1708" y="312.8" textLength="12.2" clip-path="url(#terminal-2686171676-line-12)">
+</text><text class="terminal-2686171676-r5" x="0" y="337.2" textLength="390.4" clip-path="url(#terminal-2686171676-line-13)">error:&#160;bad_args:&#160;wrong&#160;arguments</text><text class="terminal-2686171676-r2" x="1708" y="337.2" textLength="12.2" clip-path="url(#terminal-2686171676-line-13)">
 </text>
     </g>
     </g>

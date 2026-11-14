@@ -594,7 +594,7 @@ As saídas abaixo foram capturadas na placa com o próprio `esp-logcat shell`.
 
 ```
 > esp-logcat shell info
-fw         v0.3.0-16-g9eeaf2e
+fw         v0.3.0-17-gb3f7b25
 proto      1
 chip       esp32c3
 idf        6.1.0
@@ -723,7 +723,7 @@ respondem: o shell considera o reinício o sucesso. Depois, o `info` mostra `res
 > esp-logcat shell crash panic
 ok: the device restarted
 > esp-logcat shell info
-fw         v0.3.0-16-g9eeaf2e
+fw         v0.3.0-17-gb3f7b25
 proto      1
 chip       esp32c3
 idf        6.1.0
