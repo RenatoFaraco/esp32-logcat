@@ -40,9 +40,10 @@ public:
     // At most kMaxSinks; returns false when full. Call before the writer task starts.
     bool add_sink(Sink& sink);
 
-    // Boot counter stamped on the writer's own lines (0 until NVS, M4). Call before the writer
-    // task starts: afterwards it would race with the reports written by the task.
+    // Boot counter stamped on the writer's own lines (kUnknownBoot, 0, until set). Call before
+    // the writer task starts: afterwards it would race with the reports written by the task.
     void set_boot(uint32_t boot) { boot_ = boot; }
+    uint32_t boot() const { return boot_; }  // fixed once the task runs: safe from any task
 
     void write(const LogRecord& record);
 

@@ -29,7 +29,7 @@ Contrato exato (implementado em `logcat/line_formatter.hpp`, validado pelos pars
 
 | Campo | Regra |
 |-------|-------|
-| `boot` | `boot % 10000`, 4 dígitos com zeros à esquerda |
+| `boot` | `boot % 10000`, 4 dígitos com zeros à esquerda. O contador (NVS, #25) vai de 1 a 9999 e volta a 1, então `0000` quer dizer sempre "desconhecido" (a placa não leu o contador). Um número **se repete** (depois de 9999, ou se a NVS for apagada): quem agrupa linhas por boot separa pela sequência (o `boot` muda, ou `seq`/`uptime` recomeçam), nunca só pelo número |
 | `seq` | `seq % 1000000`, 6 dígitos; volta a 0 e pode recuar um pouco (reordenação na fila) |
 | `uptime_ms` | 10 dígitos, `uint32_t` (volta a 0 após ~49,7 dias) |
 | `L` | `E` `W` `I` `D` `V`; nível inválido sai `?` e a linha é rejeitada pelo parser |
@@ -146,7 +146,7 @@ Todos opcionais (campo desconhecido é omitido). `stats` só lê.
 | | `idf` | versão do ESP-IDF |
 | | `uptime_ms` | ms desde o boot |
 | | `reset` | motivo do último reset: `POWERON`, `EXT`, `SW`, `PANIC`, `INT_WDT`, `TASK_WDT`, `WDT`, `DEEPSLEEP`, `BROWNOUT`, `SDIO`, `USB`, `JTAG` |
-| | `boot` | contador de boots (vem com a #25) |
+| | `boot` | contador de boots, 1 a 9999 (o mesmo número das linhas). Fica de fora se a placa não leu o contador |
 | | `flash` | `mounted`, `formatted` ou `failed`: o log na flash (#24) |
 | `stats` | `dropped` | linhas recusadas pela fila cheia; acumulado |
 | | `queue` | `<usadas>/<capacidade>`; instantâneo |

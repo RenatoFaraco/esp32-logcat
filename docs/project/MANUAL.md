@@ -148,7 +148,7 @@ Pronto: isso é o logcat funcionando.
 │    │      │          └─ nível: E erro · W aviso · I info · D debug · V verbose
 │    │      └─ uptime: milissegundos desde o boot (10 dígitos)
 │    └─ seq: número da linha neste boot (6 dígitos, volta a 0 depois de 999999)
-└─ boot: contador de boots (sempre 0000 até o marco M4)
+└─ boot: contador de boots, guardado na placa (1 a 9999, e volta a 1; 0000 = desconhecido)
 ```
 
 O `seq` é a peça mais importante: **toda linha que o firmware aceitou ganha um número**, na
@@ -594,11 +594,12 @@ As saídas abaixo foram capturadas na placa com o próprio `esp-logcat shell`.
 
 ```
 > esp-logcat shell info
-fw         v0.3.0-17-gb3f7b25
+fw         v0.3.0-23-g92b757f
 proto      1
 chip       esp32c3
 idf        6.1.0
-uptime_ms  19348
+uptime_ms  26670
+boot       5
 reset      USB
 flash      mounted
 ```
@@ -613,8 +614,8 @@ flash      mounted
 | `reset` | por que reiniciou: `POWERON` (ligou), `USB` (reset pela USB), `EXT` (pino EN), `SW` (`reboot`), `PANIC` (crash), `INT_WDT`, `TASK_WDT` ou `WDT` (watchdogs), `BROWNOUT` (tensão baixa), `DEEPSLEEP`, `SDIO`, `JTAG` |
 | `flash` | o log na flash: `mounted`, `formatted` ou `failed` (seção 9) |
 
-Campo que a placa não sabe medir não aparece: nunca vem como `0`. O contador de boots (`boot`)
-entra com a persistência (M4).
+Campo que a placa não sabe medir não aparece: nunca vem como `0`. O `boot` é o mesmo número
+do começo das linhas; ele some se a placa não conseguiu ler o contador.
 
 **`stats`**: os contadores do motor de log. Só lê: não zera nada.
 
@@ -723,11 +724,12 @@ respondem: o shell considera o reinício o sucesso. Depois, o `info` mostra `res
 > esp-logcat shell crash panic
 ok: the device restarted
 > esp-logcat shell info
-fw         v0.3.0-17-gb3f7b25
+fw         v0.3.0-23-g92b757f
 proto      1
 chip       esp32c3
 idf        6.1.0
 uptime_ms  175
+boot       6
 reset      PANIC
 flash      mounted
 ```
@@ -770,18 +772,33 @@ sempre) e, quando o `dump` chegar (#29), também baixado da flash.
 
 ### 9.2 A linha de boot
 
-No começo de cada boot, a placa diz o que achou na flash:
+No começo de cada boot, a placa diz quem é este boot e o que achou na flash:
 
 ```
-0000:000000 0000000072 I LOGCAT: flash: mounted, 7 files, 422730 bytes of 458752, last line whole, littlefs 448/512 KB
+0006:000000 0000000076 I LOGCAT: boot=6 reason=SW fw=v0.3.0-23-g92b757f
+0006:000001 0000000084 I LOGCAT: flash: mounted, 6 files, 390780 bytes of 458752, last line whole, littlefs 412/512 KB
 ```
+
+Na primeira linha:
+
+| Parte | Significado |
+|-------|-------------|
+| `boot=6` | o contador de boots, guardado na NVS: sobe 1 a cada boot, qualquer que seja o motivo. É o mesmo número do começo de cada linha (`0006:`), que separa o log de um boot do outro na flash |
+| `reason=SW` | por que reiniciou: os mesmos nomes do `info` (seção 8.3); `UNKNOWN` se o chip não disse |
+| `fw=...` | a versão do firmware que está rodando |
+
+Se a NVS foi apagada (cheia ou de outra versão do ESP-IDF), antes vem
+`W LOGCAT: boot counter restarted: NVS was erased`, e a contagem volta a 1. Se a placa não
+conseguiu ler o contador, vem `E LOGCAT: boot counter unavailable: lines carry boot 0000`.
+
+Na segunda:
 
 | Parte | Significado |
 |-------|-------------|
 | `mounted` | achou a partição com o log anterior. `formatted (first use)`: a partição estava em branco e foi formatada. Se ela não montar por outro motivo, antes vem `W LOGCAT: flash: FORMATTED: ... the previous logs are lost`. `mount failed`: o log não é guardado nesta execução |
-| `7 files, 422730 bytes of 458752` | quanto log está guardado, e o limite |
+| `6 files, 390780 bytes of 458752` | quanto log está guardado, e o limite |
 | `last line whole` | o último arquivo terminava numa linha inteira. `last line torn: closed` quer dizer que ele terminava no meio de uma linha, e a placa a fechou |
-| `littlefs 448/512 KB` | quanto da partição o próprio LittleFS usa (blocos e metadados) |
+| `littlefs 412/512 KB` | quanto da partição o próprio LittleFS usa (blocos e metadados) |
 
 Para ver essa linha, abra o stream com `--reset`: sem ele, ela já passou quando a porta abre.
 
