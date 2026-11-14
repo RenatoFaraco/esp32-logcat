@@ -114,6 +114,8 @@ void EspConsolePlatform::fill_stats(ReplyFields& fields) {
     }
     fields.add_uint("tail_skipped", tail_.skipped());
     fields.add_uint("reply_failed", server_.failures() + queue_timeouts_);
+    // The heap's low-water mark: esp_littlefs allocates on every open (see the adapter).
+    fields.add_uint("heap_min", static_cast<uint32_t>(esp_get_minimum_free_heap_size()));
     // The log in flash (#24): what the store counts, then what LittleFS itself uses.
     const FlashSnapshot flash = flash_.snapshot();
     if (flash.mount != MountResult::Failed) {
@@ -151,7 +153,12 @@ void EspConsolePlatform::reboot() {
         vTaskDelay(pdMS_TO_TICKS(10));
     }
     vTaskDelay(kDrainWait);
-    flash_.request_sync(pdMS_TO_TICKS(500));  // what was logged until now stays in flash
+    // What was logged until now stays in flash. A sync with an erase, stretched by flash
+    // auto suspend, can take a while: up to 2 s, then restart anyway.
+    if (!flash_.request_sync(pdMS_TO_TICKS(2000))) {
+        ESP_LOGE(TAG, "reboot: the last lines may not be in flash");
+        vTaskDelay(kDrainWait);
+    }
     usb_serial_jtag_wait_tx_done(kDrainWait);
     esp_restart();
 }

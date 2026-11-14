@@ -35,27 +35,30 @@ MountResult FlashStore::begin() {
 
 void FlashStore::on_idle() {
     const TickType_t now = xTaskGetTickCount();
-    const bool requested = sync_requested_.load(std::memory_order_acquire);
+    const uint32_t wanted = requested_.load(std::memory_order_acquire);
+    const bool requested = wanted != done_.load(std::memory_order_relaxed);
     if (requested || (store_.unsynced_bytes() > 0 && now - last_sync_ >= kSyncPeriod)) {
-        store_.flush();
+        const bool ok = store_.flush();
         last_sync_ = now;
+        if (requested) {
+            last_ok_.store(ok, std::memory_order_relaxed);
+            done_.store(wanted, std::memory_order_release);  // every request up to `wanted`
+        }
     }
     publish();
-    if (requested) {
-        sync_requested_.store(false, std::memory_order_release);  // after the sync: it is done
-    }
 }
 
 bool FlashStore::request_sync(TickType_t timeout) {
-    sync_requested_.store(true, std::memory_order_release);
+    const uint32_t mine = requested_.fetch_add(1, std::memory_order_acq_rel) + 1;
     const TickType_t start = xTaskGetTickCount();
-    while (sync_requested_.load(std::memory_order_acquire)) {
+    // done_ catches up with requested_; wrap-safe comparison.
+    while (static_cast<int32_t>(done_.load(std::memory_order_acquire) - mine) < 0) {
         if (xTaskGetTickCount() - start >= timeout) {
             return false;
         }
         vTaskDelay(pdMS_TO_TICKS(10));
     }
-    return true;
+    return last_ok_.load(std::memory_order_relaxed);
 }
 
 void FlashStore::publish() {

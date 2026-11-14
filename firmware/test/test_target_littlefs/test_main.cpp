@@ -59,16 +59,18 @@ void wipe() {
 }  // namespace
 
 void setUp() {
-    wipe();
+    if (fs.mount_result() != MountResult::Failed) {
+        wipe();
+    }
 }
 void tearDown() {}
 
 void test_mount() {
-    TEST_ASSERT_TRUE(fs.mount_result() != MountResult::Failed);
+    TEST_ASSERT_TRUE(fs.begin() != MountResult::Failed);
     size_t used = 0;
     size_t total = 0;
     TEST_ASSERT_TRUE(fs.usage(used, total));
-    printf("littlefs: %u of %u bytes used after format\n", static_cast<unsigned>(used),
+    printf("littlefs: %u of %u bytes used at mount\n", static_cast<unsigned>(used),
            static_cast<unsigned>(total));
     TEST_ASSERT_EQUAL(512 * 1024, total);
 }
@@ -206,14 +208,18 @@ void test_the_store_survives_a_remount_and_repairs_a_torn_tail() {
         fs.sync();
         fs.close();
     }
-    logcat::RotatingStore again(fs);
+    // A real unmount and mount, as at the next boot.
+    TEST_ASSERT_EQUAL(ESP_OK, esp_vfs_littlefs_unregister("logs"));
+    static LittleFsFileSystem remounted;
+    TEST_ASSERT_TRUE(remounted.begin() == MountResult::Mounted);
+    logcat::RotatingStore again(remounted);
     again.begin();
     TEST_ASSERT_TRUE(again.tail_torn());
     const char next[] = "0000:000003 0000000030 I APP: next\n";
     TEST_ASSERT_TRUE(again.write(next, sizeof(next) - 1));
     again.flush();
-    fs.close();
-    logcat::FileLineReader reader(fs, "log_000.txt");
+    remounted.close();
+    logcat::FileLineReader reader(remounted, "log_000.txt");
     logcat::ParseStatus status;
     logcat::LogRecord record{};
     uint32_t statuses[3] = {};
@@ -227,10 +233,27 @@ void test_the_store_survives_a_remount_and_repairs_a_torn_tail() {
     TEST_ASSERT_EQUAL_UINT32(static_cast<uint32_t>(logcat::ParseStatus::Ok), statuses[2]);
 }
 
+void test_names_the_port_cannot_carry() {
+    char byte = 0;
+    TEST_ASSERT_FALSE(fs.open_append("."));
+    TEST_ASSERT_FALSE(fs.open_append(".."));
+    TEST_ASSERT_FALSE(fs.open_append("a_name_that_is_longer_than_31_chars.txt"));
+    fs.open_append("a.txt");
+    write_text("abc");
+    fs.close();
+    TEST_ASSERT_EQUAL_size_t(0, fs.read("a.txt", 10, &byte, 1));  // past the end
+}
+
+// What a full partition costs the writer task's stack is measured on the board elsewhere
+// (`stats`: writer_stack_free); here, what this test task kept after filling it.
+void test_stack_after_a_full_partition() {
+    printf("test task stack left: %u B\n",
+           static_cast<unsigned>(uxTaskGetStackHighWaterMark(nullptr)));
+}
+
 extern "C" void app_main(void) {
     vTaskDelay(pdMS_TO_TICKS(2000));  // let the host open the port
     UNITY_BEGIN();
-    TEST_ASSERT_TRUE(fs.begin() != MountResult::Failed);
     RUN_TEST(test_mount);
     RUN_TEST(test_append_sync_size_and_read);
     RUN_TEST(test_size_of_the_open_file_is_the_synced_size);
@@ -240,6 +263,8 @@ extern "C" void app_main(void) {
     RUN_TEST(test_bad_names_and_missing_files);
     RUN_TEST(test_a_full_partition);
     RUN_TEST(test_the_store_budget_fits_the_partition);
-    RUN_TEST(test_the_store_survives_a_remount_and_repairs_a_torn_tail);
+    RUN_TEST(test_names_the_port_cannot_carry);
+    RUN_TEST(test_stack_after_a_full_partition);
+    RUN_TEST(test_the_store_survives_a_remount_and_repairs_a_torn_tail);  // last: it remounts
     UNITY_END();
 }

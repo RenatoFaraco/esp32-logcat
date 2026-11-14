@@ -93,7 +93,8 @@ struct BootInfo   { virtual uint32_t boot_count() = 0;
 | `FreeRtosLogQueue` | fila não bloqueante | `xQueueSend(..., 0)` |
 | `UsbJtagSink` | `Sink` | `usb_serial_jtag` driver |
 | `UartSink` | `Sink` | `uart` driver (porta da ponte USB-UART) |
-| `LittleFsFileSystem` | `FileSystem` | `esp_littlefs` na partição `logs` |
+| `LittleFsFileSystem` | `FileSystem` | `esp_littlefs` na partição `logs`, por descritores POSIX (#24) |
+| `FlashStore` | — | monta a partição, liga o `RotatingStore` como sink, sync a cada 5 s pela `WriterTask`, publica os números para o `stats` |
 | `NvsBootInfo` | `BootInfo` | NVS + `esp_reset_reason()` |
 | `RtcLastWords` | último suspiro | buffer em `RTC_NOINIT_ATTR` |
 | `EspClock` | `Clock` | `esp_timer_get_time()` |
@@ -165,6 +166,9 @@ app_main()
 - Leitura: `FileLineReader` lê o arquivo em blocos de 512 bytes, separa linhas com um buffer
   de 171 bytes, conta cada `ParseStatus`, e pula o resto de uma linha longa demais.
 - Conteúdo: as mesmas linhas de texto do console → o host lê com o mesmo parser.
+- Na placa (#24): sync a cada 5 s e antes de `reboot`; crash e corte perdem no máximo isso.
+  Gravar na flash desliga o cache: `CONFIG_SPI_FLASH_AUTO_SUSPEND` mantém a tarefa crítica
+  abaixo de 1 ms (`hardware.md`, item 9).
 
 ## 6. Protocolo no fio (USB)
 

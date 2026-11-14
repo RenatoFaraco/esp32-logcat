@@ -147,6 +147,7 @@ Todos opcionais (campo desconhecido é omitido). `stats` só lê.
 | | `uptime_ms` | ms desde o boot |
 | | `reset` | motivo do último reset: `POWERON`, `EXT`, `SW`, `PANIC`, `INT_WDT`, `TASK_WDT`, `WDT`, `DEEPSLEEP`, `BROWNOUT`, `SDIO`, `USB`, `JTAG` |
 | | `boot` | contador de boots (vem com a #25) |
+| | `flash` | `mounted`, `formatted` ou `failed`: o log na flash (#24) |
 | `stats` | `dropped` | linhas recusadas pela fila cheia; acumulado |
 | | `queue` | `<usadas>/<capacidade>`; instantâneo |
 | | `queue_max` | maior ocupação da fila; acumulado |
@@ -155,6 +156,11 @@ Todos opcionais (campo desconhecido é omitido). `stats` só lê.
 | | `not_sent.<saída>` | linhas recusadas por aquela saída; acumulado (inclui as puladas durante um bloco) |
 | | `tail_skipped` | linhas fora do tail por causa de um bloco; acumulado |
 | | `reply_failed` | linhas de resposta que não saíram; acumulado |
+| | `flash.files`, `flash.bytes`, `flash.limit` | o log na flash: arquivos, bytes, limite total |
+| | `flash.unsynced` | bytes escritos e ainda não sincronizados; instantâneo |
+| | `flash.rotations`, `flash.removed`, `flash.repaired` | arquivos começados, apagados, finais rasgados fechados; acumulado |
+| | `flash.failed`, `flash.sync_failed`, `flash.lost` | linhas recusadas, syncs que falharam, bytes perdidos; acumulado |
+| | `fs.used`, `fs.total` | uso real do LittleFS na partição, e o tamanho dela |
 
 Acumulado quer dizer desde o boot, sem comando para zerar: a taxa vem de duas leituras. Os
 valores são `uint32`, e dão a volta em 2^32.

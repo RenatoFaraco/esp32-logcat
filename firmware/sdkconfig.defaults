@@ -31,6 +31,8 @@ CONFIG_LOG_MAXIMUM_LEVEL_VERBOSE=y
 # nothing else, the 1 kHz critical task (#13) saw 20-25 ms stalls and up to 2251 missed periods
 # per phase. Auto suspend pauses the erase/program when the CPU needs the cache: measured on this
 # board (ESP32-C3, embedded XMC flash), max wake 0.2-1 ms and no missed period, the on-board
-# LittleFS tests still pass. A chip or module with another flash must check its support again
-# (ESP-IDF guide: "Optional Features for Flash", auto suspend). docs/context/hardware.md item 9.
+# LittleFS tests still pass. Not an optimization but a boot dependency: with a flash chip that
+# does not support suspend, the firmware asserts at startup and resets in a loop. Another chip or
+# module needs this checked first (ESP-IDF guide: "Optional Features for Flash", auto suspend;
+# per board in v2). docs/context/hardware.md item 9.
 CONFIG_SPI_FLASH_AUTO_SUSPEND=y

@@ -90,7 +90,9 @@ Os blocos 🖥️ (M3, M4a, M5a) podem ser adiantados sempre que o trabalho com 
 - **Pronto quando:** testes de rotação cobrindo encher, girar e descartar.
 
 ### M4b · Persistência — integração 🔌
-- [ ] `LittleFsFileSystem`, `NvsBootInfo`
+- [x] `LittleFsFileSystem` (#24): o log na flash da placa, sync a cada 5 s, testes do
+      adaptador na própria placa (`test_target_littlefs`)
+- [ ] `NvsBootInfo` (#25)
 - [ ] Linha de boot com contador, motivo do reset e versão (reset pelo pino EN aparece como `POWERON` no C3 — ver `hardware.md`)
 - [ ] Política de flush (periódico + ERROR + comando)
 

@@ -177,6 +177,11 @@ bool RotatingStore::write(const char* line, size_t length) {
     if (written != length) {
         lose_pending();
         ++stats_.failed_writes;
+        // The partition is full although the budget says there is room (its blocks and metadata
+        // take more than counted): free the oldest file, so the next line has a chance.
+        if (count_ > 1) {
+            remove_oldest();
+        }
         return false;
     }
     return true;
@@ -221,7 +226,10 @@ bool RotatingStore::flush() {
 }
 
 bool RotatingStore::rotate() {
-    fs_.close();  // syncs: nothing is pending in the old file any more
+    // Synced through flush() first, so a failure is counted (sync_failures, lost_bytes) and
+    // the file is closed the way the port wants after an error.
+    flush();
+    fs_.close();
     open_ = false;
     pending_ = 0;
     if (current().index >= kMaxFileIndex && !renumber()) {

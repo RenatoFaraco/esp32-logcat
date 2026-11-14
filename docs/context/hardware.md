@@ -160,6 +160,45 @@ Efeito medido na fase com espelho UART da #13: o atraso máximo do ISR do timer 
 que segurava as interrupções não foi isolado; a medição externa é da #14. Com esse caminho,
 também apareceu 1 bloco de dump com bytes a mais em 200; depois da correção, 0 em 3491.
 
+**9. A flash para o processador ao gravar, e o LittleFS como de fato se comporta**
+
+Medido em 14/nov (#24), LittleFS `joltwallet/littlefs` 1.23.1 na partição `logs` (512 KB).
+
+- **O tempo da tarefa crítica.** Apagar um setor ou gravar uma página da flash desliga o cache;
+  sem nada mais, só código em IRAM roda. Com o log indo para a flash, a varredura da #13 mediu
+  atrasos de **20–25 ms** na tarefa de 1 kHz e até **2251 períodos perdidos** por fase, inclusive
+  na fase sem carga (os syncs do heartbeat bastam). Com `CONFIG_SPI_FLASH_AUTO_SUSPEND=y`, o
+  apagamento é suspenso quando o processador precisa do cache: atraso máximo de **0,2–1 ms** e
+  **nenhum período perdido**, com os testes de integridade na placa passando. **Não é uma
+  otimização, é uma dependência de boot**: com uma flash sem suporte a suspend, o firmware para
+  num `assert` na partida e reinicia em loop. Funciona nesta placa (XMC embutida); outra placa ou
+  módulo precisa conferir antes (na v2, a opção será por placa). Os números finos ficam para a
+  #14 (analisador).
+- **O LittleFS, conferido no código e na placa** (`test/test_target_littlefs`):
+  - `stat()` lê a entrada já gravada: o tamanho do arquivo aberto não inclui o que não passou
+    por `fsync`;
+  - apagar ou renomear um arquivo aberto falha com `EBUSY` (e o componente loga um erro);
+  - `rename` sobre um nome existente **substitui** o destino: o adaptador confere antes;
+  - partição cheia: o `write` falha inteiro (`NOSPC`), nunca pela metade. Ela enche com 500 KB
+    de dados (125 blocos de 4 KB; a formatação usa 8 KB);
+  - com o orçamento de 448 KB do store, o pico de uso do LittleFS foi **480 de 512 KB** (32 KB
+    livres): o limite fica em 448 KB;
+  - um crash ou corte volta o arquivo para o último sync, inteiro: `repaired` fica em 0 na
+    prática; o reparo com `DEL` cobre o caso raro de um sync no meio de uma linha;
+  - uma montagem que falha é tentada de novo antes de formatar; só a partição em branco é
+    "primeiro uso", qualquer outra formatação é avisada como perda;
+  - depois de uma escrita que falha, o arquivo é fechado sem `fsync`: senão o `close` do
+    esp_littlefs retorna antes de soltar o arquivo, que fica "aberto" para sempre (EBUSY);
+  - os logs do próprio componente (`esp_littlefs`) ficam em WARN: saem da tarefa escritora pela
+    impressora da ROM, a ~7 ms por linha.
+- **Desgaste e histórico.** Cada linha vai para a flash. A varredura de tempo saiu do firmware
+  normal para o build `esp32c3_timing`: rodando no boot, ela gravaria ~2 MB e empurraria para
+  fora o log do boot anterior, o que um crash deixou; rodando para sempre, a 60 KB/s, gastaria a
+  flash em semanas. O sync a cada 5 s também gasta: depois de um sync, o próximo append copia o
+  bloco parcial (um apagamento de 4 KB). Com o heartbeat de 1 linha/s, a estimativa é ~17 mil
+  apagamentos por dia em 128 blocos, uns 2 anos de vida: a #26 mede e decide o período. `CONFIG_LITTLEFS_USE_MTIME` está desligado: ele gravaria um
+  atributo de data a cada sync.
+
 ## Boot capturado (06/nov, reset pela USB nativa, trecho)
 
 ```
