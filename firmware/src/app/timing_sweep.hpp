@@ -4,7 +4,7 @@
 
 namespace app {
 
-// The measurement loop of #13/#14, run forever by its own task: each phase sets a log load,
+// The measurement of #13/#14, run once per boot by its own task: each phase sets a log load,
 // runs for kPhaseSeconds with the critical task measuring, then logs two TIMING lines with
 // that phase's latencies, overruns, dropped lines and the critical task's stack.
 //

@@ -25,6 +25,7 @@ struct Context {
     FreeRtosLogQueue* queue;
     ReplyServer* server;
     FreeRtosReplyQueue* replies;
+    void (*on_idle)();
 };
 Context context;
 
@@ -51,6 +52,9 @@ void run(void*) {
             continue;  // nothing to log, more to reply: no reason to look for losses yet
         }
         context.writer->idle();  // normally with the queue empty: reports do not overtake lines
+        if (context.on_idle != nullptr) {
+            context.on_idle();
+        }
         last_report = xTaskGetTickCount();
     }
 }
@@ -58,11 +62,11 @@ void run(void*) {
 }  // namespace
 
 TaskHandle_t start_writer_task(Writer& writer, FreeRtosLogQueue& queue, ReplyServer& server,
-                               FreeRtosReplyQueue& replies) {
+                               FreeRtosReplyQueue& replies, void (*on_idle)()) {
     if (handle.load() != nullptr) {
         return handle.load();
     }
-    context = Context{&writer, &queue, &server, &replies};
+    context = Context{&writer, &queue, &server, &replies, on_idle};
     TaskHandle_t created =
         xTaskCreateStatic(run, "logcat_writer", kStackBytes, nullptr, kPriority, stack, &control);
     handle.store(created, std::memory_order_release);

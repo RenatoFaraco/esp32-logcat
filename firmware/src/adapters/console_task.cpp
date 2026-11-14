@@ -91,6 +91,7 @@ void EspConsolePlatform::fill_info(ReplyFields& fields) {
     if (reset != nullptr) {
         fields.add("reset", reset);
     }
+    fields.add("flash", to_string(flash_.snapshot().mount));
 }
 
 void EspConsolePlatform::fill_stats(ReplyFields& fields) {
@@ -113,6 +114,26 @@ void EspConsolePlatform::fill_stats(ReplyFields& fields) {
     }
     fields.add_uint("tail_skipped", tail_.skipped());
     fields.add_uint("reply_failed", server_.failures() + queue_timeouts_);
+    // The log in flash (#24): what the store counts, then what LittleFS itself uses.
+    const FlashSnapshot flash = flash_.snapshot();
+    if (flash.mount != MountResult::Failed) {
+        fields.add_uint("flash.files", flash.store.files);
+        fields.add_uint("flash.bytes", flash.store.bytes);
+        fields.add_uint("flash.limit", flash.limit);
+        fields.add_uint("flash.unsynced", flash.unsynced);
+        fields.add_uint("flash.rotations", flash.store.rotations);
+        fields.add_uint("flash.removed", flash.store.removed);
+        fields.add_uint("flash.repaired", flash.store.repaired);
+        fields.add_uint("flash.failed", flash.store.failed_writes);
+        fields.add_uint("flash.sync_failed", flash.store.sync_failures);
+        fields.add_uint("flash.lost", flash.store.lost_bytes);
+        size_t used = 0;
+        size_t total = 0;
+        if (flash_.usage(used, total)) {
+            fields.add_uint("fs.used", static_cast<uint32_t>(used));
+            fields.add_uint("fs.total", static_cast<uint32_t>(total));
+        }
+    }
 }
 
 void EspConsolePlatform::set_log_level(const char* tag, LogLevel level) {
@@ -130,6 +151,7 @@ void EspConsolePlatform::reboot() {
         vTaskDelay(pdMS_TO_TICKS(10));
     }
     vTaskDelay(kDrainWait);
+    flash_.request_sync(pdMS_TO_TICKS(500));  // what was logged until now stays in flash
     usb_serial_jtag_wait_tx_done(kDrainWait);
     esp_restart();
 }

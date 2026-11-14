@@ -120,11 +120,15 @@ void run_phase(uint32_t index, const Phase& phase) {
 }
 
 void run(void*) {
-    for (;;) {
-        for (uint32_t index = 0; index < kPhaseCount; ++index) {
-            run_phase(index, kPhases[index]);
-        }
+    for (uint32_t index = 0; index < kPhaseCount; ++index) {
+        run_phase(index, kPhases[index]);
     }
+    // Once per boot: every line also goes to flash now (#24), and a sweep writes ~2 MB, about
+    // 4 times the partition. Run forever, it would wear the flash out in weeks. Reset the board
+    // (esp-logcat shell reboot) for another sweep.
+    ESP_LOGI(TAG, "sweep done; it runs once per boot (it writes ~2 MB to flash)");
+    mirror->set_enabled(true);
+    vTaskDelete(nullptr);
 }
 
 }  // namespace

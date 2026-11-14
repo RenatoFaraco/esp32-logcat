@@ -24,8 +24,11 @@ namespace logcat {
 // The console's replies come through here too: this task is the only owner of the USB sink, so
 // a reply and a log line never mix bytes. Each turn it serves one reply entry (or one line of an
 // open block), then at least one log entry, so neither queue starves (ADR-012 §5).
+//
+// `on_idle`, if given, runs in this task whenever its queue is empty (the flash store's periodic
+// sync, #24): the sinks belong to this task, so their upkeep does too.
 TaskHandle_t start_writer_task(Writer& writer, FreeRtosLogQueue& queue, ReplyServer& server,
-                               FreeRtosReplyQueue& replies);
+                               FreeRtosReplyQueue& replies, void (*on_idle)() = nullptr);
 
 TaskHandle_t writer_task_handle();
 
