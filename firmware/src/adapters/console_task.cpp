@@ -4,12 +4,14 @@
 #include <cstdlib>
 
 #include "adapters/idf_log_hook.hpp"
+#include "adapters/reset_reason.hpp"
 #include "adapters/writer_task.hpp"
 #include "driver/usb_serial_jtag.h"
 #include "esp_app_desc.h"
 #include "esp_log.h"
 #include "esp_system.h"
 #include "esp_timer.h"
+#include "logcat/boot_counter.hpp"
 #include "sdkconfig.h"
 
 namespace logcat {
@@ -30,38 +32,6 @@ constexpr uint32_t kProtocolVersion = 1;
 StackType_t stack[kStackBytes];
 StaticTask_t control;
 Console* console_ptr = nullptr;
-
-// nullptr for ESP_RST_UNKNOWN: a reason nobody knows is left out, never invented (ADR-012 §2).
-const char* reset_name(esp_reset_reason_t reason) {
-    switch (reason) {
-        case ESP_RST_POWERON:
-            return "POWERON";
-        case ESP_RST_EXT:
-            return "EXT";
-        case ESP_RST_SW:
-            return "SW";
-        case ESP_RST_PANIC:
-            return "PANIC";
-        case ESP_RST_INT_WDT:
-            return "INT_WDT";
-        case ESP_RST_TASK_WDT:
-            return "TASK_WDT";
-        case ESP_RST_WDT:
-            return "WDT";
-        case ESP_RST_DEEPSLEEP:
-            return "DEEPSLEEP";
-        case ESP_RST_BROWNOUT:
-            return "BROWNOUT";
-        case ESP_RST_SDIO:
-            return "SDIO";
-        case ESP_RST_USB:
-            return "USB";
-        case ESP_RST_JTAG:
-            return "JTAG";
-        default:
-            return nullptr;
-    }
-}
 
 void run(void*) {
     char buffer[64];
@@ -87,6 +57,9 @@ void EspConsolePlatform::fill_info(ReplyFields& fields) {
     fields.add("chip", CONFIG_IDF_TARGET);
     fields.add("idf", esp_get_idf_version());
     fields.add_uint("uptime_ms", static_cast<uint32_t>(esp_timer_get_time() / 1000));
+    if (writer_.boot() != kUnknownBoot) {  // unknown is left out, never sent as 0 (ADR-012 §2)
+        fields.add_uint("boot", writer_.boot());
+    }
     const char* reset = reset_name(esp_reset_reason());
     if (reset != nullptr) {
         fields.add("reset", reset);

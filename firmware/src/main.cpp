@@ -6,14 +6,19 @@
 #include "adapters/flash_store.hpp"
 #include "adapters/idf_log_hook.hpp"
 #include "adapters/log_queue.hpp"
+#include "adapters/nvs_boot_store.hpp"
 #include "adapters/reply_queue.hpp"
+#include "adapters/reset_reason.hpp"
 #include "adapters/usb_jtag_sink.hpp"
 #include "adapters/writer_task.hpp"
 #include "app/switchable_sink.hpp"
 #include "app/timing_sweep.hpp"
+#include "esp_app_desc.h"
 #include "esp_log.h"
+#include "esp_system.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "logcat/boot_counter.hpp"
 #include "logcat/console.hpp"
 #include "logcat/line_formatter.hpp"
 #include "logcat/line_parser.hpp"
@@ -66,7 +71,22 @@ static void heartbeat_task(void*) {
     }
 }
 
-// What the board found in flash, as the first line it keeps there.
+// Who this boot is (#25): the first line the board keeps.
+static void log_boot(const logcat::BootInfo& boot, bool nvs_erased) {
+    if (boot.boot == logcat::kUnknownBoot) {
+        ESP_LOGE("LOGCAT", "boot counter unavailable: lines carry boot 0000");
+    } else if (nvs_erased) {
+        ESP_LOGW("LOGCAT", "boot counter restarted: NVS was erased");
+    } else if (!boot.saved) {
+        ESP_LOGW("LOGCAT", "boot counter not saved: the next boot may repeat %lu",
+                 static_cast<unsigned long>(boot.boot));
+    }
+    const char* reason = logcat::reset_name(esp_reset_reason());
+    ESP_LOGI("LOGCAT", "boot=%lu reason=%s fw=%s", static_cast<unsigned long>(boot.boot),
+             reason != nullptr ? reason : "UNKNOWN", esp_app_get_description()->version);
+}
+
+// What the board found in flash.
 static void log_flash_at_boot(logcat::MountResult mount) {
     if (mount == logcat::MountResult::Failed) {
         ESP_LOGE("LOGCAT", "flash: mount failed: logs are not kept");
@@ -89,6 +109,16 @@ static void log_flash_at_boot(logcat::MountResult mount) {
 }
 
 extern "C" void app_main(void) {
+    // The boot counter first (ARCHITECTURE §4): every line of this boot carries it. NVS is
+    // initialized here for the whole firmware.
+    static logcat::NvsBootStore boot_store;
+    const bool nvs_ready = boot_store.begin();
+    const logcat::BootInfo boot = logcat::next_boot(boot_store);
+    if (!nvs_ready) {
+        ESP_LOGE(TAG, "nvs init failed: no boot counter");  // before the hook: ESP-IDF format
+    }
+    writer.set_boot(boot.boot);
+
     // Sinks, writer task, then the hook: from there on every ESP_LOGx goes through the core.
     // Anything logged before (the driver install below) keeps the ESP-IDF format, on UART.
     const bool usb_ready = usb_sink.begin() == ESP_OK;
@@ -118,7 +148,8 @@ extern "C" void app_main(void) {
         ESP_LOGE(TAG, "writer task not created: logs stay in the ESP-IDF format");
         return;
     }
-    logcat::install_idf_log_hook(sequencer, tag_filter, log_queue);
+    logcat::install_idf_log_hook(sequencer, tag_filter, log_queue, boot.boot);
+    log_boot(boot, boot_store.erased());
     log_flash_at_boot(mount);
 
     ESP_LOGI(TAG, "esp32-logcat hook installed");

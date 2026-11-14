@@ -42,7 +42,9 @@ struct CaptureStats {
 // Passed through raw (and so possibly waiting on the console like any printf): text that is
 // not a whole log line — vsnprintf errors, a line written in several calls — and anything
 // logged inside the writer task. Ordinary ESP_LOGx lines never take this path.
-void install_idf_log_hook(Sequencer& sequencer, TagLevelFilter& filter, FreeRtosLogQueue& queue);
+// `boot` is stamped on every line (wire-format §1): the NVS counter, or kUnknownBoot (0).
+void install_idf_log_hook(Sequencer& sequencer, TagLevelFilter& filter, FreeRtosLogQueue& queue,
+                          uint32_t boot);
 
 CaptureStats idf_log_hook_stats();
 

@@ -32,6 +32,7 @@ std::atomic<vprintf_like_t> previous_output{nullptr};
 Sequencer* sequencer_ptr = nullptr;
 TagLevelFilter* filter_ptr = nullptr;
 FreeRtosLogQueue* queue_ptr = nullptr;
+uint32_t boot_number = 0;  // set with the pointers above, before the hook is installed
 std::atomic<uint32_t> last_cycles{0};
 std::atomic<uint32_t> max_cycles{0};
 std::atomic<uint32_t> dropped_total{0};  // never reset: readers take differences
@@ -109,7 +110,7 @@ int hook(const char* format, va_list args) {
         record.truncated = true;  // shown as "..." only if the message is full (formatter rule)
     }
     record.uptime_ms = static_cast<uint32_t>(esp_timer_get_time() / 1000);
-    record.boot = 0;  // boot counter comes with NVS (M4)
+    record.boot = boot_number;
     record.seq = sequencer_ptr->next();
     // Zero timeout: a full queue drops the line and counts it; the writer reports the count
     // and the host sees the gap in seq (ADR-004). The caller never waits for I/O.
@@ -123,7 +124,9 @@ int hook(const char* format, va_list args) {
 
 }  // namespace
 
-void install_idf_log_hook(Sequencer& sequencer, TagLevelFilter& filter, FreeRtosLogQueue& queue) {
+void install_idf_log_hook(Sequencer& sequencer, TagLevelFilter& filter, FreeRtosLogQueue& queue,
+                          uint32_t boot) {
+    boot_number = boot;
     sequencer_ptr = &sequencer;
     filter_ptr = &filter;
     queue_ptr = &queue;
