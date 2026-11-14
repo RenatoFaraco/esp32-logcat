@@ -41,7 +41,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   it runs one command per line. The shell numbers the requests (rotating from a random start),
   waits 2 s for a reply, counts a restart (the port closing, seq or uptime going back, or the
   ROM banner) as the success of `reboot` and `crash`, and shows
-  reply lines nobody asked for as raw. `log tail` blocks are read by byte count and their
+  reply lines nobody asked for as raw. A line the shell cuts by closing the port is dropped,
+  never shown as torn (#82). `log tail` blocks are read by byte count and their
   CRC-32 checked (`framing.py`, reusable by `dump`). New dependency: `prompt_toolkit`.
 - The `stream` summary counts console reply lines (`N replies`).
 

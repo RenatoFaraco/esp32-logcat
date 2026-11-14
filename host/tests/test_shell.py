@@ -131,6 +131,34 @@ def one(
     return code, out.getvalue(), err.getvalue()
 
 
+# ------------------------------------------------------------------ closing
+
+
+def test_a_line_cut_by_closing_the_shell_is_not_shown_or_counted():
+    # The shell closes the port while a line is arriving: the piece was cut by the host, not
+    # torn by the device. It must not print after the summary as `!! torn: 0` (#82).
+    device = FakeDevice(greeting=LOG_I)
+    shell, out, err, out_console, err_console = make_shell(device, show_logs=True)
+    assert run_one(shell, ["info"], out_console, err_console, as_json=False) == 0
+    device._queue.put(b"0")  # the start of the next line, then the shell closes
+    shell.close()
+    assert "torn" not in out.getvalue() + err.getvalue()
+    assert shell.stats.kinds["InvalidLine"] == 0
+    assert "hello" in out.getvalue()  # whole lines before the close are still shown
+
+
+def test_a_real_disconnect_still_reports_the_torn_tail():
+    device = FakeDevice(greeting=LOG_I)
+    shell, out, err, out_console, err_console = make_shell(device, show_logs=True)
+    assert run_one(shell, ["info"], out_console, err_console, as_json=False) == 0
+    device._queue.put(b"0000:0000")
+    device._queue.put(Notice(NoticeKind.DISCONNECTED, "COM6: connection lost"))
+    device.close()
+    shell._thread.join(timeout=2.0)
+    assert "torn" in out.getvalue()
+    shell.close()
+
+
 # ------------------------------------------------------------------ one command
 
 

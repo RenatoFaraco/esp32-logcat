@@ -49,6 +49,10 @@ class Transport(Protocol):
     def close(self) -> None: ...
 
 
+class _Closed(Exception):
+    """The shell closed its own port: the reader stops without flushing a half line."""
+
+
 class Shell:
     """Owns the reader thread. `request()` sends one command and waits for its reply."""
 
@@ -78,6 +82,8 @@ class Shell:
         self._reader_done = threading.Event()
         self.waiting = ""  # the last "waiting for the port" notice, to explain a failure
         self._reader_error = ""
+        # Set by close(): what the reader gets after it was cut by us (#82), never shown.
+        self._closing = threading.Event()
         self._thread = threading.Thread(target=self._read, name="esp-logcat-reader", daemon=True)
 
     # ------------------------------------------------------------------ lifecycle
@@ -86,6 +92,9 @@ class Shell:
         self._thread.start()
 
     def close(self) -> None:
+        # First: closing the port ends the stream, and the line that was arriving comes out as a
+        # torn piece. The host cut it, not the device: it is neither shown nor counted.
+        self._closing.set()
         self._transport.close()
         self._thread.join(timeout=2.0)
 
@@ -161,9 +170,19 @@ class Shell:
                 self.exchange.touch(block, now, limit)
             yield item
 
+    def _closing_ends(self, chunks: Iterator[bytes | Notice]) -> Iterator[bytes | Notice]:
+        """Stops the input as soon as close() was called. Raising (not returning) keeps the
+        pipeline from flushing the half line it holds, which it does when its input ends."""
+        for item in chunks:
+            if self._closing.is_set():
+                raise _Closed
+            yield item
+        if self._closing.is_set():
+            raise _Closed
+
     def _read(self) -> None:
         try:
-            parsed = events(self._chunks(), self.stats, framer=self._framer)
+            parsed = events(self._closing_ends(self._chunks()), self.stats, framer=self._framer)
             for event in visible(parsed, self.stats, self._filter if self._show_logs else None):
                 replies, out_of_context = self.exchange.observe(event, self._clock())
                 if isinstance(event, Notice):
@@ -179,6 +198,8 @@ class Shell:
                             self._done[reply.id] = reply
                         self._changed.notify_all()
                 self._show(event, out_of_context)
+        except _Closed:
+            pass  # close() was called: nothing after it is shown, nothing is an error
         except Exception as exc:  # noqa: BLE001  (reported to the waiting request, not lost)
             self._reader_error = f"{type(exc).__name__}: {exc}"
         finally:
