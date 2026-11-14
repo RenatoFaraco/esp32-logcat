@@ -597,11 +597,12 @@ The output below was captured on the board with `esp-logcat shell` itself.
 
 ```
 > esp-logcat shell info
-fw         v0.3.0-17-gb3f7b25
+fw         v0.3.0-23-g92b757f
 proto      1
 chip       esp32c3
 idf        6.1.0
-uptime_ms  19348
+uptime_ms  26670
+boot       5
 reset      USB
 flash      mounted
 ```
@@ -727,11 +728,12 @@ not reply: the shell counts the restart as success. Afterwards, `info` shows `re
 > esp-logcat shell crash panic
 ok: the device restarted
 > esp-logcat shell info
-fw         v0.3.0-17-gb3f7b25
+fw         v0.3.0-23-g92b757f
 proto      1
 chip       esp32c3
 idf        6.1.0
 uptime_ms  175
+boot       6
 reset      PANIC
 flash      mounted
 ```
@@ -777,15 +779,15 @@ once `dump` arrives (#29), also downloaded from flash.
 At the start of every boot, the board says which boot this is and what it found in flash:
 
 ```
-0003:000000 0000000060 I LOGCAT: boot=3 reason=SW fw=v0.3.0-22-g7f40c6a
-0003:000001 0000000064 I LOGCAT: flash: mounted, 7 files, 422730 bytes of 458752, last line whole, littlefs 448/512 KB
+0006:000000 0000000076 I LOGCAT: boot=6 reason=SW fw=v0.3.0-23-g92b757f
+0006:000001 0000000084 I LOGCAT: flash: mounted, 6 files, 390780 bytes of 458752, last line whole, littlefs 412/512 KB
 ```
 
 In the first line:
 
 | Part | Meaning |
 |------|---------|
-| `boot=3` | the boot counter, kept in NVS: it goes up by 1 at every boot, whatever the reason. It is the same number that starts every line (`0003:`), which tells one boot's log from another's in flash |
+| `boot=6` | the boot counter, kept in NVS: it goes up by 1 at every boot, whatever the reason. It is the same number that starts every line (`0006:`), which tells one boot's log from another's in flash |
 | `reason=SW` | why it restarted: the same names as `info` (section 8.3); `UNKNOWN` if the chip did not say |
 | `fw=...` | the firmware version running |
 
@@ -798,9 +800,9 @@ In the second:
 | Part | Meaning |
 |------|---------|
 | `mounted` | the partition was found with the previous log. `formatted (first use)`: the partition was blank and was formatted. If it fails to mount for another reason, `W LOGCAT: flash: FORMATTED: ... the previous logs are lost` comes first. `mount failed`: the log is not kept in this run |
-| `7 files, 422730 bytes of 458752` | how much log is kept, and the limit |
+| `6 files, 390780 bytes of 458752` | how much log is kept, and the limit |
 | `last line whole` | the last file ended on a whole line. `last line torn: closed` means it ended inside a line, and the board closed it |
-| `littlefs 448/512 KB` | how much of the partition LittleFS itself uses (blocks and metadata) |
+| `littlefs 412/512 KB` | how much of the partition LittleFS itself uses (blocks and metadata) |
 
 To see this line, open the stream with `--reset`: without it, the line is gone by the time the
 port opens.
