@@ -153,9 +153,9 @@ class Shell:
 
     # ------------------------------------------------------------------ reader thread
 
-    def _chunks(self) -> Iterator[bytes | Notice]:
+    def _chunks(self, source: Iterator[bytes | Notice]) -> Iterator[bytes | Notice]:
         block_started: tuple[str, float] | None = None
-        for item in self._transport.chunks():
+        for item in source:
             block = self._framer.block_id
             if block is None:
                 block_started = None
@@ -181,8 +181,11 @@ class Shell:
             raise _Closed
 
     def _read(self) -> None:
+        source = self._transport.chunks()
         try:
-            parsed = events(self._closing_ends(self._chunks()), self.stats, framer=self._framer)
+            parsed = events(
+                self._closing_ends(self._chunks(source)), self.stats, framer=self._framer
+            )
             for event in visible(parsed, self.stats, self._filter if self._show_logs else None):
                 replies, out_of_context = self.exchange.observe(event, self._clock())
                 if isinstance(event, Notice):
@@ -203,6 +206,11 @@ class Shell:
         except Exception as exc:  # noqa: BLE001  (reported to the waiting request, not lost)
             self._reader_error = f"{type(exc).__name__}: {exc}"
         finally:
+            # The transport closes its port in its own `finally`: run it now, not whenever the
+            # stopped generator is collected.
+            close = getattr(source, "close", None)
+            if close is not None:
+                close()
             self._reader_done.set()
             with self._changed:
                 self._changed.notify_all()

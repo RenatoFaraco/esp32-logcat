@@ -426,6 +426,9 @@ def shell_command(args: argparse.Namespace, transport: Transport | None = None) 
             code = shell_module.run_prompt(session, out, err)
         else:
             code = shell_module.run_lines(session, sys.stdin, out, err)
+        # Closed first: the reader has stopped, so the summary is the last thing printed and
+        # counts everything shown (#82). close() again in `finally` does nothing.
+        session.close()
         err.print(session.stats.summary(), markup=False, style="dim")
         return code
     except KeyboardInterrupt:
