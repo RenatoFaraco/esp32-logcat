@@ -21,7 +21,15 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 
 from esp_logcat.events import Block, Event, Notice, NoticeKind, Received, ReceivedBlock
-from esp_logcat.parser import CommandEnd, CommandReply, DumpBegin, DumpEnd, RawLine, parse_line
+from esp_logcat.parser import (
+    CommandEnd,
+    CommandReply,
+    DumpBegin,
+    DumpEnd,
+    LogLine,
+    RawLine,
+    parse_line,
+)
 from esp_logcat.stats import ROM_BANNER
 
 # The first word of every command the device knows (wire-format §2.1).
@@ -103,6 +111,9 @@ class Exchange:
         self._taken_at: dict[str, float] = {}  # recent ids: not reused within the timeout
         self._fresh = False  # the next line is the first after connecting
         self._connected_at = float("-inf")
+        # A ROM banner ended this boot's restart: the seq check reports the same restart at the
+        # first log line after it, which must not end the requests sent during the boot.
+        self._banner_restart = False
 
     def start(self, command: str, now: float) -> str:
         """Registers a request and returns its id. Register before writing it to the port."""
@@ -152,11 +163,15 @@ class Exchange:
             match event:
                 case Notice(kind=NoticeKind.CONNECTED):
                     self._fresh = True
+                    self._banner_restart = False
                     self._connected_at = now
                     return [], False
                 case Notice(kind=NoticeKind.DISCONNECTED):
                     return self._restart_or_lose("the port closed", now), False
                 case Notice(kind=NoticeKind.RESTART):
+                    if self._banner_restart:
+                        self._banner_restart = False
+                        return [], False
                     return self._restart_or_lose("the device restarted", now), False
                 case ReceivedBlock(block=block):
                     self._fresh = False
@@ -169,7 +184,10 @@ class Exchange:
                         # The ROM prints it at every reset. A one-command shell may see no log
                         # line before a `reboot` lands (~0.1 s after `ok`), so the seq/uptime
                         # check has nothing to compare and the banner is the only sign.
+                        self._banner_restart = True
                         return self._restart_or_lose("the device restarted", now), False
+                    if isinstance(line, LogLine):
+                        self._banner_restart = False
                     return [], False
                 case _:
                     return [], False

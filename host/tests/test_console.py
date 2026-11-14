@@ -229,6 +229,28 @@ def test_rom_banner_loses_any_other_pending_reply():
     assert reply.failure == "no reply: the device restarted"
 
 
+def test_a_restart_is_counted_once_when_the_banner_came_first():
+    # `crash panic` then `info` from a pipe: the banner ends the crash, info goes out during the
+    # boot, and the first log line makes the seq check report the same restart again.
+    ex = exchange()
+    ex.start("crash panic", now=0.0)
+    feed(ex, *ROM_BOOT, now=0.2)
+    ex.start("info", now=0.3)
+    done, _ = feed(ex, Notice(NoticeKind.RESTART, "restart"), now=0.5)
+    assert done == []
+    feed(ex, b"0000:000000 0000000057 I LOGCAT: flash: mounted\n", now=0.5)
+    [reply], _ = feed(ex, b"#. 8 ok\n", now=0.6)
+    assert reply.ok
+
+
+def test_a_later_restart_still_counts_after_a_log_line():
+    ex = exchange()
+    feed(ex, *ROM_BOOT, b"0000:000000 0000000057 I APP: up\n")
+    ex.start("info", now=0.3)
+    [reply], _ = feed(ex, Notice(NoticeKind.RESTART, "restart"), now=0.5)
+    assert reply.failure == "no reply: the device restarted"
+
+
 def test_other_raw_lines_are_not_a_restart():
     ex = exchange()
     ex.start("reboot", now=0.0)
