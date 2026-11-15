@@ -110,6 +110,20 @@ void Console::run(const Command& command) {
         case CommandKind::LogTail:
             send_tail(command.id);
             return;
+        case CommandKind::LogSync:
+            switch (platform_.sync_log()) {
+                case SyncResult::Ok:
+                    reply_ok(command.id);
+                    return;
+                case SyncResult::Failed:
+                    reply_error(command.id, "failed",
+                                "sync failed or timed out: lines may not be in flash");
+                    return;
+                case SyncResult::Unsupported:
+                    reply_error(command.id, "unsupported", "no flash storage");
+                    return;
+            }
+            return;
         case CommandKind::LogDump:
         case CommandKind::LogClear:
             reply_error(command.id, "unsupported", "needs flash storage (M4)");

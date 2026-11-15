@@ -13,7 +13,8 @@ TSV columns: name, status, line_hex, id, kind, tag, level
           code bad_args and the id "-", like a damaged line (wire-format 2.1).
 - id:     the id to echo in the reply: the request's own, or "-" when it had no usable id
           (bad_id, a control byte, an overlong line). Empty column for status "empty".
-- kind:   info, stats, log_dump, log_tail, log_clear, log_level, reboot, crash_panic, crash_wdt
+- kind:   info, stats, log_dump, log_tail, log_clear, log_sync, log_level, reboot, crash_panic,
+          crash_wdt
           (only for status ok)
 - tag, level: only for log_level; level is one of E W I D V N (N silences the tag)
 Lines starting with '#' are comments.
@@ -43,6 +44,7 @@ CASES = [
     ok("log_dump", b"7 log dump\n", "7", "log_dump"),
     ok("log_tail", b"7 log tail\n", "7", "log_tail"),
     ok("log_clear", b"7 log clear\n", "7", "log_clear"),
+    ok("log_sync", b"7 log sync\n", "7", "log_sync"),
     ok("log_level", b"3 log level PRESSURE D\n", "3", "log_level", "PRESSURE", "D"),
     ok("reboot", b"7 reboot\n", "7", "reboot"),
     ok("crash_panic", b"7 crash panic\n", "7", "crash_panic"),
@@ -113,6 +115,8 @@ CASES = [
     bad("log_dump_extra", "bad_args", b"7 log dump all\n", "7"),
     bad("log_tail_extra", "bad_args", b"7 log tail 10\n", "7"),
     bad("log_clear_extra", "bad_args", b"7 log clear all\n", "7"),
+    bad("log_sync_extra", "bad_args", b"7 log sync now\n", "7"),
+    bad("log_sync_uppercase", "bad_command", b"7 log SYNC\n", "7"),
     bad("crash_alone", "bad_args", b"7 crash\n", "7"),
     bad("crash_unknown", "bad_args", b"7 crash now\n", "7"),
     bad("crash_uppercase", "bad_args", b"7 crash PANIC\n", "7"),

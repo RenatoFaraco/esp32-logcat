@@ -73,6 +73,7 @@ Versão do protocolo: `proto=1`. Decisão e alternativas: ADR-012.
 | `log tail` | — | as últimas linhas em RAM, num bloco (§3) |
 | `log dump` | — | os logs gravados na flash, em blocos (§3) |
 | `log clear` | — | apaga os logs gravados na flash |
+| `log sync` | — | grava na flash, de forma durável, o que já foi logado (#26) |
 | `reboot` | — | reinicia o dispositivo |
 | `crash <panic\|wdt>` | `panic` ou `wdt` | provoca um crash, para testar a recuperação |
 
@@ -116,6 +117,9 @@ Zero ou mais linhas de dados e **exatamente um** terminador:
 - Linha que começa com `#` e não casa exatamente com uma forma desta seção (ou da §3) é **raw**:
   mostrada e contada, nunca interpretada pela metade (ex.: chave repetida na mesma linha,
   campo sem `=`, id inválido). Uma linha de log nunca começa com `#`.
+- `log sync` responde `#. <id> ok` só depois do sync: tudo o que foi logado antes do pedido
+  está na flash. `#! <id> failed`: o sync falhou ou não terminou a tempo (1,5 s).
+  `#! <id> unsupported`: sem flash nesta execução.
 - `reboot` responde `#. <id> ok` antes de reiniciar; `crash` não responde. O reinício da placa
   é o sucesso desses pedidos.
 - O `info` traz `proto=1`. Chave, código ou comando novo não mudam o `proto`; mudança na forma
@@ -161,6 +165,8 @@ Todos opcionais (campo desconhecido é omitido). `stats` só lê.
 | | `flash.rotations`, `flash.removed`, `flash.repaired` | arquivos começados, apagados, finais rasgados fechados; acumulado |
 | | `flash.failed`, `flash.sync_failed`, `flash.lost` | linhas recusadas, syncs que falharam, bytes perdidos; acumulado |
 | | `fs.used`, `fs.total` | uso real do LittleFS na partição, e o tamanho dela |
+| | `flash.sync_period`, `flash.sync_error`, `flash.sync_request` | syncs feitos, por motivo: o período de 5 s, uma linha ERROR, um pedido (`log sync`, `reboot`); acumulado |
+| | `erase.sectors` | setores de 4 KB apagados na flash inteira (log e NVS) desde o boot: o que gasta a flash; acumulado |
 
 Acumulado quer dizer desde o boot, sem comando para zerar: a taxa vem de duas leituras. Os
 valores são `uint32`, e dão a volta em 2^32.

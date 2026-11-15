@@ -31,6 +31,7 @@ public:
     void reboot() override;
     void crash_panic() override;
     void crash_wdt() override;
+    SyncResult sync_log() override;
 
 private:
     FreeRtosReplyQueue& replies_;

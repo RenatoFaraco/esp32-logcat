@@ -123,13 +123,15 @@ CommandStatus parse_words(const Word* words, size_t count, Command& out) {
         return CommandStatus::BadArgs;
     }
     const Word& sub = words[1];
-    if (equals(sub, "dump") || equals(sub, "tail") || equals(sub, "clear")) {
+    if (equals(sub, "dump") || equals(sub, "tail") || equals(sub, "clear") ||
+        equals(sub, "sync")) {
         if (count != 2) {
             return CommandStatus::BadArgs;
         }
-        return accept(out, equals(sub, "dump")   ? CommandKind::LogDump
-                           : equals(sub, "tail") ? CommandKind::LogTail
-                                                 : CommandKind::LogClear);
+        return accept(out, equals(sub, "dump")    ? CommandKind::LogDump
+                           : equals(sub, "tail")  ? CommandKind::LogTail
+                           : equals(sub, "clear") ? CommandKind::LogClear
+                                                  : CommandKind::LogSync);
     }
     if (!equals(sub, "level")) {
         return CommandStatus::BadCommand;
@@ -158,6 +160,8 @@ const char* to_string(CommandKind kind) {
             return "log_tail";
         case CommandKind::LogClear:
             return "log_clear";
+        case CommandKind::LogSync:
+            return "log_sync";
         case CommandKind::LogLevel:
             return "log_level";
         case CommandKind::Reboot:
