@@ -20,6 +20,20 @@ inline constexpr size_t kSeqDigits = 6;
 inline constexpr size_t kUptimeDigits = 10;  // uint32_t max is 4294967295
 static_assert(kSeqModulo == 1'000'000, "seq field width must match kSeqModulo");
 
+// Where the level letter sits in every line: right after "<boot>:<seq> <uptime_ms> ".
+inline constexpr size_t kLevelOffset = kBootDigits + 1 + kSeqDigits + 1 + kUptimeDigits + 1;
+static_assert(kLevelOffset == 23, "line format changed: update wire-format §1 and the parsers");
+
+// The level of a formatted line, read at kLevelOffset; LogLevel::None if the line is too short
+// or the letter is not a level. For sinks, which see only text (the flush policy reads it).
+inline LogLevel line_level(const char* line, size_t length) {
+    LogLevel level = LogLevel::None;
+    if (line != nullptr && length > kLevelOffset) {
+        level_from_char(line[kLevelOffset], level);
+    }
+    return level;
+}
+
 // A truncated (full, 127-char) message shows its first 124 chars followed by this marker.
 inline constexpr char kTruncationMarker[] = "...";
 inline constexpr size_t kTruncationMarkerLength = sizeof(kTruncationMarker) - 1;

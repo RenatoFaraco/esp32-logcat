@@ -1,6 +1,7 @@
 #include <unity.h>
 
 #include <cstring>
+#include <initializer_list>
 
 #include "logcat/line_formatter.hpp"
 #include "logcat/log_record.hpp"
@@ -367,6 +368,29 @@ void test_random_records_always_satisfy_line_invariants() {
     }
 }
 
+// The flush policy (#26) reads the level back from the text the flash sink gets.
+void test_line_level_reads_the_letter_the_formatter_wrote() {
+    char line[logcat::kLineBufferSize];
+    for (LogLevel level :
+         {LogLevel::Error, LogLevel::Warn, LogLevel::Info, LogLevel::Debug, LogLevel::Verbose}) {
+        const size_t length =
+            logcat::format_line(make_record(9999, 999999, 4294967295u, level, "T", "m"), line);
+        TEST_ASSERT_EQUAL(static_cast<int>(level),
+                          static_cast<int>(logcat::line_level(line, length)));
+    }
+}
+
+void test_line_level_of_a_short_or_bad_line_is_none() {
+    const char short_line[] = "0001:000001 0000000010 ";
+    TEST_ASSERT_EQUAL(static_cast<int>(LogLevel::None),
+                      static_cast<int>(logcat::line_level(short_line, sizeof(short_line) - 1)));
+    const char bad[] = "0001:000001 0000000010 X T: m\n";
+    TEST_ASSERT_EQUAL(static_cast<int>(LogLevel::None),
+                      static_cast<int>(logcat::line_level(bad, sizeof(bad) - 1)));
+    TEST_ASSERT_EQUAL(static_cast<int>(LogLevel::None),
+                      static_cast<int>(logcat::line_level(nullptr, 40)));
+}
+
 int main() {
     UNITY_BEGIN();
     RUN_TEST(test_max_line_length_is_170);
@@ -396,5 +420,7 @@ int main() {
     RUN_TEST(test_tag_byte_boundaries);
     RUN_TEST(test_seq_boundaries);
     RUN_TEST(test_random_records_always_satisfy_line_invariants);
+    RUN_TEST(test_line_level_reads_the_letter_the_formatter_wrote);
+    RUN_TEST(test_line_level_of_a_short_or_bad_line_is_none);
     return UNITY_END();
 }
