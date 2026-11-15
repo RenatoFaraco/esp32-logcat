@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Flush policy (#26, PRD F6): the log in flash is synced every 5 s with pending bytes (checked
+  after every line too, so heavy logging cannot hold it off), after an ERROR line as soon as
+  the queue empties (at most one sync a second), and on request. New console command
+  `log sync` (wire-format 2.1): `ok` only once everything logged before it is in flash.
+  `stats` gains `flash.sync_period/error/request` and `erase.sectors` (the SPI flash
+  counters, `CONFIG_SPI_FLASH_ENABLE_COUNTERS`). Core `FlushPolicy` and `line_level()`.
 - Boot counter (#25, PRD F7): kept in NVS, stamped on every line (`0003:...`, until now
   always `0000`), in `info` (`boot`) and in a boot line, `I LOGCAT: boot=3 reason=SW
   fw=...`. It runs 1 to 9999 and starts again at 1, so `0000` always means the counter could not

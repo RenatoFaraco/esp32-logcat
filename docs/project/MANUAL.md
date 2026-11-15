@@ -701,6 +701,15 @@ O shell lê o bloco pelo tamanho anunciado no `#BEGIN` e confere o CRC-32 antes 
 linhas. Enquanto o bloco sai, o log ao vivo não vai para a USB. Depois de um bloco sob carga, pode aparecer
 `W LOGCAT: N lines not sent to usb: no reader`: são as linhas desse intervalo.
 
+**`log sync`**: grava na flash, de forma durável, tudo o que foi logado até agora. Só responde
+`ok` depois do sync. Responde erro se não conseguiu: `failed` (o sync falhou, ou a placa logou
+sem parar e a fila não esvaziou em 1,2 s) ou `unsupported` (sem flash nesta execução).
+
+```
+> esp-logcat shell log sync
+ok
+```
+
 **`log dump`** e **`log clear`**: trabalham com os logs da flash, que chegam no M4. Por enquanto:
 
 ```
@@ -804,16 +813,27 @@ Para ver essa linha, abra o stream com `--reset`: sem ele, ela já passou quando
 
 ### 9.3 O que se perde, e quando
 
-A placa grava na flash de verdade (sync) a cada 5 s, e antes de um `reboot`. Um crash ou um
-corte de energia perde **no máximo os últimos 5 s** de log; o resto fica. A política completa
-(gravar na hora uma linha de ERROR, um comando para gravar) vem na #26.
+Escrever no arquivo não basta: só o **sync** torna o log durável. A placa sincroniza:
+
+- **a cada 5 s**, se há algo novo (mesmo sob log intenso, porque é conferido a cada linha);
+- **depois de uma linha ERROR**, assim que a rajada de linhas termina: na hora numa placa
+  calma, em até ~2 s sob carga. Nunca mais de **um sync por segundo**: uma rajada de erros
+  não gasta a flash;
+- **quando você pede** (`esp-logcat shell log sync`, seção 8.3) e antes de um `reboot`.
+
+Por que o ERROR não sincroniza dentro da própria linha: o sync apaga um setor da flash
+(dezenas de ms), e nesse tempo a fila de 32 linhas enche. As linhas descartadas seriam
+justamente as que vêm depois do erro e o explicam.
 
 | Situação | O que fica na flash |
 |----------|---------------------|
 | `esp-logcat shell reboot` | tudo até o reboot |
-| `crash panic`, `crash wdt`, travamento | tudo até o último sync (até ~6 s antes; o `crash` imita um crash de verdade e não grava nada antes) |
-| Corte de energia | tudo até o último sync (até 5 s antes) |
+| `esp-logcat shell log sync` respondeu `ok` | tudo o que foi logado antes do pedido |
+| `crash panic`, `crash wdt`, travamento | tudo até o último sync: até 5 s antes, e uma linha ERROR até ~1 s (o `crash` imita um crash de verdade e não grava nada antes) |
+| Corte de energia | o mesmo: até 5 s, ERROR até ~1 s |
 | Partição cheia | não acontece: o mais antigo é apagado antes |
+
+Em todos os casos, também se perdem as linhas que ainda estavam na fila (até 32).
 
 ### 9.4 Acompanhando pelo `stats`
 
@@ -827,6 +847,8 @@ O `esp-logcat shell stats` (seção 8.3) mostra a flash nos campos `flash.*` e `
 | `flash.repaired` | linhas cortadas que a placa fechou ao reabrir um arquivo |
 | `flash.failed`, `flash.sync_failed`, `flash.lost` | linhas que não entraram, gravações que falharam, bytes perdidos por isso. Esperado: 0 |
 | `fs.used`, `fs.total` | o que o LittleFS usa da partição, e o tamanho dela |
+| `flash.sync_period`, `flash.sync_error`, `flash.sync_request` | syncs feitos desde o boot, por motivo: o período de 5 s, uma linha ERROR, um pedido (`log sync`, `reboot`) |
+| `erase.sectors` | setores de 4 KB apagados na flash inteira desde o boot (o log e a NVS): é o que gasta a flash. Dividido pelo tempo de boot, dá o ritmo de desgaste |
 
 O `info` ganhou `flash`: `mounted`, `formatted` ou `failed`.
 

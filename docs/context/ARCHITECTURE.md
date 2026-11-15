@@ -166,7 +166,9 @@ app_main()
 - Leitura: `FileLineReader` lê o arquivo em blocos de 512 bytes, separa linhas com um buffer
   de 171 bytes, conta cada `ParseStatus`, e pula o resto de uma linha longa demais.
 - Conteúdo: as mesmas linhas de texto do console → o host lê com o mesmo parser.
-- Na placa (#24): sync a cada 5 s e antes de `reboot`; crash e corte perdem no máximo isso.
+- Na placa (#24, #26): a `FlushPolicy` do núcleo decide o sync: a cada 5 s com bytes
+  pendentes, depois de uma linha ERROR (no máximo 1 sync/s, feito quando a fila esvazia) e por
+  pedido (`log sync`, `reboot`). Crash e corte perdem até 5 s, um ERROR até ~1 s.
   Gravar na flash desliga o cache: `CONFIG_SPI_FLASH_AUTO_SUSPEND` mantém a tarefa crítica
   abaixo de 1 ms (`hardware.md`, item 9).
 
