@@ -36,3 +36,7 @@ CONFIG_LOG_MAXIMUM_LEVEL_VERBOSE=y
 # module needs this checked first (ESP-IDF guide: "Optional Features for Flash", auto suspend;
 # per board in v2). docs/context/hardware.md item 9.
 CONFIG_SPI_FLASH_AUTO_SUSPEND=y
+
+# Flash operation counters (#26): `stats` shows the 4 KB sectors erased since boot (all of the
+# flash: the log, NVS), the number that wears the flash out. A few cycles per flash operation.
+CONFIG_SPI_FLASH_ENABLE_COUNTERS=y

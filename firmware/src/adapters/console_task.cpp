@@ -9,6 +9,7 @@
 #include "driver/usb_serial_jtag.h"
 #include "esp_app_desc.h"
 #include "esp_log.h"
+#include "esp_spi_flash_counters.h"
 #include "esp_system.h"
 #include "esp_timer.h"
 #include "logcat/boot_counter.hpp"
@@ -102,6 +103,9 @@ void EspConsolePlatform::fill_stats(ReplyFields& fields) {
         fields.add_uint("flash.failed", flash.store.failed_writes);
         fields.add_uint("flash.sync_failed", flash.store.sync_failures);
         fields.add_uint("flash.lost", flash.store.lost_bytes);
+        fields.add_uint("flash.sync_period", flash.syncs.period);
+        fields.add_uint("flash.sync_error", flash.syncs.error);
+        fields.add_uint("flash.sync_request", flash.syncs.request);
         size_t used = 0;
         size_t total = 0;
         if (flash_.usage(used, total)) {
@@ -109,6 +113,8 @@ void EspConsolePlatform::fill_stats(ReplyFields& fields) {
             fields.add_uint("fs.total", static_cast<uint32_t>(total));
         }
     }
+    // Every 4 KB sector erased since boot, by anyone (the log, NVS): what wears the flash.
+    fields.add_uint("erase.sectors", esp_flash_get_counters()->erase.bytes / 4096);
 }
 
 void EspConsolePlatform::set_log_level(const char* tag, LogLevel level) {
@@ -134,6 +140,15 @@ void EspConsolePlatform::reboot() {
     }
     usb_serial_jtag_wait_tx_done(kDrainWait);
     esp_restart();
+}
+
+SyncResult EspConsolePlatform::sync_log() {
+    if (flash_.snapshot().mount == MountResult::Failed) {
+        return SyncResult::Unsupported;
+    }
+    // Under the host's 2 s reply timeout, with room for queueing and sending the reply: the
+    // writer serves the request once its queue is empty, at least once a second under load.
+    return flash_.request_sync(pdMS_TO_TICKS(1200)) ? SyncResult::Ok : SyncResult::Failed;
 }
 
 void EspConsolePlatform::crash_panic() {

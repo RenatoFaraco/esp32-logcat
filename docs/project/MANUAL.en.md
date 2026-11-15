@@ -705,6 +705,15 @@ The shell reads the block by the size announced in `#BEGIN` and checks the CRC-3
 showing the lines. While the block goes out, the live log stays off the USB. After a block under load you may see
 `W LOGCAT: N lines not sent to usb: no reader`: those are the lines of that interval.
 
+**`log sync`**: makes everything logged so far durable in flash. It answers `ok` only after the
+sync, and an error if it could not: `failed` (the sync failed, or the board logged nonstop and
+its queue did not empty within 1.2 s) or `unsupported` (no flash in this run).
+
+```
+> esp-logcat shell log sync
+ok
+```
+
 **`log dump`** and **`log clear`**: work on the logs in flash, which arrive in M4. For now:
 
 ```
@@ -809,16 +818,28 @@ port opens.
 
 ### 9.3 What is lost, and when
 
-The board really writes to flash (sync) every 5 s, and before a `reboot`. A crash or a power cut
-loses **at most the last 5 s** of log; the rest stays. The full policy (an ERROR line written at
-once, a command to write) comes with #26.
+Writing to the file is not enough: only a **sync** makes the log durable. The board syncs:
+
+- **every 5 s**, if there is something new (even under heavy logging: it is checked at every
+  line);
+- **after an ERROR line**, as soon as the burst of lines ends: at once on a quiet board, within
+  ~2 s under load. Never more than **one sync a second**: an error storm does not wear the
+  flash out;
+- **when you ask** (`esp-logcat shell log sync`, section 8.3) and before a `reboot`.
+
+Why the ERROR does not sync inside its own line: a sync erases a flash sector (tens of ms), and
+meanwhile the 32-line queue fills up. The lines dropped would be exactly the ones after the
+error, which explain it.
 
 | Situation | What stays in flash |
 |-----------|---------------------|
 | `esp-logcat shell reboot` | everything up to the reboot |
-| `crash panic`, `crash wdt`, a hang | everything up to the last sync (up to ~6 s before; `crash` mimics a real crash and writes nothing first) |
-| Power cut | everything up to the last sync (up to 5 s before) |
+| `esp-logcat shell log sync` answered `ok` | everything logged before the request |
+| `crash panic`, `crash wdt`, a hang | everything up to the last sync: up to 5 s before, an ERROR line up to ~1 s (`crash` mimics a real crash and writes nothing first) |
+| Power cut | the same: up to 5 s, ERROR up to ~1 s |
 | Full partition | does not happen: the oldest file is removed first |
+
+In every case, the lines still in the queue (up to 32) are lost too.
 
 ### 9.4 Following it with `stats`
 
@@ -832,6 +853,8 @@ once, a command to write) comes with #26.
 | `flash.repaired` | cut lines the board closed when it reopened a file |
 | `flash.failed`, `flash.sync_failed`, `flash.lost` | lines that did not go in, writes that failed, bytes lost to that. Expected: 0 |
 | `fs.used`, `fs.total` | what LittleFS uses of the partition, and its size |
+| `flash.sync_period`, `flash.sync_error`, `flash.sync_request` | syncs made since boot, by reason: the 5 s period, an ERROR line, a request (`log sync`, `reboot`) |
+| `erase.sectors` | 4 KB sectors erased in the whole flash since boot (the log and NVS): what wears the flash. Divided by the uptime, it is the wear rate |
 
 `info` gained `flash`: `mounted`, `formatted` or `failed`.
 

@@ -33,6 +33,7 @@ commands (the shell adds the request id):
   stats                     logging counters: dropped lines, queue, stack, sinks
   log level <tag> <L>       set a tag's level at run time: E W I D V, or N to silence; * = default
   log tail                  the last lines kept in RAM
+  log sync                  make what was logged durable in flash now (ok = it is there)
   log dump | log clear      the logs in flash (when the firmware has them)
   reboot                    restart the device
   crash panic | crash wdt   crash the device on purpose (recovery tests)

@@ -6,7 +6,9 @@
 
 #include "adapters/littlefs_file_system.hpp"
 #include "freertos/FreeRTOS.h"
+#include "logcat/flush_policy.hpp"
 #include "logcat/rotating_store.hpp"
+#include "logcat/sink.hpp"
 
 namespace logcat {
 
@@ -17,34 +19,39 @@ struct FlashSnapshot {
     StoreStats store;
     uint32_t limit;
     uint32_t unsynced;
+    FlushPolicy::Counts syncs;  // since boot, by reason
 };
 
-// The log in flash on the board (#24): LittleFS on the `logs` partition, the RotatingStore as a
-// sink of the Writer, and a simple periodic sync so that what was logged survives a reset.
-// The full flush policy (at once on ERROR, on command, wear measured) is #26.
+// The log in flash on the board (#24): LittleFS on the `logs` partition, the RotatingStore
+// behind this sink of the Writer, synced by the FlushPolicy (#26).
 //
-// Loss window until #26: a crash, watchdog or power cut loses what came after the last sync,
-// up to kSyncPeriod plus about 1 s (the writer task reaches its idle path at least once a
-// second under load), plus what is still in the 32-deep queue. ERROR lines included.
+// When a sync happens (FlushPolicy): every 5 s with pending bytes, checked after every line
+// and when the queue empties, so heavy logging cannot hold it off; after an ERROR line, as soon
+// as the queue empties (at once on a quiet system), at most one sync a second and within ~2 s
+// under load; on request (`log sync`, `reboot`), once every line logged before it is written.
+// Loss window of a crash, watchdog or power cut: what came after the last sync, at most 5 s
+// (an ERROR line: 1 s quiet, ~2 s under load), plus what was still in the 32-deep queue.
 //
-// Wear (estimated, to be measured by #26): after a sync, the next append copies LittleFS's
-// partial block, about one 4 KB erase per sync with data. With the demo's 1 line/s heartbeat,
-// ~17k erases a day over 128 blocks: roughly two years of a 100k-cycle flash.
+// A sync blocks the writer task for a few ms (LittleFS copies its partial block: about one
+// 4 KB erase, stretched by flash auto suspend). The queue holds the lines meanwhile.
 //
-// Threads: begin() runs at boot, before the writer task. on_idle() and the sink run in the
+// Threads: begin() runs at boot, before the writer task. on_idle() and write() run in the
 // writer task. snapshot() and request_sync() are for other tasks (the console).
-class FlashStore {
+class FlashStore final : public Sink {
 public:
-    static constexpr TickType_t kSyncPeriod = pdMS_TO_TICKS(5000);
-
     // Mounts (formatting when it cannot mount) and opens the newest log file.
     MountResult begin();
 
-    Sink& sink() { return store_; }
+    Sink& sink() { return *this; }
 
-    // In the writer task when its queue is empty: syncs if a request is pending, or if
-    // kSyncPeriod passed with unsynced bytes; then publishes the numbers.
-    void on_idle();
+    // The Writer's sink: the line goes to the store, then the policy may sync at once.
+    bool write(const char* line, size_t length) override;
+    const char* name() const override { return store_.name(); }
+
+    // In the writer task (writer_task.hpp): a requested sync, once the queue is empty so that
+    // every line logged before the request is in the store; otherwise what the policy says.
+    // Then publishes the numbers.
+    void on_idle(bool queue_empty);
 
     // From another task: asks the writer task for a sync made after this call, and waits up to
     // `timeout`. true only if that sync happened and succeeded.
@@ -62,10 +69,14 @@ public:
 
 private:
     void publish();
+    bool sync(FlushPolicy::Reason reason);
+    static uint32_t now_ms();
+    uint32_t losses() const;  // from the published numbers: any task
 
     LittleFsFileSystem fs_;
     RotatingStore store_{fs_};
-    TickType_t last_sync_ = 0;
+    FlushPolicy policy_{0};  // restarted at begin() with the real time
+    uint32_t failures_ = 0;  // the store's sync failures as of the last look (writer task)
     bool torn_at_boot_ = false;
     // Sync requests by generation: a request waits for a sync that started after it, so a late
     // answer to an older request is never taken for it.
@@ -73,7 +84,7 @@ private:
     std::atomic<uint32_t> done_{0};
     std::atomic<bool> last_ok_{true};
     // Published copy of the numbers (relaxed: they are statistics, each one consistent alone).
-    std::atomic<uint32_t> published_[11] = {};
+    std::atomic<uint32_t> published_[14] = {};
 };
 
 }  // namespace logcat

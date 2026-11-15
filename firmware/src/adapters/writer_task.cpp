@@ -25,7 +25,7 @@ struct Context {
     FreeRtosLogQueue* queue;
     ReplyServer* server;
     FreeRtosReplyQueue* replies;
-    void (*on_idle)();
+    void (*on_idle)(bool queue_empty);
 };
 Context context;
 
@@ -49,11 +49,16 @@ void run(void*) {
                 continue;
             }
         } else if (replying) {
-            continue;  // nothing to log, more to reply: no reason to look for losses yet
+            // Nothing to log, more to reply: no reason to look for losses yet. A requested sync
+            // still runs: a long dump must not starve `log sync` (#26).
+            if (context.on_idle != nullptr) {
+                context.on_idle(true);
+            }
+            continue;
         }
         context.writer->idle();  // normally with the queue empty: reports do not overtake lines
         if (context.on_idle != nullptr) {
-            context.on_idle();
+            context.on_idle(context.queue->empty());
         }
         last_report = xTaskGetTickCount();
     }
@@ -62,7 +67,7 @@ void run(void*) {
 }  // namespace
 
 TaskHandle_t start_writer_task(Writer& writer, FreeRtosLogQueue& queue, ReplyServer& server,
-                               FreeRtosReplyQueue& replies, void (*on_idle)()) {
+                               FreeRtosReplyQueue& replies, void (*on_idle)(bool queue_empty)) {
     if (handle.load() != nullptr) {
         return handle.load();
     }

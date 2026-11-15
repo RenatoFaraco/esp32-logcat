@@ -48,6 +48,13 @@ private:
     ReplyData data_;
 };
 
+// The answer of ConsolePlatform::sync_log().
+enum class SyncResult : uint8_t {
+    Ok,           // what was logged before the request is in flash
+    Failed,       // the sync failed, or did not happen in time
+    Unsupported,  // no flash storage in this run (mount failed)
+};
+
 // What the console needs from the platform (ports & adapters, ADR-003).
 class ConsolePlatform {
 public:
@@ -61,6 +68,9 @@ public:
     virtual void reboot() = 0;
     virtual void crash_panic() = 0;
     virtual void crash_wdt() = 0;
+    // `log sync`: syncs the log in flash and waits for it (bounded). Called from the
+    // console task; the sync itself happens where the store lives (the writer task).
+    virtual SyncResult sync_log() = 0;
 
 protected:
     ~ConsolePlatform() = default;

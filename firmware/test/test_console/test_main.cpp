@@ -27,6 +27,7 @@ using logcat::ReplyFields;
 using logcat::ReplyKind;
 using logcat::ReplyMessage;
 using logcat::ReplyServer;
+using logcat::SyncResult;
 using logcat::TagLevelFilter;
 
 namespace {
@@ -66,6 +67,12 @@ public:
     }
     void crash_panic() override { ++panics; }
     void crash_wdt() override { ++wdts; }
+    SyncResult sync_log() override {
+        ++syncs;
+        return sync_result;
+    }
+    SyncResult sync_result = SyncResult::Ok;
+    int syncs = 0;
 
     std::string lines() const {
         std::string all;
@@ -362,6 +369,7 @@ struct RefusesNth final : logcat::ConsolePlatform {
     void reboot() override {}
     void crash_panic() override {}
     void crash_wdt() override {}
+    SyncResult sync_log() override { return SyncResult::Ok; }
     int refused_at;
     int sends = 0;
     std::vector<ReplyMessage> messages;
@@ -401,6 +409,29 @@ void test_log_tail_is_one_message_for_the_writer_task() {
     TEST_ASSERT_EQUAL_size_t(1, rig.platform.messages.size());
     TEST_ASSERT_TRUE(rig.platform.messages[0].kind == ReplyKind::Tail);
     TEST_ASSERT_EQUAL_STRING("4", rig.platform.messages[0].id);
+}
+
+// `log sync` (#26) answers only after the sync: ok means the log is in flash.
+void test_log_sync_answers_ok_once_synced() {
+    Rig rig;
+    rig.send("5 log sync\n");
+    TEST_ASSERT_EQUAL(1, rig.platform.syncs);
+    TEST_ASSERT_EQUAL_STRING("#. 5 ok\n", rig.platform.lines().c_str());
+}
+
+void test_log_sync_that_failed_is_an_error() {
+    Rig rig;
+    rig.platform.sync_result = logcat::SyncResult::Failed;
+    rig.send("5 log sync\n");
+    TEST_ASSERT_EQUAL_STRING("#! 5 failed sync failed or timed out: lines may not be in flash\n",
+                             rig.platform.lines().c_str());
+}
+
+void test_log_sync_without_flash_is_unsupported() {
+    Rig rig;
+    rig.platform.sync_result = logcat::SyncResult::Unsupported;
+    rig.send("5 log sync\n");
+    TEST_ASSERT_EQUAL_STRING("#! 5 unsupported no flash storage\n", rig.platform.lines().c_str());
 }
 
 void test_flash_commands_are_unsupported_for_now() {
@@ -462,6 +493,7 @@ void test_queue_full_midway_stops_the_lines_and_tries_a_timeout_terminator() {
         void reboot() override {}
         void crash_panic() override {}
         void crash_wdt() override {}
+        SyncResult sync_log() override { return SyncResult::Ok; }
         std::vector<ReplyMessage> messages;
         int sends = 0;
     } platform;
@@ -830,6 +862,9 @@ int main() {
     RUN_TEST(test_request_of_exactly_the_limit_runs_and_one_more_does_not);
     RUN_TEST(test_log_tail_is_one_message_for_the_writer_task);
     RUN_TEST(test_flash_commands_are_unsupported_for_now);
+    RUN_TEST(test_log_sync_answers_ok_once_synced);
+    RUN_TEST(test_log_sync_that_failed_is_an_error);
+    RUN_TEST(test_log_sync_without_flash_is_unsupported);
     RUN_TEST(test_reboot_replies_before_restarting);
     RUN_TEST(test_crash_does_not_reply);
     RUN_TEST(test_full_queue_turns_the_reply_into_a_timeout_error);

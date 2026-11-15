@@ -198,6 +198,20 @@ Medido em 14/nov (#24), LittleFS `joltwallet/littlefs` 1.23.1 na partição `log
   bloco parcial (um apagamento de 4 KB). Com o heartbeat de 1 linha/s, a estimativa é ~17 mil
   apagamentos por dia em 128 blocos, uns 2 anos de vida: a #26 mede e decide o período. `CONFIG_LITTLEFS_USE_MTIME` está desligado: ele gravaria um
   atributo de data a cada sync.
+- **Desgaste medido (#26, 15/nov).** Com `CONFIG_SPI_FLASH_ENABLE_COUNTERS` o `stats` mostra
+  `erase.sectors`. Heartbeat da demo (1 linha/s, ~100 B), sync a cada 5 s, 10 min:
+  119 syncs e **141 setores de 4 KB apagados** (~1,2 por sync), ou ~0,235/s, **~20 mil por
+  dia**. Em 128 blocos, com o LittleFS espalhando o desgaste por igual, são ~159 ciclos por
+  bloco por dia: **~1,7 ano** para 100 mil ciclos. O custo é por sync, quase não depende do
+  volume: um sync a cada 15 s daria ~5 anos (com 15 s de janela de perda); um produto que loga
+  menos que 1 linha/s sincroniza menos (sem linha nova, não há sync). Uma rajada de ERROR
+  custa no máximo 1 sync/s: ~86 mil apagamentos por dia enquanto durar.
+- **`fs.used` não é exato.** No mesmo teste, com 440 KB de log, o `fs.used` oscilou entre 479 e
+  512 KB (a partição inteira) sem nenhuma escrita falhar: o LittleFS conta blocos que já
+  descartou e ainda não reaproveitou. Com syncs frequentes a folga real é estreita; se uma
+  escrita der NOSPC, o store apaga o arquivo mais antigo e conta (`flash.failed`,
+  `flash.removed`). Acompanhar no teste de corte de energia (#33); a alternativa é baixar o
+  limite de 448 para 384 KB.
 - **Contador de boots na NVS (#25).** Uma gravação de 4 bytes por boot (`nvs_set_u32` +
   `nvs_commit`), espalhada pelo wear leveling da própria NVS nos 24 KB da partição `nvs`:
   desgaste desprezível, mesmo num boot loop. A NVS é iniciada no `app_main`, antes do hook de

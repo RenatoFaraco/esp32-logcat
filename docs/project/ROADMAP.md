@@ -94,7 +94,8 @@ Os blocos 🖥️ (M3, M4a, M5a) podem ser adiantados sempre que o trabalho com 
       adaptador na própria placa (`test_target_littlefs`)
 - [x] `NvsBootStore` (#25): o contador de boots na NVS, no campo `boot` de toda linha e no `info`
 - [x] Linha de boot com contador, motivo do reset e versão (reset pelo pino EN aparece como `POWERON` no C3 — ver `hardware.md`)
-- [ ] Política de flush (periódico + ERROR + comando)
+- [x] Política de flush (#26): a cada 5 s, depois de um ERROR (no máximo 1 sync/s), e o
+      comando `log sync`; desgaste medido na placa (`hardware.md`)
 
 ### M5a · Console — lógica 🖥️
 - [x] `CommandParser` para todos os comandos do PRD (F9), mais `info` e `stats` (#27)
