@@ -146,7 +146,8 @@ extern "C" void app_main(void) {
     log_queue.begin();
     reply_queue.begin();
     if (logcat::start_writer_task(writer, log_queue, reply_server, reply_queue,
-                                  [] { flash_store.on_idle(); }) == nullptr) {
+                                  [](bool queue_empty) { flash_store.on_idle(queue_empty); }) ==
+        nullptr) {
         ESP_LOGE(TAG, "writer task not created: logs stay in the ESP-IDF format");
         return;
     }

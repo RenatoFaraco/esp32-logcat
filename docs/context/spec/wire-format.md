@@ -118,7 +118,8 @@ Zero ou mais linhas de dados e **exatamente um** terminador:
   mostrada e contada, nunca interpretada pela metade (ex.: chave repetida na mesma linha,
   campo sem `=`, id inválido). Uma linha de log nunca começa com `#`.
 - `log sync` responde `#. <id> ok` só depois do sync: tudo o que foi logado antes do pedido
-  está na flash. `#! <id> failed`: o sync falhou ou não terminou a tempo (1,5 s).
+  está na flash. `#! <id> failed`: o sync falhou, não terminou a tempo (1,2 s; sob log
+  contínuo a fila pode não esvaziar) ou o store perdeu linhas desde o pedido.
   `#! <id> unsupported`: sem flash nesta execução.
 - `reboot` responde `#. <id> ok` antes de reiniciar; `crash` não responde. O reinício da placa
   é o sucesso desses pedidos.

@@ -123,8 +123,7 @@ CommandStatus parse_words(const Word* words, size_t count, Command& out) {
         return CommandStatus::BadArgs;
     }
     const Word& sub = words[1];
-    if (equals(sub, "dump") || equals(sub, "tail") || equals(sub, "clear") ||
-        equals(sub, "sync")) {
+    if (equals(sub, "dump") || equals(sub, "tail") || equals(sub, "clear") || equals(sub, "sync")) {
         if (count != 2) {
             return CommandStatus::BadArgs;
         }

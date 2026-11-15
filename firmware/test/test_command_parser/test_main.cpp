@@ -169,10 +169,9 @@ void test_error_codes_of_the_reply() {
 
 void test_names_of_kinds_are_distinct() {
     const CommandKind kinds[] = {
-        CommandKind::Info,     CommandKind::Stats,      CommandKind::LogDump,
-        CommandKind::LogTail,  CommandKind::LogClear,   CommandKind::LogSync,
-        CommandKind::LogLevel, CommandKind::Reboot,     CommandKind::CrashPanic,
-        CommandKind::CrashWdt};
+        CommandKind::Info,       CommandKind::Stats,   CommandKind::LogDump,  CommandKind::LogTail,
+        CommandKind::LogClear,   CommandKind::LogSync, CommandKind::LogLevel, CommandKind::Reboot,
+        CommandKind::CrashPanic, CommandKind::CrashWdt};
     for (const CommandKind a : kinds) {
         for (const CommandKind b : kinds) {
             if (a != b) {

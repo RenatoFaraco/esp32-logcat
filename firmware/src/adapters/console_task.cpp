@@ -146,8 +146,9 @@ SyncResult EspConsolePlatform::sync_log() {
     if (flash_.snapshot().mount == MountResult::Failed) {
         return SyncResult::Unsupported;
     }
-    // Under the host's 2 s reply timeout: a sync is a few ms, a busy writer task adds its queue.
-    return flash_.request_sync(pdMS_TO_TICKS(1500)) ? SyncResult::Ok : SyncResult::Failed;
+    // Under the host's 2 s reply timeout, with room for queueing and sending the reply: the
+    // writer serves the request once its queue is empty, at least once a second under load.
+    return flash_.request_sync(pdMS_TO_TICKS(1200)) ? SyncResult::Ok : SyncResult::Failed;
 }
 
 void EspConsolePlatform::crash_panic() {

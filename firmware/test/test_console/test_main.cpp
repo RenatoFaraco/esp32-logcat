@@ -24,10 +24,10 @@ using logcat::LineAssembler;
 using logcat::LogLevel;
 using logcat::RamTail;
 using logcat::ReplyFields;
-using logcat::SyncResult;
 using logcat::ReplyKind;
 using logcat::ReplyMessage;
 using logcat::ReplyServer;
+using logcat::SyncResult;
 using logcat::TagLevelFilter;
 
 namespace {

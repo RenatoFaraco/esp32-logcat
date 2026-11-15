@@ -14,7 +14,7 @@ enum class CommandKind : uint8_t {
     LogDump,
     LogTail,
     LogClear,
-    LogSync,  // `log sync` (#26): make what was logged durable now
+    LogSync,   // `log sync` (#26): make what was logged durable now
     LogLevel,  // `log level <tag> <E|W|I|D|V|N>`: Command::tag and Command::level
     Reboot,
     CrashPanic,

@@ -25,10 +25,13 @@ namespace logcat {
 // a reply and a log line never mix bytes. Each turn it serves one reply entry (or one line of an
 // open block), then at least one log entry, so neither queue starves (ADR-012 §5).
 //
-// `on_idle`, if given, runs in this task whenever its queue is empty (the flash store's periodic
-// sync, #24): the sinks belong to this task, so their upkeep does too.
+// `on_idle`, if given, runs in this task when its queue is empty, at least once a second under
+// load, and between the steps of a reply or dump (the flash store's syncs, #24/#26): the sinks
+// belong to this task, so their upkeep does too. `queue_empty` says whether every line logged
+// so far has been written: a requested sync waits for that.
 TaskHandle_t start_writer_task(Writer& writer, FreeRtosLogQueue& queue, ReplyServer& server,
-                               FreeRtosReplyQueue& replies, void (*on_idle)() = nullptr);
+                               FreeRtosReplyQueue& replies,
+                               void (*on_idle)(bool queue_empty) = nullptr);
 
 TaskHandle_t writer_task_handle();
 

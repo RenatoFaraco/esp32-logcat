@@ -12,9 +12,9 @@ namespace logcat {
 // (wrapping uint32 milliseconds, compared by difference).
 //
 // - every kPeriodMs, if bytes are pending: the loss window of a crash or power cut;
-// - after an ERROR line, at once, but never sooner than kMinGapMs after the previous sync of
-//   any kind: an ERROR is durable within a second, and an error storm costs at most one sync
-//   (one 4 KB erase) a second;
+// - after an ERROR line, as soon as asked, but never sooner than kMinGapMs after the previous
+//   sync of any kind: an error storm costs at most one sync (one 4 KB erase) a second. (The
+//   board's FlashStore makes that sync when its queue empties, not inside the line's write);
 // - on request (`log sync`, `reboot`): decided by the caller, only counted here.
 //
 // The period is checked after every line too, not only when the queue is empty: under heavy
@@ -38,7 +38,9 @@ public:
     Reason after_line(LogLevel level, uint32_t now_ms, size_t unsynced);
     // When the queue is empty.
     Reason on_idle(uint32_t now_ms, size_t unsynced);
-    // A sync was made, for any reason; `ok` false: it failed (a pending ERROR stays owed).
+    // A sync was made, for any reason. `ok` false: it failed, and a pending ERROR stays owed
+    // while bytes are pending. (RotatingStore drops its pending bytes on a failed sync and
+    // counts them as lost: then nothing is pending, and the ERROR is not retried.)
     void synced(Reason reason, uint32_t now_ms, bool ok);
 
     Counts counts() const { return counts_; }
