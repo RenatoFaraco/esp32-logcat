@@ -132,6 +132,12 @@ pytest
 ruff check . && ruff format --check .
 ```
 
+## Related
+
+- [esp32-devkit-tester](https://github.com/RenatoFaraco/esp32-devkit-tester) — test any ESP32
+  dev board in seconds: a terminal UI that checks UART, JTAG, eFuses, flash and PSRAM and reports
+  Jest-style.
+
 ## License
 
 [MIT](LICENSE)
