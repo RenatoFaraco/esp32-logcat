@@ -114,7 +114,7 @@ Os blocos 🖥️ (M3, M4a, M5a) podem ser adiantados sempre que o trabalho com 
       (os dois na #29)
 - [x] `esp-logcat shell`: um comando (com `--json`), prompt interativo com logs filtrados, ou
       pipe (#30) → **release `v0.4.0`**
-- [ ] ~~`esp-logcat dump` no host Python~~ → vai para o M5.5, já em Rust (o `Framer` da #30
+- [ ] ~~`esp-logcat dump` no host Python~~ → vai para o M5.5, já em Rust (#101; o `Framer` da #30
       é o modelo do framer do `logcat-wire`)
 
 ### M5.5 · Toolchain 🖥️ — `v0.5.0`
