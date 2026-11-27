@@ -29,13 +29,13 @@ extern "C" {
 /* What esp32_logcat_init() turns on. Start from ESP32_LOGCAT_CONFIG_DEFAULT(). */
 typedef struct {
     bool usb_serial_jtag; /* the log stream on the native USB port */
-    bool uart_mirror;     /* a copy of every line on the UART console (where ROM and bootloader print) */
+    bool uart_mirror;     /* a copy of every line on the UART console (ROM and bootloader's port) */
     bool flash;           /* keep the log in flash: LittleFS on the `logs` partition */
     bool console;         /* answer commands on the native USB port (needs usb_serial_jtag) */
 } esp32_logcat_config_t;
 
 #define ESP32_LOGCAT_CONFIG_DEFAULT() \
-    { .usb_serial_jtag = true, .uart_mirror = true, .flash = true, .console = true }
+    {.usb_serial_jtag = true, .uart_mirror = true, .flash = true, .console = true}
 
 /*
  * Starts the logcat: boot counter (NVS, initialized here for the whole firmware), outputs, the
@@ -51,7 +51,7 @@ typedef struct {
  * could not start (then lines keep the plain ESP-IDF format). An output or the flash that
  * fails does not stop the rest: it is reported as an `E LOGCAT` line.
  */
-esp_err_t esp32_logcat_init(const esp32_logcat_config_t *config);
+esp_err_t esp32_logcat_init(const esp32_logcat_config_t* config);
 
 /*
  * Sets the level of a tag at run time, like the console's `log level`: lines above it are
@@ -59,7 +59,7 @@ esp_err_t esp32_logcat_init(const esp32_logcat_config_t *config);
  * Returns ESP_ERR_INVALID_ARG (NULL or empty tag, bad level), ESP_ERR_NO_MEM (16 tags already
  * set; existing tags can always change), ESP_ERR_INVALID_STATE (before init).
  */
-esp_err_t esp32_logcat_set_level(const char *tag, esp_log_level_t level);
+esp_err_t esp32_logcat_set_level(const char* tag, esp_log_level_t level);
 
 /*
  * Makes the log in flash durable now (the console's `log sync`): returns once every line
@@ -80,13 +80,13 @@ typedef struct {
     uint32_t dropped;             /* lines refused by a full queue, since boot */
     uint32_t capture_cycles_last; /* cost of the ESP_LOGx hook in the caller, CPU cycles */
     uint32_t capture_cycles_max;
-    uint32_t writer_stack_free;   /* bytes the writer task never used */
-    uint32_t flash_files;         /* log files in flash */
-    uint32_t flash_bytes;         /* and their total size */
+    uint32_t writer_stack_free; /* bytes the writer task never used */
+    uint32_t flash_files;       /* log files in flash */
+    uint32_t flash_bytes;       /* and their total size */
 } esp32_logcat_info_t;
 
 /* ESP_OK; ESP_ERR_INVALID_ARG (NULL); ESP_ERR_INVALID_STATE (before init). */
-esp_err_t esp32_logcat_get_info(esp32_logcat_info_t *info);
+esp_err_t esp32_logcat_get_info(esp32_logcat_info_t* info);
 
 #ifdef __cplusplus
 }
