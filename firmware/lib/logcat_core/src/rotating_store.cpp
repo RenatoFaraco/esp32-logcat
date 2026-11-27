@@ -277,6 +277,27 @@ bool RotatingStore::make_room(size_t length) {
     return true;
 }
 
+bool RotatingStore::clear() {
+    fs_.close();  // remove() refuses the open file
+    open_ = false;
+    pending_ = 0;  // those bytes go with their file: not a loss
+    needs_repair_ = false;
+    // Any file that will not go, here or in the scans (an orphan beyond the 16 tracked), makes
+    // the answer false: begin() would adopt it again as the current file.
+    const uint32_t failed_before = stats_.failed_removes;
+    scan();  // what is really there, also before begin()
+    // Oldest first: a cut halfway leaves the newest, the order a reader expects.
+    for (size_t i = 0; i < count_; ++i) {
+        char name[kStoreNameCapacity];
+        store_file_name(files_[i].index, name);
+        if (!fs_.remove(name)) {
+            ++stats_.failed_removes;
+        }
+    }
+    const bool opened = begin();
+    return opened && stats_.failed_removes == failed_before;
+}
+
 bool RotatingStore::remove_oldest() {
     char name[kStoreNameCapacity];
     store_file_name(files_[0].index, name);

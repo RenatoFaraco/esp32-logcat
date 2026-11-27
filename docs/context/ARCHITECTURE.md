@@ -198,6 +198,18 @@ intercalam bytes com o log. Campo desconhecido é omitido, nunca zero. O host se
 tipos; linha de protocolo malformada, ou que não casa com nenhum tipo, é exibida como "raw"
 (ex.: saída do bootloader). Casos compartilhados: `conformance/reply_cases.tsv`.
 
+**`log dump` e `log clear` (#29).** Os dois mexem no store, que só a tarefa escritora usa
+(ADR-003, contrato do `FileSystem`), então os dois rodam nela:
+- O dump é servido pelo `ReplyServer` através da porta `LogArchive` (núcleo), que o `FlashStore`
+  implementa. Ele sincroniza, anota a lista e os tamanhos dos arquivos e manda um pedaço de
+  512 B por passo. Entre os passos, a tarefa continua drenando a fila de log para a flash. O
+  arquivo é lido por um descritor próprio, ao lado do que acrescenta linhas.
+- Se a rotação apagar um arquivo durante o dump, o dump termina com `failed`. A rotação não
+  espera, porque segurá-la faria o store recusar linhas com a partição cheia.
+- O clear é um pedido do console, como o `log sync`. Uma máquina de estados atômica garante
+  que um pedido que esgotou o tempo seja retirado antes de rodar: um clear nunca acontece
+  depois de o console responder `failed`. Durante um dump, a resposta é `busy`.
+
 ## 7. Ferramenta host (`host/`)
 
 ```

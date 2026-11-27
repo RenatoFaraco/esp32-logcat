@@ -6,7 +6,9 @@ namespace logcat {
 
 namespace {
 
-constexpr uint32_t kStackBytes = 4096;  // ESP-IDF FreeRTOS: stack depth in bytes
+// ESP-IDF FreeRTOS: stack depth in bytes. `log clear` (scan + LittleFS removes) and `log dump`
+// (open/seek/read per chunk) run here too (#29): writer_stack_free 2212 B after both, on the C3.
+constexpr uint32_t kStackBytes = 4096;
 constexpr UBaseType_t kPriority = 1;
 // How long the task sleeps on an empty queue before checking for replies and losses to report.
 // It sleeps on the log queue alone: a queue set would also wake it for replies, but would add

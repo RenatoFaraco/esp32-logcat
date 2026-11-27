@@ -65,7 +65,7 @@ class Reply:
     command: str  # the request without its id, e.g. "log level APP D"
     fields: list[tuple[str, str]] = field(default_factory=list)  # every data line, in order
     end: CommandEnd | None = None
-    block: Block | None = None
+    blocks: list[Block] = field(default_factory=list)  # `log dump` sends one per file
     restarted: bool = False  # the device restarted while this request was pending
     failure: str = ""  # why there is no complete reply; empty when there is one
     elapsed: float = 0.0  # seconds from the request to the end
@@ -93,6 +93,7 @@ class _Pending:
     started: float
     deadline: float
     acknowledged: bool = False  # `reboot` said ok: now waiting for the restart
+    damaged: str = ""  # a block of this reply failed its CRC: the reply fails at its terminator
 
 
 class Exchange:
@@ -225,17 +226,22 @@ class Exchange:
             pending.deadline = now + self._restart_timeout
             return [], False
         del self._pending[line.id]
-        return [self._finish(pending, now)], False
+        return [self._finish(pending, now, failure=pending.damaged)], False
 
     def _block(self, block: Block, now: float) -> tuple[list[Reply], bool]:
         pending = self._pending.get(block.id)
         if pending is None:
             return [], True
-        pending.reply.block = block
-        if block.ok:
+        pending.reply.blocks.append(block)
+        if block.ok or block.crc32 is not None:
+            # A wrong CRC still came with its #END: the framing held, so the next blocks and the
+            # terminator are still ours. The reply fails when it ends, not now: ending it now
+            # would hand the rest of a `log dump` to the stream as live log.
+            if not block.ok and not pending.damaged:
+                pending.damaged = f"dump block damaged: {block.problem}"
             pending.deadline = max(pending.deadline, now + self._reply_timeout)
             return [], False
-        # Its terminator may have gone into the block's byte count: do not wait for it.
+        # No #END after the content: its terminator may have gone into the byte count.
         del self._pending[block.id]
         return [self._finish(pending, now, failure=f"dump block damaged: {block.problem}")], False
 
@@ -282,13 +288,8 @@ def reply_json(reply: Reply) -> dict[str, object]:
     }
     if fields:
         out["fields"] = fields
-    if reply.block is not None:
-        out["block"] = {
-            "name": reply.block.name,
-            "bytes": reply.block.size,
-            "crc_ok": reply.block.ok,
-            "lines": block_lines(reply.block),
-        }
+    if reply.blocks or reply.command in BLOCK_COMMANDS:
+        out["blocks"] = [block_json(block) for block in reply.blocks]
     if reply.end is not None and not reply.end.ok:
         out["code"] = reply.end.code
         if reply.end.text:
@@ -298,6 +299,21 @@ def reply_json(reply: Reply) -> dict[str, object]:
     if reply.failure:
         out["error"] = reply.failure
     out["elapsed_ms"] = round(reply.elapsed * 1000)
+    return out
+
+
+# Commands whose reply carries blocks: their JSON always has "blocks", empty or not.
+BLOCK_COMMANDS = ("log tail", "log dump")
+
+
+def block_json(block: Block) -> dict[str, object]:
+    """One block for --json. A damaged block's content is not the file's (wire-format §3: the
+    host discards it), so it comes without lines and with the problem."""
+    out: dict[str, object] = {"name": block.name, "bytes": block.size, "ok": block.ok}
+    if block.ok:
+        out["lines"] = block_lines(block)
+    else:
+        out["problem"] = block.problem
     return out
 
 

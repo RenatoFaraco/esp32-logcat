@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `log dump` and `log clear` on the device (#29, PRD F9). `log dump` syncs the flash and sends
+  one block per log file, oldest first, with the size each had when the dump began
+  (wire-format §2.2, §3): served by the writer task through the new core port `LogArchive`,
+  512 B per step, with the USB out of the log for the whole reply. A file the rotation removes
+  mid-dump ends it with `failed`; the blocks already closed stay valid. `log clear` removes
+  every log file and starts again in an empty `log_000.txt`, whose first line is a `W LOGCAT`
+  marker with what was removed; `busy` during a dump, and a request that times out is
+  withdrawn before it can run. Core `RotatingStore::clear()`. The host side (`esp-logcat
+  dump`) is #101, in Rust.
 - Milestone **M5.5 · Toolchain** planned (ROADMAP, `scripts/github_bootstrap.py`): the
   firmware build moves to plain ESP-IDF (ADR-013, replaces the PlatformIO part of ADR-001;
   the firmware stays C++17 and gains a C API) and the host moves to Rust (ADR-014, replaces
@@ -56,6 +65,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `esp-logcat shell` keeps every block of a reply: a multi-file `log dump` showed only the
+  newest file. Each file's block gets its own summary line with the file name. A block whose
+  CRC is wrong no longer ends the request at once (which handed the rest of a dump to the
+  stream as live log): the reply fails at its terminator, and the damaged block's content is
+  not shown. Each block of a long dump gets its own time allowance. **`--json` changes:**
+  `"block": {...}` is now `"blocks": [...]` (always present for `log tail` and `log dump`),
+  and each entry has `"ok"` (was `"crc_ok"`) and, when damaged, `"problem"` instead of
+  `"lines"`.
 - `esp-logcat shell` sees a restart at the ROM banner (`ESP-ROM:`): `reboot` from a
   one-command shell no longer fails with `no restart seen in 10 s`, and a restart is counted
   once when a command follows during the boot.

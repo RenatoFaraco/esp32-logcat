@@ -69,6 +69,13 @@ public:
     // repaired, before the next line.
     bool flush();
 
+    // `log clear` (#29): removes every log file (other names stay) and starts again with an
+    // empty log_000.txt. Bytes not yet synced go with their files: not counted as lost, nor are
+    // the files counted as `removed` (the limits' work). false: a file could not be removed
+    // (counted in failed_removes) or the new file could not be opened; the store then goes on
+    // with what is left, as begin() would. A power cut halfway leaves the newest files.
+    bool clear();
+
     bool is_open() const { return open_; }
     // The current file ends inside a line and will get DEL + '\n' before the next one.
     bool tail_torn() const { return needs_repair_; }

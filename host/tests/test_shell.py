@@ -29,6 +29,34 @@ def tail_block(ident: str) -> bytes:
     )
 
 
+def file_block(ident: str, name: str, content: bytes, crc: int | None = None) -> bytes:
+    crc = zlib.crc32(content) if crc is None else crc
+    return (
+        f"#BEGIN {ident} {name} {len(content)}\n".encode()
+        + content
+        + (f"#END {ident} {crc:08x}\n".encode())
+    )
+
+
+def dump_reply(ident: str) -> bytes:
+    """`log dump` (#29): one block per file and one terminator, all in a single chunk."""
+    return (
+        file_block(ident, "log_000.txt", TAIL)
+        + file_block(ident, "log_001.txt", LOG_I)
+        + f"#. {ident} ok\n".encode()
+    )
+
+
+def damaged_dump_reply(ident: str) -> bytes:
+    """The middle block's CRC is wrong; its #END still came."""
+    return (
+        file_block(ident, "log_000.txt", LOG_I)
+        + file_block(ident, "log_001.txt", LOG_W, crc=0)
+        + file_block(ident, "log_002.txt", LOG_I)
+        + f"#. {ident} ok\n".encode()
+    )
+
+
 ANSWERS = {
     "info": lambda i: f"#> {i} fw=v0.3.0 proto=1 chip=esp32c3\n#. {i} ok\n".encode(),
     "stats": lambda i: (
@@ -39,6 +67,7 @@ ANSWERS = {
     "log level APP D": lambda i: f"#. {i} ok\n".encode(),
     "log level X D": lambda i: f"#! {i} full tag table full (16 tags)\n".encode(),
     "log tail": tail_block,
+    "log dump": dump_reply,
     "reboot": lambda i: f"#. {i} ok\n".encode(),
 }
 
@@ -230,7 +259,7 @@ def test_log_tail_prints_the_block_lines_and_its_check(device):
 def test_no_reply_is_an_error():
     device = FakeDevice(greeting=LOG_I)
     try:
-        code, _, err = one(device, ["log", "dump"], quick=True)  # the fake never answers it
+        code, _, err = one(device, ["log", "clear"], quick=True)  # the fake never answers it
     finally:
         device.close()
     assert code == 1 and "no reply in 0.3 s" in err
@@ -370,13 +399,99 @@ def test_print_reply_of_a_damaged_block():
     from esp_logcat.events import Block
 
     reply = Reply(
-        "7", "log tail", block=Block("7", "ram", 9, b"abc", None, "no #END after the content")
+        "7", "log tail", blocks=[Block("7", "ram", 9, b"abc", None, "no #END after the content")]
     )
     reply.failure = "dump block damaged: no #END after the content"
     out_console, err_console, out, err = consoles()
     assert print_reply(reply, out_console, err_console) == 1
     assert "no #END after the content" in out.getvalue()
     assert err.getvalue() == "error: dump block damaged: no #END after the content\n"
+
+
+def test_log_dump_shows_every_file_in_order(device):
+    code, out, err = one(device, ["log", "dump"])
+    assert code == 0 and err == ""
+    assert out.index("log_000.txt: 2 lines") < out.index("log_001.txt: 1 lines")
+    assert out.count("careful") == 1
+
+
+def test_log_dump_json_lists_every_block(device):
+    code, out, _ = one(device, ["log", "dump"], as_json=True)
+    blocks = json.loads(out)["blocks"]
+    assert code == 0
+    assert [(b["name"], b["ok"], len(b["lines"])) for b in blocks] == [
+        ("log_000.txt", True, 2),
+        ("log_001.txt", True, 1),
+    ]
+
+
+def test_a_damaged_block_mid_dump_fails_without_leaking_the_rest_as_log():
+    device = FakeDevice(greeting=LOG_I)
+    ANSWERS["log dump"] = damaged_dump_reply
+    try:
+        shell, out, err, out_console, err_console = make_shell(device, show_logs=True)
+        code = run_one(shell, ["log", "dump"], out_console, err_console, as_json=False)
+        shell.close()
+    finally:
+        ANSWERS["log dump"] = dump_reply
+        device.close()
+    text = out.getvalue()
+    assert code == 1
+    assert "error: dump block damaged: " in err.getvalue()
+    assert "log_000.txt: 1 lines" in text and "log_002.txt: 1 lines" in text
+    assert "careful" not in text  # the damaged block's content is not shown
+    leaked = [line for line in text.splitlines() if line.startswith(("#END", "#BEGIN", "#."))]
+    assert leaked == []  # nothing after it reached the screen as raw protocol
+
+
+def test_each_block_of_a_reply_gets_its_own_time_allowance():
+    now = [0.0]
+    out_console, err_console, _, _ = consoles()
+    shell = Shell(FakeDevice(), out_console, err_console, clock=lambda: now[0])
+
+    class Framer:  # the reader's view of the block in progress
+        block_id = "7"
+        block_size = 20_000  # 1 s at the floor rate
+        blocks_begun = 1
+
+    shell._framer = Framer()  # type: ignore[assignment]
+    limits: list[float] = []
+    shell.exchange.touch = lambda ident, at, limit: limits.append(limit)  # type: ignore[method-assign]
+
+    def source():
+        yield b"a"  # block 1, from t=0: 0 + 1 + 2
+        now[0] = 10.0
+        Framer.blocks_begun = 2  # same request id, next file
+        yield b"b"  # block 2, from t=10: its own allowance
+        now[0] = 11.0
+        yield b"c"
+
+    list(shell._chunks(source()))
+    assert limits == [3.0, 13.0, 13.0]
+
+
+def test_print_reply_of_several_blocks_names_each_file():
+    from esp_logcat.console import Reply
+    from esp_logcat.events import Block
+    from esp_logcat.parser import CommandEnd
+
+    line = b"0001:000001 0000000010 I APP: hello\n"
+    reply = Reply(
+        "7",
+        "log dump",
+        end=CommandEnd("7", "ok"),
+        blocks=[
+            Block("7", "log_000.txt", len(line), line, zlib.crc32(line)),
+            Block("7", "log_001.txt", 0, b"", 0),
+        ],
+    )
+    out_console, err_console, out, err = consoles()
+    assert print_reply(reply, out_console, err_console) == 0
+    text = out.getvalue()
+    assert text.count("hello") == 1
+    assert f"log_000.txt: 1 lines, {len(line)} bytes, CRC ok" in text
+    assert "log_001.txt: 0 lines, 0 bytes, CRC ok" in text
+    assert err.getvalue() == ""
 
 
 # ------------------------------------------------------------------ command line

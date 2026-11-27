@@ -47,7 +47,7 @@ quando o firmware passa a precisar dele):
 6. ~~M2 · parte 2 — `stream` completo com filtros, app de demo e medição interna de jitter
    (#15, #13)~~; a medição com o analisador (#14) foi para o M6
 7. ~~M5 no firmware: `CommandParser` (#27) e console (#28)~~ e release `v0.3.0` — 11/nov
-8. ~~`esp-logcat shell` (#30), M4a (#22, #23), M4b~~; `log dump`/`log clear` no firmware (#29)
+8. ~~`esp-logcat shell` (#30), M4a (#22, #23), M4b, `log dump`/`log clear` no firmware (#29)~~
 9. **M5.5 · Toolchain** (combinado em 26/nov): build em ESP-IDF puro (ADR-013) e host em
    Rust (ADR-014). O `esp-logcat dump` sai do M5 e nasce em Rust aqui. A partir de 26/nov o
    host Python só recebe correções
@@ -113,8 +113,8 @@ Os blocos 🖥️ (M3, M4a, M5a) podem ser adiantados sempre que o trabalho com 
 
 ### M5b · Console — integração 🔌
 - [x] Console na porta nativa, com 7 dos 9 comandos do F9 funcionando na placa (#28)
-- [ ] `log dump` e `log clear` de verdade: dependem da flash (M4); até lá, `unsupported`
-      (os dois na #29)
+- [x] `log dump` e `log clear` no firmware (#29): um bloco por arquivo da flash; o clear apaga
+      os arquivos e responde `busy` durante um dump
 - [x] `esp-logcat shell`: um comando (com `--json`), prompt interativo com logs filtrados, ou
       pipe (#30) → **release `v0.4.0`**
 - [ ] ~~`esp-logcat dump` no host Python~~ → vai para o M5.5, já em Rust (#101; o `Framer` da #30

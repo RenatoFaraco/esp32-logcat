@@ -736,6 +736,108 @@ void test_file_sizes_for_the_dump() {
     TEST_ASSERT_EQUAL_UINT32(0, store.file_size(2));
 }
 
+// ---------------------------------------------------------------- clear (#29)
+
+void test_clear_removes_every_log_file_and_starts_log_000() {
+    MemoryFileSystem fs;
+    const size_t line = make_line(1).size();
+    RotatingStore store(fs, small(static_cast<uint32_t>(2 * line), 100000));
+    store.begin();
+    for (uint32_t seq = 1; seq <= 5; ++seq) {
+        put_line(store, make_line(seq));
+    }
+    fs.put("notes.txt", "not ours");
+    const uint32_t removed_before = store.stats().removed;
+    TEST_ASSERT_EQUAL_size_t(3, store.file_count());
+
+    TEST_ASSERT_TRUE(store.clear());
+
+    TEST_ASSERT_EQUAL_size_t(1, store.file_count());
+    TEST_ASSERT_TRUE(store.is_open());
+    TEST_ASSERT_EQUAL_UINT32(0, store.file_size(0));
+    TEST_ASSERT_EQUAL_UINT32(0, store.unsynced_bytes());
+    TEST_ASSERT_TRUE(fs.exists("notes.txt"));  // only our files go
+    TEST_ASSERT_FALSE(fs.exists("log_001.txt"));
+    TEST_ASSERT_FALSE(fs.exists("log_002.txt"));
+    // Not a rotation: `removed` counts the files the limits took, and nothing was lost.
+    TEST_ASSERT_EQUAL_UINT32(removed_before, store.stats().removed);
+    TEST_ASSERT_EQUAL_UINT32(0, store.stats().lost_bytes);
+
+    TEST_ASSERT_TRUE(put_line(store, make_line(6)));
+    store.flush();
+    TEST_ASSERT_EQUAL_STRING(make_line(6).c_str(), fs.content("log_000.txt").c_str());
+}
+
+void test_clear_drops_unsynced_bytes_without_counting_them_lost() {
+    MemoryFileSystem fs;
+    RotatingStore store(fs);
+    store.begin();
+    put_line(store, make_line(1));  // never synced
+    TEST_ASSERT_TRUE(store.clear());
+    TEST_ASSERT_EQUAL_UINT32(0, store.stats().lost_bytes);
+    TEST_ASSERT_EQUAL_UINT32(0, store.file_size(0));
+}
+
+void test_clear_of_a_torn_file_leaves_nothing_to_repair() {
+    MemoryFileSystem fs;
+    fs.put("log_000.txt", make_line(1) + "half a li");
+    RotatingStore store(fs);
+    store.begin();
+    TEST_ASSERT_TRUE(store.tail_torn());
+    TEST_ASSERT_TRUE(store.clear());
+    TEST_ASSERT_FALSE(store.tail_torn());
+    TEST_ASSERT_TRUE(put_line(store, make_line(2)));
+    store.flush();
+    TEST_ASSERT_EQUAL_STRING(make_line(2).c_str(), fs.content("log_000.txt").c_str());
+}
+
+void test_clear_that_cannot_remove_a_file_says_so_and_keeps_logging() {
+    MemoryFileSystem fs;
+    const size_t line = make_line(1).size();
+    RotatingStore store(fs, small(static_cast<uint32_t>(line), 100000));
+    store.begin();
+    for (uint32_t seq = 1; seq <= 3; ++seq) {
+        put_line(store, make_line(seq));
+    }
+    fs.fail_next_remove = true;  // the oldest stays
+    TEST_ASSERT_FALSE(store.clear());
+    TEST_ASSERT_EQUAL_UINT32(1, store.stats().failed_removes);
+    TEST_ASSERT_TRUE(fs.exists("log_000.txt"));
+    TEST_ASSERT_FALSE(fs.exists("log_001.txt"));
+    TEST_ASSERT_FALSE(fs.exists("log_002.txt"));
+    // What is left is a store like any other: it goes on with the file it finds.
+    TEST_ASSERT_EQUAL_size_t(1, store.file_count());
+    TEST_ASSERT_TRUE(put_line(store, make_line(4)));
+    store.flush();
+    const std::vector<uint32_t> seqs = all_seqs(fs, store);
+    TEST_ASSERT_EQUAL_UINT32(4, seqs.back());
+}
+
+void test_clear_with_an_orphan_that_will_not_go_is_not_ok() {
+    MemoryFileSystem fs;
+    // 17 files: the scan keeps the newest 16 and removes log_000, which refuses.
+    for (uint32_t index = 0; index <= 16; ++index) {
+        fs.put(name_of(index), make_line(index + 1));
+    }
+    RotatingStore store(fs);
+    fs.fail_next_remove = true;
+    TEST_ASSERT_FALSE(store.clear());
+    TEST_ASSERT_TRUE(fs.exists("log_000.txt"));  // adopted again as the current file
+    TEST_ASSERT_FALSE(fs.exists("log_016.txt"));
+    TEST_ASSERT_TRUE(put_line(store, make_line(99)));
+}
+
+void test_clear_before_begin_starts_an_empty_store() {
+    MemoryFileSystem fs;
+    fs.put("log_007.txt", make_line(1));
+    RotatingStore store(fs);
+    TEST_ASSERT_TRUE(store.clear());
+    TEST_ASSERT_FALSE(fs.exists("log_007.txt"));
+    TEST_ASSERT_TRUE(put_line(store, make_line(2)));
+    store.flush();
+    TEST_ASSERT_EQUAL_STRING(make_line(2).c_str(), fs.content("log_000.txt").c_str());
+}
+
 void test_write_before_begin_is_refused() {
     MemoryFileSystem fs;
     RotatingStore store(fs);
@@ -845,6 +947,12 @@ int main() {
     RUN_TEST(test_a_failed_flush_closes_the_file_and_counts_the_loss);
     RUN_TEST(test_a_short_write_counts_the_unsynced_bytes_it_drops);
     RUN_TEST(test_file_sizes_for_the_dump);
+    RUN_TEST(test_clear_removes_every_log_file_and_starts_log_000);
+    RUN_TEST(test_clear_drops_unsynced_bytes_without_counting_them_lost);
+    RUN_TEST(test_clear_of_a_torn_file_leaves_nothing_to_repair);
+    RUN_TEST(test_clear_that_cannot_remove_a_file_says_so_and_keeps_logging);
+    RUN_TEST(test_clear_with_an_orphan_that_will_not_go_is_not_ok);
+    RUN_TEST(test_clear_before_begin_starts_an_empty_store);
     RUN_TEST(test_write_before_begin_is_refused);
     RUN_TEST(test_rotation_past_999_with_16_files_renumbers_and_removes);
     RUN_TEST(test_reader_says_when_a_read_fails_in_the_middle);

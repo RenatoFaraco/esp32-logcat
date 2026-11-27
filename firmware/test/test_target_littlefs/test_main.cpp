@@ -233,6 +233,53 @@ void test_the_store_survives_a_remount_and_repairs_a_torn_tail() {
     TEST_ASSERT_EQUAL_UINT32(static_cast<uint32_t>(logcat::ParseStatus::Ok), statuses[2]);
 }
 
+// The dump (#29) reads the files with its own descriptor while the store keeps appending to
+// the newest one: neither may disturb the other.
+void test_reading_while_a_file_is_open_for_append() {
+    fs.open_append("old.txt");
+    write_text("old\n");
+    fs.close();
+    TEST_ASSERT_TRUE(fs.open_append("new.txt"));
+    write_text("abc\n");
+    TEST_ASSERT_TRUE(fs.sync());
+    write_text("more\n");  // not synced: the dump's size stops before it
+    char buffer[16] = {};
+    TEST_ASSERT_EQUAL_size_t(4, fs.read("old.txt", 0, buffer, sizeof(buffer)));
+    TEST_ASSERT_EQUAL_MEMORY("old\n", buffer, 4);
+    TEST_ASSERT_EQUAL_size_t(4, fs.read("new.txt", 0, buffer, 4));  // the open one
+    TEST_ASSERT_EQUAL_MEMORY("abc\n", buffer, 4);
+    TEST_ASSERT_EQUAL_size_t(4, write_text("end\n"));  // the writer goes on untouched
+    TEST_ASSERT_TRUE(fs.sync());
+    fs.close();
+    TEST_ASSERT_EQUAL_STRING("abc\nmore\nend\n", read_all("new.txt").c_str());
+}
+
+// `log clear` (#29) on the real file system: every log file goes, other files stay.
+void test_clear_removes_the_log_files_and_starts_log_000() {
+    fs.open_append("keep.txt");
+    write_text("keep\n");
+    fs.close();
+    logcat::StoreConfig config;
+    config.file_limit = 64;
+    logcat::RotatingStore store(fs, config);
+    store.begin();
+    const char line[] = "0000:000001 0000000010 I APP: 58 bytes, one line per file\n";
+    for (int i = 0; i < 5; ++i) {
+        TEST_ASSERT_TRUE(store.write(line, sizeof(line) - 1));
+    }
+    store.flush();
+    TEST_ASSERT_TRUE(store.file_count() > 1);
+    TEST_ASSERT_TRUE(store.clear());
+    TEST_ASSERT_EQUAL_size_t(1, store.file_count());
+    TEST_ASSERT_EQUAL_INT32(0, fs.size("log_000.txt"));
+    TEST_ASSERT_EQUAL_INT32(-1, fs.size("log_001.txt"));
+    TEST_ASSERT_EQUAL_INT32(5, fs.size("keep.txt"));
+    TEST_ASSERT_TRUE(store.write(line, sizeof(line) - 1));
+    store.flush();
+    fs.close();
+    TEST_ASSERT_EQUAL_STRING(line, read_all("log_000.txt").c_str());
+}
+
 void test_names_the_port_cannot_carry() {
     char byte = 0;
     TEST_ASSERT_FALSE(fs.open_append("."));
@@ -263,6 +310,8 @@ extern "C" void app_main(void) {
     RUN_TEST(test_bad_names_and_missing_files);
     RUN_TEST(test_a_full_partition);
     RUN_TEST(test_the_store_budget_fits_the_partition);
+    RUN_TEST(test_reading_while_a_file_is_open_for_append);
+    RUN_TEST(test_clear_removes_the_log_files_and_starts_log_000);
     RUN_TEST(test_names_the_port_cannot_carry);
     RUN_TEST(test_stack_after_a_full_partition);
     RUN_TEST(test_the_store_survives_a_remount_and_repairs_a_torn_tail);  // last: it remounts

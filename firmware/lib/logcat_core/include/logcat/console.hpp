@@ -55,6 +55,14 @@ enum class SyncResult : uint8_t {
     Unsupported,  // no flash storage in this run (mount failed)
 };
 
+// The answer of ConsolePlatform::clear_log().
+enum class ClearResult : uint8_t {
+    Ok,           // every log file removed; the log goes on in an empty log_000.txt
+    Busy,         // a `log dump` is being sent: nothing removed
+    Failed,       // a file could not be removed, or the clear did not happen in time
+    Unsupported,  // no flash storage in this run (mount failed)
+};
+
 // What the console needs from the platform (ports & adapters, ADR-003).
 class ConsolePlatform {
 public:
@@ -71,6 +79,9 @@ public:
     // `log sync`: syncs the log in flash and waits for it (bounded). Called from the
     // console task; the sync itself happens where the store lives (the writer task).
     virtual SyncResult sync_log() = 0;
+    // `log clear` (#29): removes the log files and waits for it (bounded). Called from the
+    // console task; the removal itself happens where the store lives (the writer task).
+    virtual ClearResult clear_log() = 0;
 
 protected:
     ~ConsolePlatform() = default;
@@ -94,7 +105,8 @@ private:
     void reply_fields(const char* id, void (ConsolePlatform::*fill)(ReplyFields&));
     void reply_ok(const char* id);
     void reply_error(const char* id, const char* code, const char* text);
-    void send_tail(const char* id);
+    // `log tail` and `log dump`: the writer task serves the blocks and the terminator.
+    void send_block(ReplyKind kind, const char* id);
     bool send(ReplyKind kind, const char* id, const char* line, size_t length);
 
     ConsolePlatform& platform_;
