@@ -58,6 +58,16 @@ MILESTONES = [
         "Firmware on plain ESP-IDF (ADR-013) and the host in Rust (ADR-014), v0.5.0.",
         "open",
     ),
+    (
+        "Multi-board host",
+        "The Rust host reads any ESP board running any ESP-IDF firmware, several boards at once.",
+        "open",
+    ),
+    (
+        "v2 · Multichip component",
+        "The logcat component on ESP32, S3, C6 and P4, published on the IDF Component Registry (ADR-009, PRD v2).",
+        "open",
+    ),
 ]
 
 
@@ -68,7 +78,7 @@ def body(summary, scope, done, refs):
     return "\n".join(lines)
 
 
-M1, M2, M3, M4, M5, M6, M7, M55 = (m[0] for m in MILESTONES[1:])
+M1, M2, M3, M4, M5, M6, M7, M55, MB, V2 = (m[0] for m in MILESTONES[1:])
 
 ISSUES = [
     # ---------------- M1 ----------------
@@ -438,8 +448,8 @@ ISSUES = [
     ),
     (
         M5,
-        ["host", "fw", "needs-hardware"],
-        "host+fw: esp-logcat dump and log clear",
+        ["fw", "needs-hardware"],
+        "fw: log dump and log clear",
         body(
             "Download persisted logs from flash to a file.",
             [
@@ -703,6 +713,207 @@ ISSUES = [
             [],
             ["Core dump captured after `crash panic` and decoded on the PC"],
             "PRD §4, M7",
+        ),
+    ),
+    # ---------------- Multi-board host ----------------
+    (
+        MB,
+        ["host", "test", "needs-hardware"],
+        "test: reference sessions from each ESP family (C3, C6, S3, ESP32)",
+        body(
+            "The host already reads boards that do not run esp32-logcat: the stock `blink` example on an ESP32-C6 shows up with levels, tags and colors (`invalid 0`). Record that evidence before the Rust host is written, so every multi-board feature has fixtures to test against. Recording uses the Python host's existing `--save`; no new Python feature.",
+            [
+                "For each board in the inventory (C3, C6, S3, ESP32 D0WD), a stock ESP-IDF example (`hello_world` or `blink`) flashed with `idf.py`",
+                "Sessions saved over each port the board has (USB bridge and native USB-Serial-JTAG), each with a reset button press mid-session",
+                "Files in `host/tests/fixtures/boards/<chip>-<port>.log`, with chip, bridge, VID:PID, IDF version and what was seen in a short README",
+                "Board facts (bridge, VID:PID, banner, reset behaviour per port) added to `docs/context/hardware.md`",
+            ],
+            [
+                "At least one session per family over each of its ports",
+                "Known gaps listed in the README: the ESP32 banner (`ets ...`) not seen as a restart, glued ESP-IDF lines, other timestamp formats",
+            ],
+            "PRD v2 §6 criterion 3 · PRD rust-host RH-7 · #98",
+        ),
+    ),
+    (
+        MB,
+        ["host", "rust"],
+        "host(rs): ESP-IDF log lines from any firmware (timestamp formats, colors, glued lines)",
+        body(
+            "Read the native ESP-IDF log of any firmware as well as our own format: level, tag, timestamp and message, for the filters and the status line.",
+            [
+                "Timestamp variants: `(ms)`, `(hh:mm:ss.mmm)` and `(YYYY-MM-DD hh:mm:ss.mmm)` from `CONFIG_LOG_TIMESTAMP_SOURCE_SYSTEM`; ESP-IDF log v2 lines",
+                "ANSI colors from `CONFIG_LOG_COLORS` stripped before parsing, never forwarded as markup",
+                "Glued ESP-IDF lines split like our own (today `pipeline._LINE_START` knows only our format and `ESP-ROM:`)",
+                "Unknown lines stay raw text (`invalid` only for lines that look like ours)",
+            ],
+            ["Every session from #103 replays with `invalid 0` and the right level for every ESP-IDF line"],
+            "PRD v2 §6 criterion 3 · wire-format §1 · depends on #96",
+        ),
+    ),
+    (
+        MB,
+        ["host", "rust"],
+        "host(rs): chip and reset reason from the boot banner, on every ESP family",
+        body(
+            "Know which chip is on the other end and why it restarted, from what the ROM and the bootloader print, without our firmware.",
+            [
+                "ROM banners: `ESP-ROM:<chip>-<date>` (S2, S3, C-series, P4) and `ets <date>` (ESP32): both start a new boot (extends #98)",
+                "`rst:0x.. (REASON)` in both spellings (`POWERON` and `POWERON_RESET`)",
+                "Chip and revision from the banner and the bootloader (`chip revision: v0.x`), shown in the header next to the port",
+                "With our firmware: the `info` command's chip and reset reason win over the guess",
+            ],
+            ["Each reference session shows its chip in the header and counts its reset"],
+            "PRD rust-host RH-7 · #98 · `docs/context/hardware.md`",
+        ),
+    ),
+    (
+        MB,
+        ["host", "rust", "needs-hardware"],
+        "host(rs): ports and reset for every ESP USB bridge",
+        body(
+            "Find and open any ESP board without resetting it by accident, and reset it on request the right way for its wiring.",
+            [
+                "VID:PID table: Espressif USB-Serial-JTAG `303A:1001`, Espressif USB-OTG CDC, CH340 `1A86:7523`, CH9102/CH343 `1A86:55D4`/`55D3`, CP210x `10C4:EA60`, FTDI `0403:6001`/`6010`",
+                "Open with DTR/RTS released on every bridge; reset per wiring: CH340K direct (RTS = EN), the classic two-transistor auto-reset circuit, native USB",
+                "`esp-logcat ports` shows the kind of each port; with several candidates and no `--port`, list them (#97)",
+                "Bridges with a serial number (CH9102, CH343) keep their identity when the COM number changes",
+            ],
+            ["Each board in the inventory is listed with the right kind, opened without a reset, and reset on request"],
+            "`docs/context/hardware.md` · depends on #97",
+        ),
+    ),
+    (
+        MB,
+        ["host", "rust", "needs-hardware"],
+        "host(rs): several devices at once, identified by MAC",
+        body(
+            "A bench with several boards: one host session reads all of them, and a board keeps its identity when its COM number changes.",
+            [
+                "Identity by MAC: from the native USB serial number, from the bootloader/ROM output, or from our `info` command; the COM is only where it is now",
+                "One reader thread per port, merged in the backend with the device on every line (ADR-014 §4)",
+                "`stream`: a device column; filters per device; `--save` records the device",
+                "`tui`: one pane per device or a merged view; status line per device",
+            ],
+            [
+                "Three boards of different families read at once; unplugging and replugging one keeps its name and counters",
+                "Session file format change, if any, goes through the spec first (wire-format §4)",
+            ],
+            "ROADMAP, after M5.5 · base for #85 · depends on #97",
+        ),
+    ),
+    # ---------------- v2 · Multichip component ----------------
+    (
+        V2,
+        ["fw", "ci"],
+        "fw: build matrix for every v2 target (idf.py set-target)",
+        body(
+            "Build the component and the demo for every v2 target in the CI, before any board is brought up. Settles PRD v2 open question 2: the matrix is `idf.py set-target`, as the build is plain ESP-IDF since ADR-013.",
+            ["CI matrix: esp32c3, esp32c6, esp32s3, esp32, esp32p4", "Per-target `sdkconfig.defaults.<target>` only where a target needs it"],
+            ["The demo builds for every target in the CI"],
+            "ADR-009 §2 · PRD v2 V2-2, §7 · depends on #91, #95",
+        ),
+    ),
+    (
+        V2,
+        ["fw", "core"],
+        "fw: SoC capabilities and Kconfig options instead of target checks",
+        body(
+            "Features follow what the SoC has, not its name, and the options a product changes live in Kconfig.",
+            [
+                "`SOC_*` capabilities (USB-Serial-JTAG, USB-OTG, cores, RTC memory) instead of `CONFIG_IDF_TARGET_*`",
+                "Kconfig: writer task core, queue depth, partition label, sinks; read as `constexpr`",
+            ],
+            ["No `CONFIG_IDF_TARGET_*` left in the component", "Options documented in the component README"],
+            "ADR-009 §3, §4 · PRD v2 V2-3, V2-4",
+        ),
+    ),
+    (
+        V2,
+        ["fw"],
+        "fw: UartSink and USB-OTG CDC sink",
+        body(
+            "One `Sink` per output peripheral, so chips without USB-Serial-JTAG (ESP32) and boards that use USB-OTG (S3) get the log and the console.",
+            ["`UartSink` on UART0 (ESP32, and boards with a bridge only)", "USB-OTG CDC sink (S3, P4)", "Same wire format and console on every sink"],
+            ["The ESP32 logs and answers the console over its CP210x/CH9102 bridge", "The S3 does the same over USB-OTG"],
+            "ADR-009 §5 · PRD v2 V2-5",
+        ),
+    ),
+    (
+        V2,
+        ["fw"],
+        "fw: dual-core writer task and last words",
+        body(
+            "ESP32, S3 and P4 have two cores: the writer task and the last words must stay correct there.",
+            [
+                "Writer task affinity configurable (default `tskNO_AFFINITY`), created statically",
+                "Last words with a single writer, no lock, no write during the panic",
+                "Cycle measurement handles migration between cores (`esp_cpu_get_cycle_count()` is per core)",
+            ],
+            ["`crash panic` and `crash wdt` on each core of the ESP32 and S3 show the last lines on the next boot"],
+            "ADR-009 §7 · PRD v2 V2-6 · depends on #31",
+        ),
+    ),
+    (
+        V2,
+        ["fw", "test", "needs-hardware"],
+        "fw: bring-up on ESP32-C6",
+        body(
+            "Run esp32-logcat on the ESP32-C6 DevKit (clone). Single core, RISC-V like the C3, with native atomics and USB-Serial-JTAG.",
+            ["Flash size and partitions", "Logs on the native port and on the UART bridge", "Hook cost measured (native atomics, unlike the C3)"],
+            ["PRD v1 §7 criteria 1-5 pass on the C6 (3 measured)", "Bring-up recorded in `docs/context/hardware.md`"],
+            "PRD v2 V2-2, V2-7, §6 criterion 1 · bring-up issue template",
+        ),
+    ),
+    (
+        V2,
+        ["fw", "test", "needs-hardware"],
+        "fw: bring-up on ESP32-S3",
+        body(
+            "Run esp32-logcat on the ESP32-S3: dual core (Xtensa), USB-Serial-JTAG and USB-OTG.",
+            ["Flash/PSRAM variant of the board", "Logs on USB-Serial-JTAG, USB-OTG CDC and the UART bridge", "Hook cost measured on each core"],
+            ["PRD v1 §7 criteria 1-5 pass on the S3 (3 measured)", "Bring-up recorded in `docs/context/hardware.md`"],
+            "PRD v2 V2-2, V2-7, §6 criterion 1 · needs #110 and #111",
+        ),
+    ),
+    (
+        V2,
+        ["fw", "test", "needs-hardware"],
+        "fw: bring-up on ESP32 (classic)",
+        body(
+            "Run esp32-logcat on the ESP32-D0WD-V3 boards (CH9102 bridge): dual core, no native USB, UART only.",
+            ["UART0 as the only log and console port", "Reset behaviour of the CH9102 auto-reset circuit", "Hook cost measured on each core"],
+            ["PRD v1 §7 criteria 1-5 pass on the ESP32 (3 measured)", "Bring-up recorded in `docs/context/hardware.md`"],
+            "PRD v2 V2-2, V2-7, §6 criterion 1 · needs #110 and #111",
+        ),
+    ),
+    (
+        V2,
+        ["fw", "test", "needs-hardware"],
+        "fw: bring-up on ESP32-P4",
+        body(
+            "Run esp32-logcat on the ESP32-P4: dual core RISC-V, no radio. No board yet: this stays open until one is bought.",
+            ["USB-Serial-JTAG, USB-OTG and UART", "Hook cost measured on each core"],
+            ["PRD v1 §7 criteria 1-5 pass on the P4 (3 measured)", "Bring-up recorded in `docs/context/hardware.md`"],
+            "PRD v2 V2-2, §5 (no radio)",
+        ),
+    ),
+    (
+        V2,
+        ["fw", "release", "documentation"],
+        "release: component on the IDF Component Registry (v2.0.0)",
+        body(
+            "Publish the component so any ESP-IDF project adds it with one line.",
+            [
+                "`idf_component.yml` metadata, examples, license, targets list",
+                "Public API and Kconfig options under SemVer (PRD v2 §5)",
+                "Docs in English for external users (PRD v2 §7, question 3)",
+            ],
+            [
+                "A new ESP-IDF project adds the component from the Registry and sees the logcat without changing its code (PRD v2 §6 criterion 2)",
+                "Every PRD v2 §6 criterion checked with evidence; tag `v2.0.0`",
+            ],
+            "ADR-009 §1, §6 · PRD v2 V2-1",
         ),
     ),
 ]
