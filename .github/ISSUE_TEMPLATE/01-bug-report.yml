@@ -13,7 +13,7 @@ body:
     attributes:
       label: Component
       options:
-        - Core library (firmware/lib/logcat_core)
+        - Core library (firmware/components/esp32_logcat/core)
         - Firmware / ESP-IDF adapters
         - Host tool (esp-logcat)
         - Build / CI

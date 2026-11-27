@@ -1,4 +1,4 @@
-#include "adapters/littlefs_file_system.hpp"
+#include "port/littlefs_file_system.hpp"
 
 #include <dirent.h>
 #include <fcntl.h>

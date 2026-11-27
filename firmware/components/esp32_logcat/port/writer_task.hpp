@@ -1,11 +1,11 @@
 #pragma once
 
-#include "adapters/log_queue.hpp"
-#include "adapters/reply_queue.hpp"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "logcat/reply_server.hpp"
 #include "logcat/writer.hpp"
+#include "port/log_queue.hpp"
+#include "port/reply_queue.hpp"
 
 namespace logcat {
 

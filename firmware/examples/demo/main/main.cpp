@@ -1,16 +1,5 @@
 #include <cstring>
 
-#include "adapters/console_sink.hpp"
-#include "adapters/console_task.hpp"
-#include "adapters/esp_clock.hpp"
-#include "adapters/flash_store.hpp"
-#include "adapters/idf_log_hook.hpp"
-#include "adapters/log_queue.hpp"
-#include "adapters/nvs_boot_store.hpp"
-#include "adapters/reply_queue.hpp"
-#include "adapters/reset_reason.hpp"
-#include "adapters/usb_jtag_sink.hpp"
-#include "adapters/writer_task.hpp"
 #include "app/switchable_sink.hpp"
 #include "app/timing_sweep.hpp"
 #include "esp_app_desc.h"
@@ -29,6 +18,18 @@
 #include "logcat/sequencer.hpp"
 #include "logcat/tag_level_filter.hpp"
 #include "logcat/writer.hpp"
+#include "port/console_sink.hpp"
+#include "port/console_task.hpp"
+#include "port/esp_clock.hpp"
+#include "port/flash_store.hpp"
+#include "port/idf_log_hook.hpp"
+#include "port/log_queue.hpp"
+#include "port/nvs_boot_store.hpp"
+#include "port/reply_queue.hpp"
+#include "port/reset_reason.hpp"
+#include "port/usb_jtag_sink.hpp"
+#include "port/writer_task.hpp"
+#include "sdkconfig.h"
 
 static constexpr const char* TAG = "APP";
 
@@ -201,10 +202,11 @@ extern "C" void app_main(void) {
         ESP_LOGE(TAG, "heartbeat task not created (out of heap)");
     }
 
-#if defined(LOGCAT_TIMING_SWEEP)
-    // 1 kHz critical task + log load in phases, for the timing criterion (#13, #14). Only in the
-    // esp32c3_timing build: it writes ~2 MB to flash, which would push the logs of the previous
-    // boot (the ones a crash left) out of the 448 KB, and wear the flash.
+#if CONFIG_LOGCAT_DEMO_TIMING_SWEEP
+    // 1 kHz critical task + log load in phases, for the timing criterion (#13, #14). Only with
+    // CONFIG_LOGCAT_DEMO_TIMING_SWEEP (sdkconfig.timing): it writes ~2 MB to flash, which would
+    // push the logs of the previous boot (the ones a crash left) out of the 448 KB, and wear the
+    // flash.
     vTaskDelay(pdMS_TO_TICKS(2000));  // let the burst drain and a host connect
     if (!app::start_timing_sweep(uart_mirror)) {
         ESP_LOGE(TAG, "timing sweep not started");

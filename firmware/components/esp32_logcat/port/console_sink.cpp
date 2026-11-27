@@ -1,4 +1,4 @@
-#include "adapters/console_sink.hpp"
+#include "port/console_sink.hpp"
 
 #include <cstring>
 

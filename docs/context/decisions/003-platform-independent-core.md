@@ -8,9 +8,9 @@ do hardware. Testar tudo na placa é lento, exige o hardware (que só chega em n
 no CI. Além disso, o componente deve ser reaproveitável em outros produtos.
 
 ## Decisão
-`firmware/lib/logcat_core` é C++ puro, sem incluir `esp_*`, `freertos/*`, `driver/*` ou LittleFS.
+`firmware/components/esp32_logcat/core` (era `lib/logcat_core` até o ADR-013) é C++ puro, sem incluir `esp_*`, `freertos/*`, `driver/*` ou LittleFS.
 Dependências de plataforma entram por interfaces definidas no núcleo (`Clock`, `Sink`,
-`FileSystem`, `BootInfo`) e implementadas por adaptadores em `firmware/src/adapters/`.
+`FileSystem`, `BootInfo`) e implementadas por adaptadores em `firmware/components/esp32_logcat/port/`.
 O núcleo é testado com Unity em `env:native` no PC e no CI.
 
 ## Consequências

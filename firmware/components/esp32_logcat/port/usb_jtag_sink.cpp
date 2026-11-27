@@ -1,4 +1,4 @@
-#include "adapters/usb_jtag_sink.hpp"
+#include "port/usb_jtag_sink.hpp"
 
 #include "driver/usb_serial_jtag.h"
 #include "freertos/FreeRTOS.h"

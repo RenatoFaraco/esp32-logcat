@@ -1,11 +1,8 @@
-#include "adapters/console_task.hpp"
+#include "port/console_task.hpp"
 
 #include <cstdio>
 #include <cstdlib>
 
-#include "adapters/idf_log_hook.hpp"
-#include "adapters/reset_reason.hpp"
-#include "adapters/writer_task.hpp"
 #include "driver/usb_serial_jtag.h"
 #include "esp_app_desc.h"
 #include "esp_log.h"
@@ -13,7 +10,17 @@
 #include "esp_system.h"
 #include "esp_timer.h"
 #include "logcat/boot_counter.hpp"
+#include "port/idf_log_hook.hpp"
+#include "port/reset_reason.hpp"
+#include "port/writer_task.hpp"
 #include "sdkconfig.h"
+
+// `stats` reports erase.sectors from the SPI flash counters (#26): the consuming project must
+// enable them (sdkconfig.defaults of examples/demo), or esp_flash_get_counters() is missing.
+#if !CONFIG_SPI_FLASH_ENABLE_COUNTERS
+#error \
+    "esp32_logcat needs CONFIG_SPI_FLASH_ENABLE_COUNTERS=y (see examples/demo/sdkconfig.defaults)"
+#endif
 
 namespace logcat {
 

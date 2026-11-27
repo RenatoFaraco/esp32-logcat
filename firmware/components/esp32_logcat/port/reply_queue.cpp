@@ -1,4 +1,4 @@
-#include "adapters/reply_queue.hpp"
+#include "port/reply_queue.hpp"
 
 namespace logcat {
 

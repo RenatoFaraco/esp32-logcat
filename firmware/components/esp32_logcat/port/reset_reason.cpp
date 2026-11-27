@@ -1,4 +1,4 @@
-#include "adapters/reset_reason.hpp"
+#include "port/reset_reason.hpp"
 
 namespace logcat {
 

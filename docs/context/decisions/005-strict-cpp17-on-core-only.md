@@ -13,7 +13,10 @@ alvo mexeria no build do IDF inteiro, sem ganho real para os adaptadores, que s�
   (`firmware/scripts/native_cxx_flags.py`), porque `build_flags` também chega aos fontes C
   da Unity, onde `-fno-rtti` é inválido.
 - Um teste (`test_toolchain`) verifica `__cplusplus == 201703L`.
-- `env:esp32c3` usa o padrão do IDF; exceções e RTTI ficam desligadas em `sdkconfig.defaults`.
+- No alvo vale o padrão de C++ do IDF. Exceções e RTTI ficam desligadas no próprio componente
+  (`-fno-exceptions -fno-rtti` no `CMakeLists.txt` de `components/esp32_logcat`, desde o
+  ADR-013), e não só no `sdkconfig.defaults` da demo: o projeto de quem usa o componente pode
+  ligá-las para o resto do build.
 
 ## Consequências
 - O núcleo fica garantidamente em C++17: um recurso mais novo quebra o CI.

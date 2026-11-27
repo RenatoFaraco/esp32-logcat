@@ -47,10 +47,17 @@ ninguém lia a porta nativa (#12) e disputaria a FIFO com o driver: foi desligad
 
 ## Gravar e monitorar
 
+Com o ambiente do ESP-IDF 6.1 ativo (ADR-013):
+
 ```sh
-cd firmware
-pio run -e esp32c3 -t upload --upload-port COM10   # ou a porta nativa (COM6): as duas gravam
+cd firmware/examples/demo
+idf.py build
+idf.py -p COM10 flash   # ou a porta nativa (COM6): as duas gravam
 ```
+
+`idf.py monitor` reinicia a placa ao abrir a porta: na CH340K, RTS é o EN e DTR é o GPIO9
+(item 4). Para só olhar, `idf.py -p COMx monitor --no-reset`; para ler o logcat, o
+`esp-logcat` abaixo.
 
 Para acompanhar a placa, use a ferramenta do projeto, que já trata as armadilhas abaixo
 (abre com DTR/RTS soltos, normaliza CRLF, reconecta e acha a placa se a COM mudar):
@@ -62,7 +69,7 @@ host/.venv/Scripts/esp-logcat stream --port COM10 --reset --time
 ```
 
 O stdout recebe só as linhas da placa; avisos (conexão, lacunas, reinício) e o resumo vão
-para o stderr. `pio device monitor --port COM10 -b 115200` continua funcionando.
+para o stderr.
 
 `scripts/serial_capture.py` reinicia a placa e grava o boot das duas portas ao mesmo tempo,
 sem interação (útil para registrar evidências):
@@ -192,7 +199,7 @@ Medido em 14/nov (#24), LittleFS `joltwallet/littlefs` 1.23.1 na partição `log
   - os logs do próprio componente (`esp_littlefs`) ficam em WARN: saem da tarefa escritora pela
     impressora da ROM, a ~7 ms por linha.
 - **Desgaste e histórico.** Cada linha vai para a flash. A varredura de tempo saiu do firmware
-  normal para o build `esp32c3_timing`: rodando no boot, ela gravaria ~2 MB e empurraria para
+  normal para a variante de timing (`sdkconfig.timing`): rodando no boot, ela gravaria ~2 MB e empurraria para
   fora o log do boot anterior, o que um crash deixou; rodando para sempre, a 60 KB/s, gastaria a
   flash em semanas. O sync a cada 5 s também gasta: depois de um sync, o próximo append copia o
   bloco parcial (um apagamento de 4 KB). Com o heartbeat de 1 linha/s, a estimativa é ~17 mil
@@ -243,6 +250,6 @@ A linha `0000:000000 0000000000 I APP: esp32-logcat hello` é a primeira linha g
   leitura; só vale com medição.
 - [x] Pinos de medição de tempo (#13/#14): **GPIO 4** (inverte no ISR do timer), **GPIO 5**
   (inverte quando a tarefa crítica roda) e **GPIO 6** (N+1 pulsos no início da fase N), em
-  `firmware/src/app/pins.hpp`. Ficam fora dos strapping (2, 8, 9), da USB (18, 19), da UART0
+  `firmware/examples/demo/main/app/pins.hpp`. Ficam fora dos strapping (2, 8, 9), da USB (18, 19), da UART0
   (20, 21) e da flash embutida (11–17). Os mesmos números da serigrafia: conferir antes de
   ligar o analisador.

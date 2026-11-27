@@ -28,6 +28,9 @@ componente, não de um núcleo reescrito em C.
 ## Decisão
 1. O firmware passa a ser construído só com o ESP-IDF (`idf.py`), fixado na versão que o build
    atual já usa (IDF 6.1, `dependencies.lock`). O PlatformIO sai do projeto.
+   Na #91 a versão exata ficou **6.1.1**: o instalador da Espressif (EIM) oferece só a
+   última correção de cada versão, e o CI usa a mesma (`espressif/idf:v6.1.1`). Uma
+   versão de correção não muda APIs nem Kconfig; o comportamento foi conferido na placa.
 2. A estrutura de diretórios do componente, que o ADR-009 §6 deixava para a v2, vem para agora:
 
    ```

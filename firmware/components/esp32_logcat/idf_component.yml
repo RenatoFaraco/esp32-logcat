@@ -1,0 +1,7 @@
+## The component's own dependencies, fetched by the ESP-IDF component manager.
+dependencies:
+  idf: ">=6.1"
+  # LittleFS for the `logs` partition (#24): power-loss resilient, wear levelling.
+  joltwallet/littlefs:
+    version: "~1.23.1"  # pinned to the version checked against the port (#24)
+    require: private  # no public header of ours includes LittleFS

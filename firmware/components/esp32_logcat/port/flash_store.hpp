@@ -4,13 +4,13 @@
 #include <cstddef>
 #include <cstdint>
 
-#include "adapters/littlefs_file_system.hpp"
 #include "freertos/FreeRTOS.h"
 #include "logcat/console.hpp"
 #include "logcat/flush_policy.hpp"
 #include "logcat/log_archive.hpp"
 #include "logcat/rotating_store.hpp"
 #include "logcat/sink.hpp"
+#include "port/littlefs_file_system.hpp"
 
 namespace logcat {
 

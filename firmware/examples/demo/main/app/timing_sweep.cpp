@@ -2,7 +2,6 @@
 
 #include <cstdint>
 
-#include "adapters/idf_log_hook.hpp"
 #include "app/critical_task.hpp"
 #include "app/pins.hpp"
 #include "driver/gpio.h"
@@ -10,6 +9,7 @@
 #include "esp_rom_sys.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "port/idf_log_hook.hpp"
 
 namespace app {
 

@@ -22,13 +22,13 @@ executa testes é o subagente `test-runner` e quem marca o ROADMAP é o fluxo de
 ## Como verificar o M1 (núcleo)
 Para cada módulo — `LogRecord`/`Sequencer`, `LineFormatter`, `LineParser`, `RingBuffer`,
 `TagLevelFilter`:
-- Header em `firmware/lib/logcat_core/include/logcat/<modulo>.hpp` (e `.cpp` em `src/` se não
+- Header em `firmware/components/esp32_logcat/core/include/logcat/<modulo>.hpp` (e `.cpp` em `core/src/` se não
   for só template), namespace `logcat`, `#pragma once`.
 - Testes em `firmware/test/test_<modulo>/` cobrindo os casos de borda que o ROADMAP e a issue
   exigem: truncamento, tag longa, buffer cheio/wrap, tabela de tags cheia, entradas malformadas.
 - Ida e volta: existe teste `parse(format(r)) == r` com registros representativos.
 - Regras do núcleo: Grep por `esp_`, `freertos`, `driver/`, `new `, `malloc`, `std::string`,
-  `std::vector` em `firmware/lib/logcat_core/` — qualquer ocorrência é ❌.
+  `std::vector` em `firmware/components/esp32_logcat/core/` — qualquer ocorrência é ❌.
 - Fixtures de linhas de exemplo compartilhadas em `host/tests/fixtures/` (CONVENTIONS §5).
 
 Para outros marcos, derive as verificações das mesmas fontes. Critérios que só podem ser
