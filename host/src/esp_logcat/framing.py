@@ -43,6 +43,12 @@ class Framer:
         self._skipping = False  # cancelled inside a block: drop its rest, make no Block
         self._received = 0  # content bytes so far (kept in _content unless skipping)
         self._begin_id_skipped = ""
+        self._blocks_begun = 0
+
+    @property
+    def blocks_begun(self) -> int:
+        """How many blocks have begun: tells two blocks of the same reply apart."""
+        return self._blocks_begun
 
     @property
     def overflows(self) -> int:
@@ -120,6 +126,7 @@ class Framer:
             ):
                 self._reset()
                 self._begin = begin
+                self._blocks_begun += 1
             else:
                 out.append(line)
         return end

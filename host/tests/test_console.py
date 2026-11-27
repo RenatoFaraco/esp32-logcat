@@ -339,12 +339,38 @@ def test_json_of_a_block_and_of_a_restart():
         {
             "name": "ram",
             "bytes": len(LOG) * 2,
-            "crc_ok": True,
+            "ok": True,
             "lines": [LOG[:-1].decode()] * 2,
         }
     ]
     assert "blocks" not in reply_json(Reply("7", "info", end=CommandEnd("7", "ok")))
     assert reply_json(Reply("7", "crash panic", restarted=True))["restarted"] is True
+
+
+def test_json_of_a_dump_always_has_blocks_and_a_damaged_one_has_no_lines():
+    empty = reply_json(Reply("7", "log dump", end=CommandEnd("7", "ok")))
+    assert empty["blocks"] == []  # a stable shape: an empty flash is an empty list
+    bad = Block("7", "log_001.txt", 3, b"abc", 0, "CRC mismatch")
+    out = reply_json(Reply("7", "log dump", end=CommandEnd("7", "ok"), blocks=[bad]))
+    assert out["blocks"] == [
+        {"name": "log_001.txt", "bytes": 3, "ok": False, "problem": "CRC mismatch"}
+    ]
+
+
+def test_a_wrong_crc_mid_reply_keeps_the_rest_of_it_and_fails_at_the_terminator():
+    # `log dump` (#29): the #END came, so the framing held; the next blocks are still ours.
+    ex = exchange()
+    ex.start("log dump", now=0.0)
+    first = Block("7", "log_000.txt", len(LOG), LOG, 0)
+    bad = Block("7", "log_001.txt", len(LOG), LOG, 1, "CRC mismatch")
+    third = Block("7", "log_002.txt", len(LOG), LOG, 0)
+    for block in (first, bad, third):
+        done, outside = feed(ex, ReceivedBlock(block, None))
+        assert done == [] and outside == []
+    assert ex.is_pending("7")  # still expecting blocks: they are not live log
+    [reply], _ = feed(ex, b"#. 7 ok\n")
+    assert reply.blocks == [first, bad, third]
+    assert not reply.ok and reply.failure == "dump block damaged: CRC mismatch"
 
 
 def test_block_lines_escape_bytes_outside_ascii():

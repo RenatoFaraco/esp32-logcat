@@ -155,19 +155,22 @@ class Shell:
     # ------------------------------------------------------------------ reader thread
 
     def _chunks(self, source: Iterator[bytes | Notice]) -> Iterator[bytes | Notice]:
-        block_started: tuple[str, float] | None = None
+        # (request id, block number, start): a `log dump` sends several blocks under one id, and
+        # each gets its own size / rate allowance from its own start.
+        block_started: tuple[str, int, float] | None = None
         for item in source:
             block = self._framer.block_id
             if block is None:
                 block_started = None
             elif isinstance(item, bytes):
                 now = self._clock()
-                if block_started is None or block_started[0] != block:
-                    block_started = (block, now)
+                number = self._framer.blocks_begun
+                if block_started is None or block_started[:2] != (block, number):
+                    block_started = (block, number, now)
                 # Bytes keep a block's request alive, but not forever: a block aborted inside
                 # (wire-format §3) is followed by live log, which would otherwise be read as
                 # content until <bytes> is reached.
-                limit = block_started[1] + self._framer.block_size / BLOCK_MIN_RATE + 2.0
+                limit = block_started[2] + self._framer.block_size / BLOCK_MIN_RATE + 2.0
                 self.exchange.touch(block, now, limit)
             yield item
 
@@ -258,14 +261,17 @@ def print_reply(reply: Reply, out: Console, err: Console, *, as_json: bool = Fal
         text.append(value)
         out.print(text)
     for block in reply.blocks:
+        # A file's block (`log dump`) says which file it closes; the RAM tail needs no name.
+        name = f"{block.name}: " if block.name != "ram" else ""
+        if not block.ok:
+            # Not the file's content (wire-format §3: discarded): only say what went wrong.
+            out.print(Text(f"{name}{block.size} bytes, {block.problem}", style="dim"), markup=False)
+            continue
         parsed = block_parsed(block)
         for line in parsed:
             out.print(render(line))
-        status = "CRC ok" if block.ok else block.problem
-        # Several blocks (`log dump`, one per file): each summary says which file it closes.
-        name = f"{block.name}: " if len(reply.blocks) > 1 else ""
         out.print(
-            Text(f"{name}{len(parsed)} lines, {block.size} bytes, {status}", style="dim"),
+            Text(f"{name}{len(parsed)} lines, {block.size} bytes, CRC ok", style="dim"),
             markup=False,
         )
     if reply.failure:

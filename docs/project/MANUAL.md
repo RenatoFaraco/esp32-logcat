@@ -727,7 +727,9 @@ log_036.txt: 49 lines, 5636 bytes, CRC ok
 Com a flash cheia (448 KB em 7 arquivos), o dump leva cerca de 1 s pela USB nativa. Enquanto
 ele sai, o log ao vivo não vai para a USB (como no `log tail`), e um pedido feito nesse meio-tempo
 só é respondido no fim. Se a rotação apagar um arquivo durante o dump (log muito intenso), a
-resposta é `failed log rotated during dump`, e os blocos que já chegaram inteiros valem.
+placa responde `failed log rotated during dump`, e os blocos que já chegaram inteiros valem. O
+shell Python ainda mostra esse caso como `dump block damaged` (o log ao vivo que volta depois
+entra na contagem de bytes do bloco); o host em Rust vai mostrar o motivo (#101).
 Gravar os arquivos no PC é com o `esp-logcat dump`, que vem no host em Rust (#101).
 
 **`log clear`**: apaga todos os arquivos de log da flash e recomeça num `log_000.txt` vazio.

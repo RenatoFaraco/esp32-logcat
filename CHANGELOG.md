@@ -66,9 +66,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - `esp-logcat shell` keeps every block of a reply: a multi-file `log dump` showed only the
-  newest file. Each block gets its own summary line, named when there are several. **`--json`
-  changes:** `"block": {...}` is now `"blocks": [...]`, one entry per block (also for
-  `log tail`).
+  newest file. Each file's block gets its own summary line with the file name. A block whose
+  CRC is wrong no longer ends the request at once (which handed the rest of a dump to the
+  stream as live log): the reply fails at its terminator, and the damaged block's content is
+  not shown. Each block of a long dump gets its own time allowance. **`--json` changes:**
+  `"block": {...}` is now `"blocks": [...]` (always present for `log tail` and `log dump`),
+  and each entry has `"ok"` (was `"crc_ok"`) and, when damaged, `"problem"` instead of
+  `"lines"`.
 - `esp-logcat shell` sees a restart at the ROM banner (`ESP-ROM:`): `reboot` from a
   one-command shell no longer fails with `no restart seen in 10 s`, and a restart is counted
   once when a command follows during the boot.
