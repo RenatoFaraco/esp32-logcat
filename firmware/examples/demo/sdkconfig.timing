@@ -1,0 +1,2 @@
+# The timing variant (#13/#14): added on top of sdkconfig.defaults, in its own build folder.
+CONFIG_LOGCAT_TIMING_SWEEP=y

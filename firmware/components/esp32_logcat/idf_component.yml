@@ -1,4 +1,5 @@
-## ESP-IDF components fetched by the component manager (PlatformIO runs it at build time).
+## The component's own dependencies, fetched by the ESP-IDF component manager.
 dependencies:
+  idf: ">=6.1"
   # LittleFS for the `logs` partition (#24): power-loss resilient, wear levelling.
   joltwallet/littlefs: "~1.23.1"  # pinned to the version checked against the port (#24)

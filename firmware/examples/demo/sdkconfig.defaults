@@ -1,10 +1,15 @@
-# Project-chosen ESP-IDF options. The full sdkconfig.<env> is generated and not versioned.
+# Project-chosen ESP-IDF options. The full sdkconfig is generated (idf.py) and not versioned.
+# The timing variant adds sdkconfig.timing on top (see CMakeLists.txt).
+
+# The demo's board (v2, #108: a matrix with idf.py set-target <chip>)
+CONFIG_IDF_TARGET="esp32c3"
 
 # Flash size of the target board (4 MB embedded, confirmed in docs/context/hardware.md)
 CONFIG_ESPTOOLPY_FLASHSIZE_4MB=y
+# DIO: confirmed on the board (embedded XMC flash); QIO untested
+CONFIG_ESPTOOLPY_FLASHMODE_DIO=y
 
-# Custom partition table (logs + coredump). PlatformIO flashes it from board_build.partitions;
-# this keeps ESP-IDF's own view (size checks, parttool) consistent with it.
+# Custom partition table (logs + coredump), next to this file.
 CONFIG_PARTITION_TABLE_CUSTOM=y
 CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions.csv"
 

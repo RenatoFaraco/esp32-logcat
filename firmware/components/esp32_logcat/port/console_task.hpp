@@ -1,14 +1,14 @@
 #pragma once
 
-#include "port/flash_store.hpp"
-#include "port/log_queue.hpp"
-#include "port/reply_queue.hpp"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "logcat/console.hpp"
 #include "logcat/ram_tail.hpp"
 #include "logcat/reply_server.hpp"
 #include "logcat/writer.hpp"
+#include "port/flash_store.hpp"
+#include "port/log_queue.hpp"
+#include "port/reply_queue.hpp"
 
 namespace logcat {
 

@@ -2,9 +2,9 @@
 
 #include <cstdint>
 
-#include "port/log_queue.hpp"
 #include "logcat/sequencer.hpp"
 #include "logcat/tag_level_filter.hpp"
+#include "port/log_queue.hpp"
 
 namespace logcat {
 

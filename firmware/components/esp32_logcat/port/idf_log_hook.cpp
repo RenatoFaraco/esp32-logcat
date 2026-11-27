@@ -4,7 +4,6 @@
 #include <cstdarg>
 #include <cstdio>
 
-#include "port/writer_task.hpp"
 #include "esp_cpu.h"
 #include "esp_log.h"
 #include "esp_rom_sys.h"
@@ -13,6 +12,7 @@
 #include "freertos/task.h"
 #include "logcat/idf_text.hpp"
 #include "logcat/log_record.hpp"
+#include "port/writer_task.hpp"
 #include "sdkconfig.h"
 
 // parse_idf_text understands log v1 lines with an RTOS millisecond timestamp. Other settings

@@ -1,0 +1,12 @@
+menu "esp32-logcat demo"
+
+    config LOGCAT_TIMING_SWEEP
+        bool "Timing sweep at boot (#13/#14)"
+        default n
+        help
+            Runs the timing measurement once per boot: a 1 kHz critical task while the log
+            load goes through phases. It writes ~2 MB to flash and pushes out the logs kept
+            there, so it is off in the normal build. Enable it with sdkconfig.timing
+            (see the project's CMakeLists.txt).
+
+endmenu

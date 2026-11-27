@@ -3,9 +3,6 @@
 #include <cstdio>
 #include <cstdlib>
 
-#include "port/idf_log_hook.hpp"
-#include "port/reset_reason.hpp"
-#include "port/writer_task.hpp"
 #include "driver/usb_serial_jtag.h"
 #include "esp_app_desc.h"
 #include "esp_log.h"
@@ -13,6 +10,9 @@
 #include "esp_system.h"
 #include "esp_timer.h"
 #include "logcat/boot_counter.hpp"
+#include "port/idf_log_hook.hpp"
+#include "port/reset_reason.hpp"
+#include "port/writer_task.hpp"
 #include "sdkconfig.h"
 
 namespace logcat {

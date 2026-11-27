@@ -1,15 +1,6 @@
+# The demo's main component. With no REQUIRES, `main` sees every component of the project,
+# esp32_logcat and logcat_demo included.
 idf_component_register(SRCS "main.cpp"
-                            "port/console_sink.cpp"
-                            "port/console_task.cpp"
-                            "port/flash_store.cpp"
-                            "port/idf_log_hook.cpp"
-                            "port/littlefs_file_system.cpp"
-                            "port/log_queue.cpp"
-                            "port/nvs_boot_store.cpp"
-                            "port/reply_queue.cpp"
-                            "port/reset_reason.cpp"
-                            "port/usb_jtag_sink.cpp"
-                            "port/writer_task.cpp"
                             "app/critical_task.cpp"
                             "app/timing_sweep.cpp"
                        INCLUDE_DIRS ".")
