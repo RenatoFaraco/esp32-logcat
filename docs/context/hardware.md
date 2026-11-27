@@ -24,8 +24,8 @@ A tabela de partições (`firmware/partitions.csv`, 4 MB) cabe e foi confirmada 
 | Ponte UART | **CH340K** → UART0 (GPIO 20/21) | "USB-SERIAL CH340K", `VID_1A86&PID_7522` | COM10 (era COM5 até meados de nov/2026: o Windows renumerou a porta; confira no Gerenciador de Dispositivos) |
 | Nativa | **USB-Serial-JTAG** do próprio chip | "Dispositivo Serial USB", `VID_303A&PID_1001` (driver genérico) | COM6 (via hub) |
 
-O número da COM muda de PC para PC e de porta para porta: por isso não está no
-`platformio.ini`. Para achar as portas:
+O número da COM muda de PC para PC e de porta para porta: por isso não está em nenhum
+arquivo do projeto. Para achar as portas:
 
 ```powershell
 Get-CimInstance Win32_PnPEntity | Where-Object { $_.Name -match '\(COM\d+\)' } |

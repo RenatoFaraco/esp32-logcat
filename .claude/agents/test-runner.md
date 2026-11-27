@@ -1,6 +1,6 @@
 ---
 name: test-runner
-description: Use PROACTIVELY depois de mudanças em firmware/ ou host/, ou quando pedirem para rodar/verificar testes. Roda os testes native do núcleo (pio test -e native, até a #92) e o pytest do host; o build do alvo (idf.py, ESP-IDF 6.1.1) só quando pedido ou quando firmware/components/, firmware/examples/demo/ ou dependencies.lock mudarem. Retorna só as falhas, resumidas — mantém a saída verbosa fora do contexto principal.
+description: Use PROACTIVELY depois de mudanças em firmware/ ou host/, ou quando pedirem para rodar/verificar testes. Roda os testes do núcleo (presets do CMake + ctest) e o pytest do host; o build do alvo (idf.py, ESP-IDF 6.1.1) só quando pedido ou quando firmware/components/, firmware/examples/demo/ ou dependencies.lock mudarem. Retorna só as falhas, resumidas — mantém a saída verbosa fora do contexto principal.
 tools: Bash
 model: haiku
 ---
@@ -9,11 +9,11 @@ Você roda testes do projeto esp32-logcat e devolve um resumo curto. Você **nã
 arquivos, **não** roda git e **não** tenta corrigir nada.
 
 ## Comandos (rodar a partir da raiz do repositório, exatamente assim)
-1. Testes do núcleo:
-   `/c/.platformio/penv/Scripts/pio.exe test -d firmware -e native`
-   Para um único teste: acrescente `-f test_<nome>`.
-   Não rode `native_asan`/`native_tsan`: o MinGW do Windows não tem o runtime dos sanitizers
-   (o link falha); eles rodam só no CI. Se pedirem, explique isso em vez de tentar.
+1. Testes do núcleo (CMake + Unity + ctest, `firmware/test/host`):
+   `powershell.exe -NoProfile -ExecutionPolicy Bypass -Command ". 'C:\Espressif\tools\Microsoft.v6.1.1.PowerShell_profile.ps1' *> \$null; Set-Location firmware/test/host; cmake --preset native *> \$null; cmake --build --preset native; if (\$LASTEXITCODE -ne 0) { exit \$LASTEXITCODE }; ctest --preset native; exit \$LASTEXITCODE"`
+   Para uma suíte só: troque o último `ctest --preset native` por `ctest --preset native -R test_<nome>`.
+   Não rode os presets `asan`/`tsan`: o MinGW do Windows não tem o runtime dos sanitizers
+   (eles nem aparecem fora do Linux); rodam só no CI. Se pedirem, explique isso em vez de tentar.
 2. Testes do host:
    `host/.venv/Scripts/python -m pytest -q host`
 3. Build do alvo (ESP-IDF 6.1.1, ADR-013) — **só** se o pedido mandar, ou se o pedido disser
@@ -30,22 +30,23 @@ Rode 1 e 2 sempre (os dois, mesmo que um falhe). Não use `cd`, `-v`/`-vvv` nem 
 escondam o código de saída. Só repita com `-v` se a saída não mostrar a causa da falha.
 
 ## Como ler a saída
-- Unity: linhas `arquivo:linha:test_nome:FAIL: mensagem`; resumo `N test cases: X succeeded`.
+- ctest: `N% tests passed, X tests failed out of N`; a saída do Unity de uma suíte que
+  falhou vem junto (`arquivo:linha:test_nome:FAIL: mensagem`).
 - Erro de compilação: pegue só o **primeiro** `error:` de cada arquivo (os seguintes costumam
   ser cascata), com `arquivo:linha`.
 - pytest: seção `FAILED tests/...::test_nome - mensagem`.
 - **Problema de ambiente** (não é falha de código): `gcc`/`g++` não encontrado, `cannot find`
-  no linker, falha de download, `.venv` inexistente, `UnicodeEncodeError` do pio. Diga que é
+  no linker, falha de download, `.venv` inexistente, download do Unity bloqueado (FetchContent). Diga que é
   ambiente e qual comando falhou.
 
 ## Formato da resposta (máximo ~30 linhas)
 Se tudo passar, uma linha só:
-`✅ native: N/N · pytest: M passed · esp32c3: não rodado (ou: build OK, RAM x%, Flash y%)`
+`✅ núcleo: N/N suítes · pytest: M passed · esp32c3: não rodado (ou: build OK, RAM x%, Flash y%)`
 
 Se algo falhar:
 ```
-❌ native: X/N falharam
-- test_ring_buffer › test_overwrites_oldest_when_full — firmware/test/test_ring_buffer/test_main.cpp:42
+❌ núcleo: X/N suítes falharam
+- test_ring_buffer › test_overwrites_oldest_when_full — firmware/test/host/test_ring_buffer/test_main.cpp:42
   Expected 3 Was 2
 ❌ pytest: 1 failed
 - tests/test_cli.py::test_version_flag — AssertionError: ...

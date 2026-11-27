@@ -42,7 +42,7 @@ firmware/
   examples/demo/main/             APP DE DEMO — gera logs, crash de teste, tarefa crítica de 1 kHz
 ```
 
-O núcleo compila e é testado no PC (`env:native`). Os adaptadores só existem no alvo.
+O núcleo compila e é testado no PC (`firmware/test/host`, presets do CMake). Os adaptadores só existem no alvo.
 Regra: **dependência aponta para dentro** — adaptador conhece o núcleo, núcleo não
 conhece adaptador.
 
@@ -269,7 +269,7 @@ Iniciais:
 - ADR-002: Formato de linha em texto legível na v1 (binário fica para a v3)
 - ADR-003: Núcleo independente de plataforma (ports & adapters) testado em `native`
 - ADR-004: Descartar logs com fila cheia em vez de bloquear
-- ADR-005: C++17 estrito só no núcleo, via `env:native`
+- ADR-005: C++17 estrito só no núcleo, testado no PC
 - ADR-006: Linhas de log só com ASCII imprimível
 - ADR-007: Sem checksum por linha na v1
 - ADR-008: Host em camadas, com TUI (Textual) como segundo frontend

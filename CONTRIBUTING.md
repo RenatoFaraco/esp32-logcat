@@ -67,7 +67,7 @@ Please include:
 - Steps to reproduce the issue.
 - Relevant terminal output, logs, or error messages.
 - Hardware model and ESP32 revision.
-- ESP-IDF and PlatformIO versions, when relevant.
+- ESP-IDF version, when relevant.
 - Python and operating system versions, when relevant.
 - Whether the issue occurs consistently or intermittently.
 
@@ -102,8 +102,8 @@ Features that affect the architecture, wire protocol, persistence model, or publ
 The current development environment uses:
 
 - Python 3.12 or newer.
-- PlatformIO Core 6.1 or newer.
-- A C++17-compatible compiler for native firmware tests.
+- ESP-IDF 6.1.1 (on Windows, installed with the EIM installer).
+- CMake 3.25+, Ninja and a C++17 GCC for the firmware core tests on the PC.
 - Git.
 - An ESP32-C3 development board for hardware validation.
 
@@ -118,26 +118,28 @@ cd esp32-logcat
 
 ### Firmware environment
 
-Install PlatformIO Core and configure its toolchains.
+Install ESP-IDF 6.1.1 and open its terminal (on Windows, the ESP-IDF PowerShell that the EIM
+installer creates; it also brings CMake and Ninja).
 
-Run the native unit tests:
+Run the core unit tests on the PC:
 
 ```bash
-cd firmware
-pio test -e native
+cd firmware/test/host
+cmake --preset native && cmake --build --preset native && ctest --preset native
 ```
 
 Build the ESP32-C3 firmware:
 
 ```bash
-pio run -e esp32c3
+cd firmware/examples/demo
+idf.py build
 ```
 
-On Linux or WSL, the sanitizer environments can also be executed locally:
+On Linux or WSL, the sanitizer presets can also be executed locally:
 
 ```bash
-pio test -e native_asan -v
-pio test -e native_tsan -v
+cmake --preset asan && cmake --build --preset asan && ctest --preset asan
+cmake --preset tsan && cmake --build --preset tsan && ctest --preset tsan
 ```
 
 AddressSanitizer, UndefinedBehaviorSanitizer, and ThreadSanitizer help detect memory errors, undefined behavior, and data races.
@@ -266,10 +268,10 @@ Choose the tests relevant to the modified components.
 
 | Component | Command |
 |---|---|
-| Firmware core | `cd firmware && pio test -e native` |
-| Firmware ASan/UBSan | `cd firmware && pio test -e native_asan -v` |
-| Firmware TSan | `cd firmware && pio test -e native_tsan -v` |
-| ESP32-C3 build | `cd firmware && pio run -e esp32c3` |
+| Firmware core | `cd firmware/test/host && cmake --preset native && cmake --build --preset native && ctest --preset native` |
+| Firmware ASan/UBSan (Linux) | same, with the `asan` preset |
+| Firmware TSan (Linux) | same, with the `tsan` preset |
+| ESP32-C3 build | `cd firmware/examples/demo && idf.py build` |
 | Host application | `cd host && pytest` |
 | Host lint | `cd host && ruff check .` |
 | Host formatting | `cd host && ruff format --check .` |

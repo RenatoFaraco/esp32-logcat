@@ -1,4 +1,4 @@
-# ADR-005: C++17 estrito só no núcleo, via `env:native`
+# ADR-005: C++17 estrito só no núcleo, testado no PC
 - Status: aceita
 - Data: 2026-10-20
 
@@ -8,10 +8,10 @@ O projeto adota C++17 (CLAUDE.md). O ESP-IDF compila C++ com um padrão mais nov
 alvo mexeria no build do IDF inteiro, sem ganho real para os adaptadores, que só existem nele.
 
 ## Decisão
-- `env:native` compila o núcleo e os testes com `-std=c++17 -fno-exceptions -fno-rtti
-  -Wall -Wextra -Werror`. As flags exclusivas de C++ entram por `CXXFLAGS`
-  (`firmware/scripts/native_cxx_flags.py`), porque `build_flags` também chega aos fontes C
-  da Unity, onde `-fno-rtti` é inválido.
+- O projeto de testes no PC (`firmware/test/host`, presets do CMake desde a #92; antes,
+  `env:native` do PlatformIO) compila o núcleo e os testes com `-std=c++17 -fno-exceptions
+  -fno-rtti -Wall -Wextra -Werror`. As flags só valem para os nossos alvos em C++: o Unity é
+  C, e `-fno-rtti` é inválido em C.
 - Um teste (`test_toolchain`) verifica `__cplusplus == 201703L`.
 - No alvo vale o padrão de C++ do IDF. Exceções e RTTI ficam desligadas no próprio componente
   (`-fno-exceptions -fno-rtti` no `CMakeLists.txt` de `components/esp32_logcat`, desde o

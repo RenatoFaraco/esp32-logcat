@@ -57,7 +57,7 @@ machine, no environment yet or no firmware on the board: section 1.
 ### 1.1 What you need
 
 - An ESP32-C3 board with two USB-C ports (the one used here: `hardware.md`).
-- Windows with PlatformIO (`C:\.platformio`) and Python 3.12. The commands work in
+- Windows with ESP-IDF 6.1.1 (installed with EIM) and Python 3.12. The commands work in
   **PowerShell** and in the **Command Prompt (cmd)**, from the repository root
   (`C:\dev\esp32-logcat`); where the two differ, this manual shows both.
 - **A cable on the USB-C of the native port (USB-Serial-JTAG)**, plugged **straight into the
@@ -96,7 +96,8 @@ full path.
 With the board plugged in through the native port:
 
 ```powershell
-C:\.platformio\penv\Scripts\pio.exe run -d firmware -e esp32c3 -t upload --upload-port COM6
+cd firmware\examples\demo   # in the ESP-IDF PowerShell (EIM's shortcut)
+idf.py -p COM6 flash
 ```
 
 Replace `COM6` with your machine's native port (next step). The first build takes a few
@@ -248,7 +249,7 @@ and `seq` continues from it.
 
 ### 3.4 Port busy
 
-If another program (a `pio device monitor`, VS Code's serial monitor, another esp-logcat)
+If another program (an `idf.py monitor`, VS Code's serial monitor, another esp-logcat)
 holds the port, the tool waits and connects as soon as the port is free:
 
 ![port busy](manual/img/busy.svg)
@@ -476,7 +477,7 @@ The tool's filters combine with all of this: `esp-logcat stream "*:W" > warnings
 | Logcat lines | yes, with `\n` | yes (mirror), with `\r\n` |
 | `printf` and text that is not a log | no | yes |
 | `W LOGCAT` notices | yes | yes |
-| Does opening the port reset the board? | no | no, if opened with DTR/RTS released (esp-logcat and this project's `pio device monitor` do that) |
+| Does opening the port reset the board? | no | no, if opened with DTR/RTS released (esp-logcat does that; `idf.py monitor` only with `--no-reset`) |
 
 Use the **native** port for the logcat. Use **COM10** when you need the full console
 (`esp-logcat stream --port COM10` works too) or while flashing through the native port.
@@ -488,7 +489,7 @@ Use the **native** port for the logcat. Use **COM10** when you need the full con
 | Symptom | Likely cause | What to do |
 |---------|--------------|------------|
 | `cannot choose a port (found: ...); use --port` | no native port, or more than one | run `esp-logcat ports` and pass `--port COMx` |
-| `waiting for COM6: port busy` | another program has the port open | close the serial monitor (VS Code, PlatformIO, another terminal) |
+| `waiting for COM6: port busy` | another program has the port open | close the serial monitor (VS Code, `idf.py monitor`, another terminal) |
 | `waiting for COM6: not available` forever | board off, a charge-only cable, or the port changed number before the board was seen in this session | check the cable; run `esp-logcat ports` |
 | `esp-logcat` is not recognized | the environment is not active in this terminal | activate it (section 1.2) or use `host\.venv\Scripts\esp-logcat.exe` |
 | The native port vanished after a reset through the CH340K; Windows shows "Unknown USB Device" | the board is behind a hub (`hardware.md`, item 5) | unplug and replug the cable; plug the native port straight into the PC |

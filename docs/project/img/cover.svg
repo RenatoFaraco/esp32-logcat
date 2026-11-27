@@ -245,26 +245,26 @@
 
 <text x="500" y="412" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="16" fill="#8b949e">Real output from the board: a burst of 100 lines fills the 32-line queue.</text>
 <text x="500" y="436" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="16" fill="#8b949e">Lost lines leave a gap in seq, are counted and reported, and the caller never waits.</text>
-<rect x="86" y="570" width="152" height="32" rx="16" fill="#21262d" stroke="#30363d"/>
-<text x="162" y="591" text-anchor="middle" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="14" fill="#c9d1d9">ESP32-C3 · RISC-V</text>
-<rect x="247" y="570" width="107" height="32" rx="16" fill="#21262d" stroke="#30363d"/>
-<text x="300" y="591" text-anchor="middle" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="14" fill="#c9d1d9">ESP-IDF 6.1</text>
-<rect x="363" y="570" width="85" height="32" rx="16" fill="#21262d" stroke="#30363d"/>
-<text x="406" y="591" text-anchor="middle" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="14" fill="#c9d1d9">FreeRTOS</text>
-<rect x="457" y="570" width="63" height="32" rx="16" fill="#21262d" stroke="#30363d"/>
-<text x="488" y="591" text-anchor="middle" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="14" fill="#c9d1d9">C++17</text>
-<rect x="529" y="570" width="100" height="32" rx="16" fill="#21262d" stroke="#30363d"/>
-<text x="579" y="591" text-anchor="middle" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="14" fill="#c9d1d9">PlatformIO</text>
-<rect x="638" y="570" width="63" height="32" rx="16" fill="#21262d" stroke="#30363d"/>
-<text x="670" y="591" text-anchor="middle" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="14" fill="#c9d1d9">Unity</text>
-<rect x="710" y="570" width="107" height="32" rx="16" fill="#21262d" stroke="#30363d"/>
-<text x="764" y="591" text-anchor="middle" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="14" fill="#c9d1d9">Python 3.12</text>
-<rect x="826" y="570" width="85" height="32" rx="16" fill="#21262d" stroke="#30363d"/>
-<text x="868" y="591" text-anchor="middle" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="14" fill="#c9d1d9">pyserial</text>
-<rect x="920" y="570" width="56" height="32" rx="16" fill="#21262d" stroke="#30363d"/>
-<text x="948" y="591" text-anchor="middle" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="14" fill="#c9d1d9">rich</text>
-<rect x="985" y="570" width="70" height="32" rx="16" fill="#21262d" stroke="#30363d"/>
-<text x="1020" y="591" text-anchor="middle" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="14" fill="#c9d1d9">pytest</text>
-<rect x="1064" y="570" width="130" height="32" rx="16" fill="#21262d" stroke="#30363d"/>
-<text x="1129" y="591" text-anchor="middle" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="14" fill="#c9d1d9">GitHub Actions</text>
+<rect x="104" y="570" width="152" height="32" rx="16" fill="#21262d" stroke="#30363d"/>
+<text x="180" y="591" text-anchor="middle" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="14" fill="#c9d1d9">ESP32-C3 · RISC-V</text>
+<rect x="266" y="570" width="107" height="32" rx="16" fill="#21262d" stroke="#30363d"/>
+<text x="319" y="591" text-anchor="middle" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="14" fill="#c9d1d9">ESP-IDF 6.1</text>
+<rect x="382" y="570" width="85" height="32" rx="16" fill="#21262d" stroke="#30363d"/>
+<text x="424" y="591" text-anchor="middle" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="14" fill="#c9d1d9">FreeRTOS</text>
+<rect x="476" y="570" width="63" height="32" rx="16" fill="#21262d" stroke="#30363d"/>
+<text x="507" y="591" text-anchor="middle" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="14" fill="#c9d1d9">C++17</text>
+<rect x="548" y="570" width="63" height="32" rx="16" fill="#21262d" stroke="#30363d"/>
+<text x="579" y="591" text-anchor="middle" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="14" fill="#c9d1d9">CMake</text>
+<rect x="620" y="570" width="63" height="32" rx="16" fill="#21262d" stroke="#30363d"/>
+<text x="651" y="591" text-anchor="middle" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="14" fill="#c9d1d9">Unity</text>
+<rect x="692" y="570" width="107" height="32" rx="16" fill="#21262d" stroke="#30363d"/>
+<text x="745" y="591" text-anchor="middle" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="14" fill="#c9d1d9">Python 3.12</text>
+<rect x="808" y="570" width="85" height="32" rx="16" fill="#21262d" stroke="#30363d"/>
+<text x="850" y="591" text-anchor="middle" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="14" fill="#c9d1d9">pyserial</text>
+<rect x="902" y="570" width="56" height="32" rx="16" fill="#21262d" stroke="#30363d"/>
+<text x="930" y="591" text-anchor="middle" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="14" fill="#c9d1d9">rich</text>
+<rect x="966" y="570" width="70" height="32" rx="16" fill="#21262d" stroke="#30363d"/>
+<text x="1002" y="591" text-anchor="middle" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="14" fill="#c9d1d9">pytest</text>
+<rect x="1046" y="570" width="130" height="32" rx="16" fill="#21262d" stroke="#30363d"/>
+<text x="1110" y="591" text-anchor="middle" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="14" fill="#c9d1d9">GitHub Actions</text>
 </svg>

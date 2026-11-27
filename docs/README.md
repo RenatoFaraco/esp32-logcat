@@ -45,7 +45,7 @@ versão: mora na spec, que todos os PRDs citam.
 | [002](context/decisions/002-text-line-format.md) | Formato de linha em texto legível na v1 |
 | [003](context/decisions/003-platform-independent-core.md) | Núcleo independente de plataforma (ports & adapters) testado em `native` |
 | [004](context/decisions/004-drop-logs-when-queue-full.md) | Descartar logs com fila cheia em vez de bloquear |
-| [005](context/decisions/005-strict-cpp17-on-core-only.md) | C++17 estrito só no núcleo, via `env:native` |
+| [005](context/decisions/005-strict-cpp17-on-core-only.md) | C++17 estrito só no núcleo, testado no PC (presets do CMake desde a #92) |
 | [006](context/decisions/006-printable-ascii-lines.md) | Linhas de log só com ASCII imprimível |
 | [007](context/decisions/007-no-per-line-checksum-v1.md) | Sem checksum por linha na v1 |
 | [008](context/decisions/008-host-frontends-tui.md) | Host em camadas, com TUI (Textual) como segundo frontend |

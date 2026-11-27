@@ -45,4 +45,4 @@ body:
     id: notes
     attributes:
       label: Notes / changes needed
-      description: Partition table, sdkconfig, platformio.ini board settings.
+      description: Partition table, sdkconfig.defaults, flash size and mode.

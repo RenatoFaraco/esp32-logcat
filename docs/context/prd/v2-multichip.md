@@ -54,5 +54,6 @@ família Espressif, sem mudar o formato nem a ferramenta de PC.
 ## 7. Questões abertas (decididas no começo da v2)
 
 - Estrutura de diretórios do componente (ADR-009 §6).
-- Build do alvo no CI: matriz `idf.py set-target <chip>` ou PlatformIO (ADR próprio).
+- ~~Build do alvo no CI: matriz `idf.py set-target <chip>` ou PlatformIO~~: decidido, `idf.py`
+  (ADR-013); a matriz é a #108.
 - Quando e como migrar `docs/` para inglês (CONVENTIONS §1).

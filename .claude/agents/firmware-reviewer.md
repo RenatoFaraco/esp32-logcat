@@ -16,7 +16,7 @@ e `firmware/examples/demo/` citados no pedido.
 Leia também os testes correspondentes em `firmware/test/` para saber o que já está coberto.
 
 ## Núcleo (`firmware/components/esp32_logcat/core`) — foco do M1
-O núcleo é C++17 puro, compilado no PC (`env:native`) e no alvo. Verifique:
+O núcleo é C++17 puro, compilado no PC (preset `native` do CMake, `firmware/test/host`) e no alvo. Verifique:
 
 1. **Isolamento de plataforma (ADR-003):** nenhum include de `esp_*`, `freertos/*`, `driver/*`,
    `sdkconfig.h` ou LittleFS. Dependências entram só por interfaces (`Clock`, `Sink`,

@@ -1,10 +1,10 @@
 // The LittleFsFileSystem adapter on the board (#24): the FileSystem port's contract, checked on
 // real LittleFS, and the RotatingStore's budget against the real partition.
 //
-//   pio test -e esp32c3 -f test_target_littlefs --upload-port COMx
+// No runner until #93 makes the on-board tests an ESP-IDF test app (it ran with PlatformIO
+// until #91). The test is kept as it is, with the adapter's new path.
 //
 // WARNING: formats the `logs` partition. The logs kept on the board are erased.
-// Only for env:esp32c3 (env:native ignores test_target_*).
 
 #include <unity.h>
 

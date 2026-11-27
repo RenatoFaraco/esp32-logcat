@@ -3,7 +3,7 @@
 // is left untouched on rejection, and inputs that are not C strings.
 //
 // Every case is checked and every mismatch is reported, and each line is parsed from a buffer
-// of its exact size so ASan (native_asan) sees any read past the end.
+// of its exact size so ASan (the asan preset) sees any read past the end.
 
 #include <unity.h>
 

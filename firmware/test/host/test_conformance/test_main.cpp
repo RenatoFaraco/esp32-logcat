@@ -6,7 +6,7 @@
 // of the file are exactly what the C++ formatter writes (the cross-language round trip).
 //
 // Every case is checked and every mismatch is reported (not only the first one), and each line
-// is parsed from a buffer of its exact size so ASan (native_asan) sees any read past the end.
+// is parsed from a buffer of its exact size so ASan (the asan preset) sees any read past the end.
 
 #include <unity.h>
 

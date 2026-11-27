@@ -4,8 +4,8 @@
   },
   "permissions": {
     "allow": [
-      "Bash(/c/.platformio/penv/Scripts/pio.exe test -d firmware -e native *)",
-      "Bash(/c/.platformio/penv/Scripts/pio.exe run -d firmware -e esp32c3)",
+      "Bash(powershell.exe -NoProfile -ExecutionPolicy Bypass -Command \". 'C:\\Espressif\\tools\\Microsoft.v6.1.1.PowerShell_profile.ps1' *> \\$null; Set-Location firmware/test/host; *)",
+      "Bash(powershell.exe -NoProfile -ExecutionPolicy Bypass -Command \"Remove-Item Env:MSYSTEM -ErrorAction SilentlyContinue; . 'C:\\Espressif\\tools\\Microsoft.v6.1.1.PowerShell_profile.ps1' *> \\$null; idf.py -C firmware/examples/demo build; *)",
       "Bash(host/.venv/Scripts/python -m pytest -q host *)"
     ]
   }
