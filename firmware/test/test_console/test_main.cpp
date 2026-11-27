@@ -176,8 +176,7 @@ public:
     StoreArchive(test_support::MemoryFileSystem& fs, logcat::RotatingStore& store)
         : fs_(fs), store_(store) {}
 
-    bool begin_dump(logcat::ArchiveFile (&files)[logcat::kMaxStoreFiles],
-                    size_t& count) override {
+    bool begin_dump(logcat::ArchiveFile (&files)[logcat::kMaxStoreFiles], size_t& count) override {
         ++begins;
         if (fail_sync) {
             return false;
@@ -960,8 +959,8 @@ void test_dump_sends_one_block_per_file_oldest_first_and_one_terminator() {
     DumpServer s(20);
     s.store.begin();
     s.log("one 456789 123456789\n");  // 21 bytes: fills log_000 alone
-    s.log("two\n");                     // log_001
-    s.log("three\n");                   // log_001
+    s.log("two\n");                   // log_001
+    s.log("three\n");                 // log_001
     s.server.handle(message_of(ReplyKind::Dump, "4", ""));
     s.run_block();
     const std::string first = "one 456789 123456789\n";
@@ -985,8 +984,8 @@ void test_dump_sends_a_file_in_chunks_with_bytes_as_they_are() {
     s.store.begin();  // finds the file; its torn tail is repaired only at the next line
     s.server.handle(message_of(ReplyKind::Dump, "4", ""));
     s.run_block();
-    const std::string expected = "#BEGIN 4 log_000.txt 1300\n" + content + "#END 4 " +
-                                 crc_of(content) + "\n#. 4 ok\n";
+    const std::string expected =
+        "#BEGIN 4 log_000.txt 1300\n" + content + "#END 4 " + crc_of(content) + "\n#. 4 ok\n";
     TEST_ASSERT_TRUE(s.output.text == expected);
     TEST_ASSERT_EQUAL(3, s.archive.reads);  // 512 + 512 + 276
 }
@@ -1012,7 +1011,7 @@ void test_a_file_that_changes_under_the_dump_ends_it_with_failed() {
     s.log("one 456789 123456789\n");
     s.log("two\n");
     s.server.handle(message_of(ReplyKind::Dump, "4", ""));
-    s.steps(4);  // the first block whole, then #BEGIN of the second
+    s.steps(4);                  // the first block whole, then #BEGIN of the second
     s.fs.fail_next_read = true;  // as if the rotation had removed it
     s.run_block();
     const std::string first = "one 456789 123456789\n";

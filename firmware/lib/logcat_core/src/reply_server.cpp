@@ -113,8 +113,8 @@ void ReplyServer::begin_dump(const char* id) {
     const bool synced = archive_->begin_dump(files_, file_count_);
     if (!synced) {
         archive_->end_dump();
-        write_line(format_reply_error(id_, "failed", "sync failed: the dump would miss lines",
-                                      line_));
+        write_line(
+            format_reply_error(id_, "failed", "sync failed: the dump would miss lines", line_));
         return;
     }
     // The steps send the blocks: #BEGIN of the first file on the next one.
