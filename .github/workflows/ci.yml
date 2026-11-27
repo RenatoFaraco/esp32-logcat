@@ -29,6 +29,14 @@ jobs:
       - name: Check C++ formatting
         run: git ls-files -- '*.cpp' '*.hpp' '*.h' | xargs -r clang-format --dry-run --Werror
 
+      - name: Core stays platform-independent (ADR-003)
+        # The IDF build compiles core/ with every ESP-IDF include path: only this catches a
+        # platform include there. port/ is the adapters' side.
+        run: |
+          if grep -rnE '#\s*include\s*[<"](esp_|freertos/|driver/|sdkconfig|nvs|lfs|esp_littlefs|hal/|soc/|port/)|#\s*(if|ifdef|ifndef|elif)[[:space:](!].*(CONFIG_|ESP_PLATFORM)' components/esp32_logcat/core; then
+            echo "core/ must not depend on ESP-IDF (ADR-003)"; exit 1
+          fi
+
       - name: Core unit tests (native)
         # PlatformIO only for these until #92 moves them to CMake + ctest.
         run: pio test -e native
@@ -44,6 +52,11 @@ jobs:
         working-directory: firmware/examples/demo
     steps:
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0  # git describe gives the app its version (esp_app_desc)
+
+      - name: Trust the checkout (the container runs as root on a runner-owned workspace)
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
       - name: Build (esp32c3)
         run: |

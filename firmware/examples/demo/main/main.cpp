@@ -202,10 +202,11 @@ extern "C" void app_main(void) {
         ESP_LOGE(TAG, "heartbeat task not created (out of heap)");
     }
 
-#if CONFIG_LOGCAT_TIMING_SWEEP
+#if CONFIG_LOGCAT_DEMO_TIMING_SWEEP
     // 1 kHz critical task + log load in phases, for the timing criterion (#13, #14). Only with
-    // CONFIG_LOGCAT_TIMING_SWEEP (sdkconfig.timing): it writes ~2 MB to flash, which would push the
-    // logs of the previous boot (the ones a crash left) out of the 448 KB, and wear the flash.
+    // CONFIG_LOGCAT_DEMO_TIMING_SWEEP (sdkconfig.timing): it writes ~2 MB to flash, which would
+    // push the logs of the previous boot (the ones a crash left) out of the 448 KB, and wear the
+    // flash.
     vTaskDelay(pdMS_TO_TICKS(2000));  // let the burst drain and a host connect
     if (!app::start_timing_sweep(uart_mirror)) {
         ESP_LOGE(TAG, "timing sweep not started");

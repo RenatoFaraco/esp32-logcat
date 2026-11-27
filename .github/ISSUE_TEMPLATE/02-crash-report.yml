@@ -6,8 +6,8 @@ body:
     attributes:
       value: |
         Crash reports are only useful with the **reset reason** and a **decoded backtrace**.
-        PlatformIO decodes it with `monitor_filters = esp32_exception_decoder` (already enabled
-        in `platformio.ini`). If the device logged `I LASTWORDS:` lines on the next boot, include them.
+        `idf.py -p COMx monitor` decodes it (run from the app's project folder, so it finds the
+        ELF). If the device logged `I LASTWORDS:` lines on the next boot, include them.
 
   - type: dropdown
     id: reset_reason

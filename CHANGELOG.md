@@ -17,7 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - build and flash from `firmware/examples/demo`: `idf.py build`, then
     `idf.py -p COMx flash`.
 
-  The timing variant (#13/#14) is a Kconfig option, `CONFIG_LOGCAT_TIMING_SWEEP`, enabled by
+  The timing variant (#13/#14) is a Kconfig option, `CONFIG_LOGCAT_DEMO_TIMING_SWEEP`, enabled by
   `sdkconfig.timing`. CI builds both variants in `espressif/idf:v6.1.1`. Until #92,
   PlatformIO is kept only for the native core tests (`pio test -e native`). The on-board
   tests (`test_target_*`) run again as an IDF test app in #93. The firmware behaves the same

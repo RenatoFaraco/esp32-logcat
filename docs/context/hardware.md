@@ -199,7 +199,7 @@ Medido em 14/nov (#24), LittleFS `joltwallet/littlefs` 1.23.1 na partição `log
   - os logs do próprio componente (`esp_littlefs`) ficam em WARN: saem da tarefa escritora pela
     impressora da ROM, a ~7 ms por linha.
 - **Desgaste e histórico.** Cada linha vai para a flash. A varredura de tempo saiu do firmware
-  normal para o build `esp32c3_timing`: rodando no boot, ela gravaria ~2 MB e empurraria para
+  normal para a variante de timing (`sdkconfig.timing`): rodando no boot, ela gravaria ~2 MB e empurraria para
   fora o log do boot anterior, o que um crash deixou; rodando para sempre, a 60 KB/s, gastaria a
   flash em semanas. O sync a cada 5 s também gasta: depois de um sync, o próximo append copia o
   bloco parcial (um apagamento de 4 KB). Com o heartbeat de 1 linha/s, a estimativa é ~17 mil

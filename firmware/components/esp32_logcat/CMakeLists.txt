@@ -29,20 +29,27 @@ idf_component_register(
         "port/reset_reason.cpp"
         "port/usb_jtag_sink.cpp"
         "port/writer_task.cpp"
+    # "." exposes port/ to the demo until the C API of #94 (then: include/ only, port/ private).
     INCLUDE_DIRS "core/include" "."
-    # What the adapters include (port/*.hpp are public, see above). LittleFS comes from
-    # idf_component.yml: the component manager adds it to the requirements.
+    # Public: what port/*.hpp include. Private: what only the .cpp files use. LittleFS comes
+    # from idf_component.yml (require: private).
     REQUIRES
         freertos
-        log
         esp_system
         esp_timer
+        nvs_flash
+    PRIV_REQUIRES
+        log
         esp_hw_support
         esp_partition
         esp_app_format
         esp_rom
         spi_flash
-        nvs_flash
         esp_driver_uart
         esp_driver_usb_serial_jtag
 )
+
+# ADR-005: no exceptions and no RTTI in this component, whatever the consuming project's
+# sdkconfig says (CONFIG_COMPILER_CXX_EXCEPTIONS/RTTI apply to the whole build otherwise).
+target_compile_options(${COMPONENT_LIB} PRIVATE
+    $<$<COMPILE_LANGUAGE:CXX>:-fno-exceptions -fno-rtti>)

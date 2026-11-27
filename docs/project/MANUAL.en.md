@@ -896,7 +896,8 @@ in the normal firmware: it logs 1000 lines/s, which would go to flash (~2 MB per
 out the log of the previous boot, exactly what a crash left behind. It has its own build:
 
 ```powershell
-C:\.platformio\penv\Scripts\pio.exe run -d firmware -e esp32c3_timing -t upload --upload-port COM6
+cd firmware\examples\demo   # with the ESP-IDF 6.1.1 environment active
+idf.py -B build-timing -D SDKCONFIG=build-timing/sdkconfig -D "SDKCONFIG_DEFAULTS=sdkconfig.defaults;sdkconfig.timing" -p COM6 flash
 ```
 
 In that build it runs once per boot. With the flash on, the log task is slower than 1000 lines/s

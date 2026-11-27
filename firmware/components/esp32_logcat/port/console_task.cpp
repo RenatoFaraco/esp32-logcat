@@ -15,6 +15,13 @@
 #include "port/writer_task.hpp"
 #include "sdkconfig.h"
 
+// `stats` reports erase.sectors from the SPI flash counters (#26): the consuming project must
+// enable them (sdkconfig.defaults of examples/demo), or esp_flash_get_counters() is missing.
+#if !CONFIG_SPI_FLASH_ENABLE_COUNTERS
+#error \
+    "esp32_logcat needs CONFIG_SPI_FLASH_ENABLE_COUNTERS=y (see examples/demo/sdkconfig.defaults)"
+#endif
+
 namespace logcat {
 
 namespace {

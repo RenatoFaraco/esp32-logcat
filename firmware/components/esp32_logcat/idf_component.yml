@@ -2,4 +2,6 @@
 dependencies:
   idf: ">=6.1"
   # LittleFS for the `logs` partition (#24): power-loss resilient, wear levelling.
-  joltwallet/littlefs: "~1.23.1"  # pinned to the version checked against the port (#24)
+  joltwallet/littlefs:
+    version: "~1.23.1"  # pinned to the version checked against the port (#24)
+    require: private  # no public header of ours includes LittleFS

@@ -1,6 +1,6 @@
 menu "esp32-logcat demo"
 
-    config LOGCAT_TIMING_SWEEP
+    config LOGCAT_DEMO_TIMING_SWEEP
         bool "Timing sweep at boot (#13/#14)"
         default n
         help
