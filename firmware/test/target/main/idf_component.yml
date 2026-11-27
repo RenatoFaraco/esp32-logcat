@@ -1,0 +1,4 @@
+## The tests call esp_littlefs_* directly (format, unregister), and esp32_logcat keeps LittleFS
+## private: this app asks for the same version.
+dependencies:
+  joltwallet/littlefs: "~1.23.1"

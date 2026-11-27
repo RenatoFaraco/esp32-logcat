@@ -1,17 +1,17 @@
 // The NvsBootStore adapter on the board (#25), in its own NVS namespace (`logcat_test`): the
 // real boot counter (`logcat`) is not touched.
 //
-// No runner until #93 makes the on-board tests an ESP-IDF test app (it ran with PlatformIO
-// until #91). The test is kept as it is, with the adapter's new path.
+// One suite of the on-board test app (#93, test_main.cpp runs it).
 
 #include <unity.h>
 
-#include "../../components/esp32_logcat/port/nvs_boot_store.cpp"  // the adapter under test (run by the IDF test app of #93)
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "logcat/boot_counter.hpp"
 #include "nvs.h"
 #include "nvs_flash.h"
+#include "port/nvs_boot_store.hpp"  // the adapter under test
+#include "suites.hpp"
 
 using logcat::BootLoad;
 using logcat::NvsBootStore;
@@ -30,10 +30,9 @@ void erase_namespace() {
 
 }  // namespace
 
-void setUp() {
+void nvs_set_up() {
     erase_namespace();  // every test starts with no key: order does not matter
 }
-void tearDown() {}
 
 void test_begin() {
     NvsBootStore store(kNamespace);
@@ -79,15 +78,13 @@ void test_load_before_begin_fails() {
     TEST_ASSERT_FALSE(store.save(1));
 }
 
-extern "C" void app_main(void) {
-    vTaskDelay(pdMS_TO_TICKS(2000));    // let the host open the port
-    ESP_ERROR_CHECK(nvs_flash_init());  // setUp needs NVS before the first test's begin()
-    UNITY_BEGIN();
+void run_nvs_tests() {
+    Unity.TestFile = __FILE__;          // failures point at this file, not at test_main.cpp
+    ESP_ERROR_CHECK(nvs_flash_init());  // the set-up needs NVS before the first test's begin()
     RUN_TEST(test_begin);
     RUN_TEST(test_a_missing_key_is_missing_not_failed);
     RUN_TEST(test_save_and_load_back);
     RUN_TEST(test_the_counter_goes_up_across_instances);
     RUN_TEST(test_load_before_begin_fails);
-    erase_namespace();
-    UNITY_END();
+    erase_namespace();  // leave nothing behind in the test namespace
 }

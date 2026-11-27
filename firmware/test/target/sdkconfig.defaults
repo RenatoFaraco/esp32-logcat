@@ -1,0 +1,4 @@
+# On top of the demo's sdkconfig.defaults (see CMakeLists.txt): only what differs.
+
+# The product's partition table: the tests format and measure the same `logs` partition.
+CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="../../examples/demo/partitions.csv"
