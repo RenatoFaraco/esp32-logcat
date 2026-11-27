@@ -34,6 +34,9 @@ public:
     SyncResult sync_log() override;
     ClearResult clear_log() override;
     void lock_filter() override;  // shared with esp32_logcat_set_level() (port/filter_lock.hpp)
+    // The flash is off by configuration (esp32_logcat_config_t): `info` leaves `flash` out.
+    // Set before the console task starts.
+    void set_flash_enabled(bool enabled) { flash_enabled_ = enabled; }
     void unlock_filter() override;
 
 private:
@@ -44,6 +47,7 @@ private:
     RamTail& tail_;
     FlashStore& flash_;
     uint32_t queue_timeouts_ = 0;  // only the console task touches it
+    bool flash_enabled_ = true;
 };
 
 // Reads the native USB port and runs the console. The driver must be installed (UsbJtagSink).

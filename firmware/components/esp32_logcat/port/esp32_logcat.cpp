@@ -64,8 +64,16 @@ NvsBootStore boot_store;
 
 StaticSemaphore_t filter_mutex_storage;
 SemaphoreHandle_t filter_mutex = nullptr;
-std::atomic<bool> started{false};
-uint32_t this_boot = kUnknownBoot;  // written once by init, before `started`
+// `initializing`: init was called (a second call is refused). `ready`: init finished and the
+// pipeline runs; the other calls check it. Released last, so whatever init wrote before
+// (this_boot, the mutex, the started tasks) is visible to a call that sees it.
+std::atomic<bool> initializing{false};
+std::atomic<bool> ready{false};
+uint32_t this_boot = kUnknownBoot;
+
+bool is_ready() {
+    return ready.load(std::memory_order_acquire);
+}
 
 // Who this boot is (#25): the first line the board keeps.
 void log_boot(const BootInfo& boot, bool nvs_erased) {
@@ -129,8 +137,8 @@ using namespace logcat;
 
 extern "C" esp_err_t esp32_logcat_init(const esp32_logcat_config_t* config) {
     bool expected = false;
-    if (!started.compare_exchange_strong(expected, true)) {
-        return ESP_ERR_INVALID_STATE;
+    if (!initializing.compare_exchange_strong(expected, true)) {
+        return ESP_ERR_INVALID_STATE;  // a second call, or one while the first runs
     }
     const esp32_logcat_config_t cfg =
         config != nullptr ? *config : esp32_logcat_config_t ESP32_LOGCAT_CONFIG_DEFAULT();
@@ -179,44 +187,38 @@ extern "C" esp_err_t esp32_logcat_init(const esp32_logcat_config_t* config) {
     if (start_writer_task(writer, log_queue, reply_server, reply_queue,
                           [](bool queue_empty) { flash_store.on_idle(queue_empty); }) == nullptr) {
         ESP_LOGE(TAG, "writer task not created: logs stay in the ESP-IDF format");
-        return ESP_ERR_NO_MEM;
+        return ESP_ERR_NO_MEM;  // never ready: the other calls keep answering INVALID_STATE
     }
     install_idf_log_hook(sequencer, tag_filter, log_queue, boot.boot);
     log_boot(boot, boot_store.erased());
     log_flash_at_boot(mount, cfg.flash);
 
-    if (cfg.console && usb_ready && start_console_task(console) == nullptr) {
+    console_platform.set_flash_enabled(cfg.flash);
+    if (cfg.console && !usb_ready) {
+        ESP_LOGW(TAG, "console off: it needs the native USB port (usb_serial_jtag)");
+    } else if (cfg.console && start_console_task(console) == nullptr) {
         ESP_LOGE(TAG, "console task not created");
     }
+    ready.store(true, std::memory_order_release);
     return ESP_OK;
 }
 
 extern "C" esp_err_t esp32_logcat_set_level(const char* tag, esp_log_level_t level) {
-    if (!started.load()) {
+    if (!is_ready()) {
         return ESP_ERR_INVALID_STATE;
     }
     if (tag == nullptr || tag[0] == '\0' || level < ESP_LOG_NONE || level > ESP_LOG_VERBOSE) {
         return ESP_ERR_INVALID_ARG;
     }
-    const LogLevel ours = static_cast<LogLevel>(level);  // same numbers (log_record.hpp)
-    lock_tag_filter();
-    const bool set = tag_filter.set(tag, ours);
-    if (set) {
-        // The same as the console's `log level` (console.cpp): ESP-IDF's own gate too, and
-        // after "*" (which wipes ESP-IDF's per-tag levels) every tag's level again.
-        console_platform.set_log_level(tag, ours);
-        if (tag[0] == '*' && tag[1] == '\0') {
-            for (size_t i = 0; i < tag_filter.size(); ++i) {
-                console_platform.set_log_level(tag_filter.tag_at(i), tag_filter.level_at(i));
-            }
-        }
-    }
-    unlock_tag_filter();
+    // Exactly the console's `log level` (core apply_log_level), under the same lock. The
+    // numbers of the two enums match (static_assert in console_task.cpp).
+    const bool set =
+        apply_log_level(tag_filter, console_platform, tag, static_cast<LogLevel>(level));
     return set ? ESP_OK : ESP_ERR_NO_MEM;
 }
 
 extern "C" esp_err_t esp32_logcat_sync(uint32_t timeout_ms) {
-    if (!started.load()) {
+    if (!is_ready()) {
         return ESP_ERR_INVALID_STATE;
     }
     if (flash_store.snapshot().mount == MountResult::Failed) {
@@ -233,7 +235,7 @@ extern "C" esp_err_t esp32_logcat_get_info(esp32_logcat_info_t* info) {
     if (info == nullptr) {
         return ESP_ERR_INVALID_ARG;
     }
-    if (!started.load()) {
+    if (!is_ready()) {
         return ESP_ERR_INVALID_STATE;
     }
     const CaptureStats capture = idf_log_hook_stats();

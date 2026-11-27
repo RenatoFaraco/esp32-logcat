@@ -18,3 +18,6 @@ CONFIG_LOG_MAXIMUM_LEVEL_VERBOSE=y
 
 # Flash writes pause instead of stalling the CPU (check that your flash chip supports it).
 CONFIG_SPI_FLASH_AUTO_SUSPEND=y
+
+# LittleFS would write a modification time on every sync: wear for nothing.
+# CONFIG_LITTLEFS_USE_MTIME is not set

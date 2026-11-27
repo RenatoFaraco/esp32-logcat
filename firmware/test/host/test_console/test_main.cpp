@@ -392,6 +392,26 @@ void test_log_level_changes_the_filter_under_the_platform_lock() {
     TEST_ASSERT_EQUAL(0, rig.platform.sent_while_locked);
 }
 
+// The C API's esp32_logcat_set_level calls the same function as the console (#94).
+void test_apply_log_level_is_the_console_logic_for_any_caller() {
+    FakePlatform platform;
+    TagLevelFilter filter(LogLevel::Info);
+    TEST_ASSERT_TRUE(logcat::apply_log_level(filter, platform, "APP", LogLevel::Debug));
+    TEST_ASSERT_TRUE(filter.enabled("APP", LogLevel::Debug));
+    TEST_ASSERT_TRUE(logcat::apply_log_level(filter, platform, "*", LogLevel::Warn));
+    TEST_ASSERT_FALSE(filter.enabled("OTHER", LogLevel::Info));
+    // APP, then "*" (the default, not a table entry), then APP again: after "*" every tag's
+    // level goes to the platform again.
+    TEST_ASSERT_EQUAL_size_t(3, platform.levels.size());
+    TEST_ASSERT_EQUAL_STRING("APP", platform.levels.back().first.c_str());
+    TEST_ASSERT_TRUE(platform.levels.back().second == LogLevel::Debug);
+    TEST_ASSERT_EQUAL(2, platform.locks);
+    TEST_ASSERT_EQUAL(2, platform.unlocks);
+    TEST_ASSERT_EQUAL(0, platform.levels_set_unlocked);
+    TEST_ASSERT_FALSE(logcat::apply_log_level(filter, platform, "", LogLevel::Debug));
+    TEST_ASSERT_EQUAL(3, platform.unlocks);  // released on refusal too
+}
+
 void test_a_full_tag_table_still_releases_the_lock() {
     Rig rig;
     for (int i = 0; i < 17; ++i) {
@@ -1130,6 +1150,7 @@ int main() {
     RUN_TEST(test_log_level_sets_the_filter_and_the_platform);
     RUN_TEST(test_log_level_changes_the_filter_under_the_platform_lock);
     RUN_TEST(test_a_full_tag_table_still_releases_the_lock);
+    RUN_TEST(test_apply_log_level_is_the_console_logic_for_any_caller);
     RUN_TEST(test_log_level_star_sets_the_default);
     RUN_TEST(test_log_level_none_silences);
     RUN_TEST(test_log_level_with_a_full_table_is_an_error_and_leaves_the_platform_alone);

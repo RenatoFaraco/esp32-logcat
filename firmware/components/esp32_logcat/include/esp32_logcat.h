@@ -10,8 +10,9 @@
  * The project must provide some sdkconfig options and the `logs` partition: see the
  * component's README.md.
  *
- * C API (C or C++). Thread safety: esp32_logcat_init() once, from app_main, before the other
- * calls; the others from any task after it.
+ * C API (C or C++). Thread safety: esp32_logcat_init() once, from app_main (not from a static
+ * constructor or an ISR), before the other calls; the others from any task after it returns
+ * (before that they answer ESP_ERR_INVALID_STATE). None of them from an ISR.
  */
 #pragma once
 
@@ -41,6 +42,10 @@ typedef struct {
  * log in flash, the writer task, the ESP_LOGx hook, then the console. Logs who this boot is
  * (`I LOGCAT: boot=N reason=... fw=...`) and what it found in flash.
  *
+ * It takes over: the NVS init (an NVS partition with no free pages or a newer format is ERASED,
+ * the documented recovery: other keys in it go too), the USB-Serial-JTAG and UART0 drivers
+ * (stdout moves to the UART driver), and a LittleFS mounted at /logs on the `logs` partition.
+ *
  * config: NULL for the defaults.
  * Returns ESP_OK; ESP_ERR_INVALID_STATE if called twice; ESP_ERR_NO_MEM if the writer task
  * could not start (then lines keep the plain ESP-IDF format). An output or the flash that
@@ -64,7 +69,8 @@ esp_err_t esp32_logcat_set_level(const char *tag, esp_log_level_t level);
  */
 esp_err_t esp32_logcat_sync(uint32_t timeout_ms);
 
-/* Turns the UART mirror on or off (it drains ~70 lines/s; a load test turns it off). */
+/* Turns the UART mirror on or off (it drains ~70 lines/s; a load test turns it off). No effect
+ * if esp32_logcat_init() ran with uart_mirror = false. */
 void esp32_logcat_set_uart_mirror(bool enabled);
 
 /* A snapshot of the logcat's counters (the console's `info`/`stats` give more). */

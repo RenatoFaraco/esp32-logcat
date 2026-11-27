@@ -54,16 +54,33 @@ timing measurement.
 | `CONFIG_SPI_FLASH_ENABLE_COUNTERS=y` | `stats` reports the flash sectors erased since boot. Build error without it |
 | `CONFIG_LOG_MAXIMUM_LEVEL_VERBOSE=y` | `log level <tag> D` can only open debug lines that were compiled in. Without it, nothing fails: the command just shows nothing |
 | `CONFIG_SPI_FLASH_AUTO_SUSPEND=y` | Flash writes pause instead of stalling the CPU for a sector erase (20–25 ms stalls without it). **Check your flash chip supports suspend**: if not, the firmware asserts at boot |
+| `# CONFIG_LITTLEFS_USE_MTIME is not set` | LittleFS's default (`y`) writes a modification time on every sync: flash wear for nothing, the lines carry their own time. The on-board tests run without it |
 
-**A `logs` partition** (LittleFS), 512 KB here:
+ESP-IDF 6.1.1's defaults must stay as they are for: `CONFIG_LOG_VERSION_1` and
+`CONFIG_LOG_TIMESTAMP_SOURCE_RTOS` (the hook reads that format; build error otherwise), and
+per-tag log levels (`CONFIG_LOG_TAG_LEVEL_IMPL_NONE` must not be set: build error otherwise, as
+silencing one tag would silence the whole firmware).
+
+**A `logs` partition** (LittleFS) of **0x80000 (512 KB)**:
 
 ```
 # Name,   Type, SubType,  Offset,  Size
 logs,     data, littlefs, ,        0x80000
 ```
 
-The log keeps up to 448 KB in 64 KB files; the oldest go first. NVS must exist too (the boot
-counter lives there; `esp32_logcat_init` initializes it for the whole firmware).
+The label and the budget are fixed: the log keeps up to 448 KB in 64 KB files, the oldest go
+first, and the rest is LittleFS's own room. A smaller partition fills up before the rotation
+frees anything; a bigger one is not used beyond 448 KB.
+
+## What `esp32_logcat_init` takes over
+
+- **NVS**: it initializes the NVS partition for the whole firmware (the boot counter lives
+  there). If the partition has no free pages or a newer format, it is **erased** (ESP-IDF's
+  documented recovery), and every other key in it goes too.
+- **USB-Serial-JTAG and UART0 drivers**: installed; stdout moves to the UART driver.
+- **`/logs`**: LittleFS mounted there, on the `logs` partition.
+- **Log levels**: `esp_log_level_set` follows `esp32_logcat_set_level` and the console's
+  `log level`; LittleFS's own logs are kept at W at most (they come from the writer task).
 
 **Dependencies**: `joltwallet/littlefs` 1.23.1, fetched by the component manager. Pinned
 exactly: it is the version the on-board tests pass with.

@@ -23,6 +23,17 @@
     "esp32_logcat needs CONFIG_SPI_FLASH_ENABLE_COUNTERS=y (see examples/demo/sdkconfig.defaults)"
 #endif
 
+// esp_log_level_set() per tag must really be per tag: with no tag-level table, it moves the
+// global level, and silencing one tag would silence the whole firmware.
+#if CONFIG_LOG_TAG_LEVEL_IMPL_NONE
+#error "esp32_logcat needs per-tag log levels: CONFIG_LOG_TAG_LEVEL_IMPL_NONE must not be set"
+#endif
+
+// LogLevel and esp_log_level_t are cast into each other: the numbers must match.
+static_assert(ESP_LOG_NONE == 0 && ESP_LOG_ERROR == 1 && ESP_LOG_WARN == 2 && ESP_LOG_INFO == 3 &&
+                  ESP_LOG_DEBUG == 4 && ESP_LOG_VERBOSE == 5,
+              "LogLevel (log_record.hpp) mirrors esp_log_level_t");
+
 namespace logcat {
 
 namespace {
@@ -73,7 +84,9 @@ void EspConsolePlatform::fill_info(ReplyFields& fields) {
     if (reset != nullptr) {
         fields.add("reset", reset);
     }
-    fields.add("flash", to_string(flash_.snapshot().mount));
+    if (flash_enabled_) {  // off by configuration: left out, not reported as failed
+        fields.add("flash", to_string(flash_.snapshot().mount));
+    }
 }
 
 void EspConsolePlatform::fill_stats(ReplyFields& fields) {
@@ -130,7 +143,14 @@ void EspConsolePlatform::set_log_level(const char* tag, LogLevel level) {
     // this gate open too. Numbers match (see log_record.hpp). Opening only the tag asked for
     // keeps the other ESP_LOGD of the IDF out of the hook. `log level * D` does open them all.
     // A tag cut to 15 chars does not match the full name here: it cannot go above the default.
-    esp_log_level_set(tag, static_cast<esp_log_level_t>(level));
+    const auto idf_level = static_cast<esp_log_level_t>(level);
+    esp_log_level_set(tag, idf_level);
+    if (tag[0] == '*' && tag[1] == '\0') {
+        // ESP-IDF's "*" wipes its per-tag levels, the cap on LittleFS's own logs included. Those
+        // come from inside the writer task, where they go to the ROM printer at ~7 ms a line: an
+        // open logs two lines at D, and a dump opens a file per chunk. Keep them at W at most.
+        esp_log_level_set("esp_littlefs", idf_level < ESP_LOG_WARN ? idf_level : ESP_LOG_WARN);
+    }
 }
 
 void EspConsolePlatform::reboot() {
