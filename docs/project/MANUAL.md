@@ -710,12 +710,38 @@ sem parar e a fila não esvaziou em 1,2 s) ou `unsupported` (sem flash nesta exe
 ok
 ```
 
-**`log dump`** e **`log clear`**: trabalham com os logs da flash, que chegam no M4. Por enquanto:
+**`log dump`**: os logs guardados na flash, um bloco por arquivo, do mais antigo ao mais novo.
+Antes, a placa sincroniza a flash, e cada arquivo vem com o tamanho que tinha nesse momento: o
+que for logado durante o dump fica para o próximo. O shell confere o CRC de cada bloco e fecha
+cada um com uma linha de resumo:
 
 ```
 > esp-logcat shell log dump
-error: unsupported: needs flash storage (M4)
+0082:000119 0000008808 W LOGCAT: log cleared by console: 1 files, 3239 bytes removed
+...
+log_030.txt: 1388 lines, 65439 bytes, CRC ok
+...
+log_036.txt: 49 lines, 5636 bytes, CRC ok
 ```
+
+Com a flash cheia (448 KB em 7 arquivos), o dump leva cerca de 1 s pela USB nativa. Enquanto
+ele sai, o log ao vivo não vai para a USB (como no `log tail`), e um pedido feito nesse meio-tempo
+só é respondido no fim. Se a rotação apagar um arquivo durante o dump (log muito intenso), a
+resposta é `failed log rotated during dump`, e os blocos que já chegaram inteiros valem.
+Gravar os arquivos no PC é com o `esp-logcat dump`, que vem no host em Rust (#101).
+
+**`log clear`**: apaga todos os arquivos de log da flash e recomeça num `log_000.txt` vazio.
+**Não tem volta.** A primeira linha do log novo registra quantos arquivos e bytes saíram, e o
+boot e o uptime dela dizem quando:
+
+```
+> esp-logcat shell log clear
+ok
+```
+
+Respostas de erro: `busy` (um `log dump` está saindo; nada foi apagado), `failed` (um arquivo
+não saiu, ou a placa logou sem parar e o pedido não foi atendido em 1,2 s: nesse caso nada foi
+apagado) ou `unsupported` (sem flash nesta execução).
 
 **`reboot`**: responde e reinicia; o shell espera ver o reinício. O `info` seguinte mostra
 `reset SW`.
@@ -751,15 +777,17 @@ Todo erro sai no stderr, e o código de saída é 1.
 |---------------|--------|
 | `error: bad_args: wrong arguments` | argumento faltando, sobrando ou inválido (`log level APP x`) |
 | `error: full: tag table full (16 tags)` | a tabela de tags está cheia |
-| `error: unsupported: needs flash storage (M4)` | este firmware ainda não faz isso |
+| `error: unsupported: no flash storage` | a flash não montou nesta execução (`log sync`, `log dump`, `log clear`) |
+| `error: busy: a log dump is being sent: try again after it` | `log clear` durante um `log dump` |
+| `error: failed: ...` | o `log sync`, o `log dump` ou o `log clear` não conseguiu (o texto diz o quê) |
 | `error: timeout: host not reading` | a placa não conseguiu mandar a resposta a tempo |
 | `error: no reply in 2 s` | nenhuma resposta: placa travada, ou firmware sem console |
 | `error: no reply: the device restarted` | a placa reiniciou no meio do pedido (ou `the port closed`) |
 | `error: no restart seen in 10 s` | `reboot` ou `crash` sem reinício |
-| `error: dump block damaged: ...` | o bloco do `log tail` chegou incompleto ou com CRC errado |
+| `error: dump block damaged: ...` | um bloco do `log tail` ou do `log dump` chegou incompleto ou com CRC errado |
 | `unknown command: ...` | a palavra não é um comando da placa; o shell nem manda |
 
-Os códigos `bad_args`, `full`, `unsupported` e `timeout` vêm da placa; os outros, do shell. Uma
+Os códigos `bad_args`, `full`, `busy`, `failed`, `unsupported` e `timeout` vêm da placa; os outros, do shell. Uma
 placa que recebe um comando que não conhece responde `bad_command`, mas o shell já barra isso
 antes. Comandos são em minúsculas e sem abreviação; os níveis são em maiúsculas.
 

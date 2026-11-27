@@ -121,6 +121,22 @@ Zero ou mais linhas de dados e **exatamente um** terminador:
   está na flash. `#! <id> failed`: o sync falhou, não terminou a tempo (1,2 s; sob log
   contínuo a fila pode não esvaziar) ou o store perdeu linhas desde o pedido.
   `#! <id> unsupported`: sem flash nesta execução.
+- `log dump` (#29) sincroniza a flash e manda um bloco (§3) por arquivo de log, do mais antigo
+  ao mais novo, com o tamanho que cada um tinha no início do dump: as linhas logadas durante o
+  dump ficam para o próximo. Sem bloco nenhum para mandar, só `#. <id> ok`. Erros: `#! <id>
+  failed` se o sync antes do dump falhou (nenhum bloco) ou se a rotação apagou um arquivo
+  durante o dump (o bloco aberto fica sem `#END`; os fechados valem); `#! <id> unsupported`
+  sem flash. A USB fica fora do log durante a resposta inteira, entre os blocos também. Um dump
+  de 448 KB passa dos 2 s da §2.3: enquanto chegam bytes de bloco, o host estende o prazo
+  (§3). Um pedido feito durante o dump só é respondido depois dele, porque as respostas saem
+  em fila.
+- `log clear` (#29) apaga todos os arquivos de log e recomeça num `log_000.txt` vazio; responde
+  `#. <id> ok` só depois disso. As linhas logadas antes do pedido vão junto com os arquivos
+  apagados. A primeira linha do log novo é um `W` da tag `LOGCAT` dizendo quantos arquivos e
+  bytes saíram, e o boot e o uptime dela dizem quando. Erros: `#! <id> busy` durante um
+  `log dump` (nada apagado); `#! <id> failed` se um arquivo não saiu ou se o pedido não foi
+  atendido a tempo (1,2 s, como o `log sync`: nesse caso, nada foi apagado); `#! <id>
+  unsupported` sem flash. Não tem volta.
 - `reboot` responde `#. <id> ok` antes de reiniciar; `crash` não responde. O reinício da placa
   é o sucesso desses pedidos.
 - O `info` traz `proto=1`. Chave, código ou comando novo não mudam o `proto`; mudança na forma
@@ -166,7 +182,7 @@ Todos opcionais (campo desconhecido é omitido). `stats` só lê.
 | | `flash.rotations`, `flash.removed`, `flash.repaired` | arquivos começados, apagados, finais rasgados fechados; acumulado |
 | | `flash.failed`, `flash.sync_failed`, `flash.lost` | linhas recusadas, syncs que falharam, bytes perdidos; acumulado |
 | | `fs.used`, `fs.total` | uso real do LittleFS na partição, e o tamanho dela |
-| | `flash.sync_period`, `flash.sync_error`, `flash.sync_request` | syncs feitos, por motivo: o período de 5 s, uma linha ERROR, um pedido (`log sync`, `reboot`); acumulado |
+| | `flash.sync_period`, `flash.sync_error`, `flash.sync_request` | syncs feitos, por motivo: o período de 5 s, uma linha ERROR, um pedido (`log sync`, `reboot`, `log dump`); acumulado |
 | | `erase.sectors` | setores de 4 KB apagados na flash inteira (log e NVS) desde o boot: o que gasta a flash; acumulado |
 
 Acumulado quer dizer desde o boot, sem comando para zerar: a taxa vem de duas leituras. Os

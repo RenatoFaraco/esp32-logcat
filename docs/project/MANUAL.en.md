@@ -714,12 +714,39 @@ its queue did not empty within 1.2 s) or `unsupported` (no flash in this run).
 ok
 ```
 
-**`log dump`** and **`log clear`**: work on the logs in flash, which arrive in M4. For now:
+**`log dump`**: the logs kept in flash, one block per file, oldest first. The board syncs the
+flash first, and each file comes with the size it had at that moment: what is logged during the
+dump waits for the next one. The shell checks each block's CRC and closes each one with a
+summary line:
 
 ```
 > esp-logcat shell log dump
-error: unsupported: needs flash storage (M4)
+0082:000119 0000008808 W LOGCAT: log cleared by console: 1 files, 3239 bytes removed
+...
+log_030.txt: 1388 lines, 65439 bytes, CRC ok
+...
+log_036.txt: 49 lines, 5636 bytes, CRC ok
 ```
+
+With the flash full (448 KB in 7 files), the dump takes about 1 s over the native USB. While it
+goes out, the live log does not go to the USB (as with `log tail`), and a request made meanwhile
+is answered only at the end. If the rotation removes a file during the dump (very heavy
+logging), the reply is `failed log rotated during dump`, and the blocks that already arrived
+whole are valid. Saving the files on the PC is `esp-logcat dump`, which comes with the Rust host
+(#101).
+
+**`log clear`**: removes every log file from flash and starts again in an empty `log_000.txt`.
+**It cannot be undone.** The first line of the new log records how many files and bytes went,
+and its boot and uptime say when:
+
+```
+> esp-logcat shell log clear
+ok
+```
+
+Error replies: `busy` (a `log dump` is going out; nothing was removed), `failed` (a file could
+not be removed, or the board kept logging and the request was not served within 1.2 s: then
+nothing was removed) or `unsupported` (no flash in this run).
 
 **`reboot`**: replies and restarts; the shell waits to see the restart. The next `info`
 shows `reset SW`.
@@ -755,15 +782,17 @@ Every error goes to stderr, and the exit code is 1.
 |--------------|------|
 | `error: bad_args: wrong arguments` | missing, extra or invalid argument (`log level APP x`) |
 | `error: full: tag table full (16 tags)` | the tag table is full |
-| `error: unsupported: needs flash storage (M4)` | this firmware does not do that yet |
+| `error: unsupported: no flash storage` | the flash did not mount in this run (`log sync`, `log dump`, `log clear`) |
+| `error: busy: a log dump is being sent: try again after it` | `log clear` during a `log dump` |
+| `error: failed: ...` | `log sync`, `log dump` or `log clear` could not do it (the text says what) |
 | `error: timeout: host not reading` | the board could not send the reply in time |
 | `error: no reply in 2 s` | no reply at all: a hung board, or firmware without a console |
 | `error: no reply: the device restarted` | the board restarted during the request (or `the port closed`) |
 | `error: no restart seen in 10 s` | `reboot` or `crash` without a restart |
-| `error: dump block damaged: ...` | the `log tail` block arrived incomplete or with a wrong CRC |
+| `error: dump block damaged: ...` | a `log tail` or `log dump` block arrived incomplete or with a wrong CRC |
 | `unknown command: ...` | the word is not a board command; the shell does not send it |
 
-The codes `bad_args`, `full`, `unsupported` and `timeout` come from the board; the others from
+The codes `bad_args`, `full`, `busy`, `failed`, `unsupported` and `timeout` come from the board; the others from
 the shell. A board that gets a command it does not know answers `bad_command`, but the shell
 stops that earlier. Commands are lowercase with no abbreviations; levels are uppercase.
 
