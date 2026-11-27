@@ -313,4 +313,9 @@ void run_littlefs_tests() {
     RUN_TEST(test_names_the_port_cannot_carry);
     RUN_TEST(test_stack_after_a_full_partition);
     RUN_TEST(test_the_store_survives_a_remount_and_repairs_a_torn_tail);  // last: it remounts
+    // Leave `logs` empty: the test lines would show up in the demo's next dump as real logs.
+    // No TEST_ASSERT outside a test.
+    if (esp_littlefs_format("logs") != ESP_OK) {
+        printf("could not format `logs` after the tests: reflash and erase it\n");
+    }
 }

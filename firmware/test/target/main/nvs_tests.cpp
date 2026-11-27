@@ -5,6 +5,8 @@
 
 #include <unity.h>
 
+#include <cstdio>
+
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "logcat/boot_counter.hpp"
@@ -78,13 +80,34 @@ void test_load_before_begin_fails() {
     TEST_ASSERT_FALSE(store.save(1));
 }
 
+// Outside a test: no TEST_ASSERT here (a failure would longjmp into a finished test's frame).
+void init_nvs() {
+    esp_err_t err = nvs_flash_init();
+    if (err == ESP_ERR_NVS_NO_FREE_PAGES || err == ESP_ERR_NVS_NEW_VERSION_FOUND) {
+        // The same documented recovery as NvsBootStore::begin().
+        err = nvs_flash_erase() == ESP_OK ? nvs_flash_init() : err;
+    }
+    if (err != ESP_OK) {
+        printf("nvs_flash_init failed: %s (the NVS tests will fail)\n", esp_err_to_name(err));
+    }
+}
+
+void forget_namespace() {
+    nvs_handle_t handle;
+    if (nvs_open(kNamespace, NVS_READWRITE, &handle) == ESP_OK) {
+        nvs_erase_all(handle);
+        nvs_commit(handle);
+        nvs_close(handle);
+    }
+}
+
 void run_nvs_tests() {
-    Unity.TestFile = __FILE__;          // failures point at this file, not at test_main.cpp
-    ESP_ERROR_CHECK(nvs_flash_init());  // the set-up needs NVS before the first test's begin()
+    Unity.TestFile = __FILE__;  // failures point at this file, not at test_main.cpp
+    init_nvs();                 // the set-up needs NVS before the first test's begin()
     RUN_TEST(test_begin);
     RUN_TEST(test_a_missing_key_is_missing_not_failed);
     RUN_TEST(test_save_and_load_back);
     RUN_TEST(test_the_counter_goes_up_across_instances);
     RUN_TEST(test_load_before_begin_fails);
-    erase_namespace();  // leave nothing behind in the test namespace
+    forget_namespace();  // leave nothing behind in the test namespace
 }

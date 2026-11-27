@@ -10,8 +10,11 @@
 
 #include <unity.h>
 
+#include <cstdio>
+
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "sdkconfig.h"
 #include "suites.hpp"
 
 namespace {
@@ -51,5 +54,9 @@ extern "C" void app_main(void) {
         suite.run();
     }
     current = nullptr;
+    // After every suite, the heaviest frames included (the remount test, the NVS suite).
+    printf("main task stack left: %u B of %u\n",
+           static_cast<unsigned>(uxTaskGetStackHighWaterMark(nullptr)),
+           static_cast<unsigned>(CONFIG_ESP_MAIN_TASK_STACK_SIZE));
     UNITY_END();
 }

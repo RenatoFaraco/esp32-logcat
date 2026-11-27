@@ -1,4 +1,5 @@
 ## The tests call esp_littlefs_* directly (format, unregister), and esp32_logcat keeps LittleFS
-## private: this app asks for the same version.
+## private. Exactly the version the demo runs (examples/demo/dependencies.lock): the tests must
+## check the LittleFS the product ships. Keep in step with components/esp32_logcat/idf_component.yml.
 dependencies:
-  joltwallet/littlefs: "~1.23.1"
+  joltwallet/littlefs: "==1.23.1"

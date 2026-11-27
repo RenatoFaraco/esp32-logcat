@@ -5,3 +5,4 @@ dependencies:
   joltwallet/littlefs:
     version: "~1.23.1"  # pinned to the version checked against the port (#24)
     require: private  # no public header of ours includes LittleFS
+    # test/target/main/idf_component.yml pins the version the demo's lock has: keep in step.
