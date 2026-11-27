@@ -94,7 +94,8 @@ private:
     void reply_fields(const char* id, void (ConsolePlatform::*fill)(ReplyFields&));
     void reply_ok(const char* id);
     void reply_error(const char* id, const char* code, const char* text);
-    void send_tail(const char* id);
+    // `log tail` and `log dump`: the writer task serves the blocks and the terminator.
+    void send_block(ReplyKind kind, const char* id);
     bool send(ReplyKind kind, const char* id, const char* line, size_t length);
 
     ConsolePlatform& platform_;

@@ -108,7 +108,10 @@ void Console::run(const Command& command) {
             reply_ok(command.id);
             return;
         case CommandKind::LogTail:
-            send_tail(command.id);
+            send_block(ReplyKind::Tail, command.id);
+            return;
+        case CommandKind::LogDump:
+            send_block(ReplyKind::Dump, command.id);
             return;
         case CommandKind::LogSync:
             switch (platform_.sync_log()) {
@@ -124,7 +127,6 @@ void Console::run(const Command& command) {
                     return;
             }
             return;
-        case CommandKind::LogDump:
         case CommandKind::LogClear:
             reply_error(command.id, "unsupported", "needs flash storage (M4)");
             return;
@@ -163,8 +165,8 @@ void Console::reply_error(const char* id, const char* code, const char* text) {
     send(ReplyKind::End, id, line, length);
 }
 
-void Console::send_tail(const char* id) {
-    if (!send(ReplyKind::Tail, id, "", 0)) {
+void Console::send_block(ReplyKind kind, const char* id) {
+    if (!send(kind, id, "", 0)) {
         reply_error(id, "timeout", "reply queue full");
     }
 }

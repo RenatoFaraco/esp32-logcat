@@ -9,11 +9,14 @@
 #include <utility>
 #include <vector>
 
+#include "../support/memory_fs.hpp"
 #include "logcat/console.hpp"
 #include "logcat/line_formatter.hpp"
+#include "logcat/log_archive.hpp"
 #include "logcat/ram_tail.hpp"
 #include "logcat/reply_formatter.hpp"
 #include "logcat/reply_server.hpp"
+#include "logcat/rotating_store.hpp"
 #include "logcat/sequencer.hpp"
 #include "logcat/tag_level_filter.hpp"
 #include "logcat/writer.hpp"
@@ -158,6 +161,66 @@ struct Server {
             server.step();
         }
     }
+};
+
+// The flash store's side of a dump, on the in-memory file system: what FlashStore does on the
+// board, without the flush policy.
+class StoreArchive final : public logcat::LogArchive {
+public:
+    StoreArchive(test_support::MemoryFileSystem& fs, logcat::RotatingStore& store)
+        : fs_(fs), store_(store) {}
+
+    bool begin_dump(logcat::ArchiveFile (&files)[logcat::kMaxStoreFiles],
+                    size_t& count) override {
+        ++begins;
+        if (fail_sync) {
+            return false;
+        }
+        store_.flush();
+        count = store_.file_count();
+        for (size_t i = 0; i < count; ++i) {
+            store_.file_name(i, files[i].name);
+            files[i].size = store_.file_size(i);
+        }
+        return true;
+    }
+    size_t read(const char* name, uint32_t offset, char* out, size_t length) override {
+        ++reads;
+        return fs_.read(name, offset, out, length);
+    }
+    void end_dump() override { ++ends; }
+
+    bool fail_sync = false;
+    int begins = 0;
+    int reads = 0;
+    int ends = 0;
+
+private:
+    test_support::MemoryFileSystem& fs_;
+    logcat::RotatingStore& store_;
+};
+
+// A Server with a log in flash: `file_limit` small enough to rotate in a test.
+struct DumpServer : Server {
+    explicit DumpServer(uint32_t file_limit = 64 * 1024) : store(fs, config_of(file_limit)) {
+        server.attach_archive(archive);
+    }
+    static logcat::StoreConfig config_of(uint32_t file_limit) {
+        logcat::StoreConfig config;
+        config.file_limit = file_limit;
+        return config;
+    }
+    void log(const std::string& line) { store.write(line.data(), line.size()); }
+    // Steps until the output has grown by a `#BEGIN`, `#END`, a chunk or a terminator.
+    void steps(int count) {
+        for (int i = 0; i < count && server.block_open(); ++i) {
+            server.step();
+        }
+    }
+
+    test_support::MemoryFileSystem fs;
+    logcat::RotatingStore store;
+    StoreArchive archive{fs, store};
 };
 
 std::string crc_of(const std::string& content) {
@@ -434,8 +497,16 @@ void test_log_sync_without_flash_is_unsupported() {
     TEST_ASSERT_EQUAL_STRING("#! 5 unsupported no flash storage\n", rig.platform.lines().c_str());
 }
 
+void test_log_dump_is_one_message_for_the_writer_task() {
+    Rig rig;
+    rig.send("4 log dump\n");
+    TEST_ASSERT_EQUAL_size_t(1, rig.platform.messages.size());
+    TEST_ASSERT_TRUE(rig.platform.messages[0].kind == ReplyKind::Dump);
+    TEST_ASSERT_EQUAL_STRING("4", rig.platform.messages[0].id);
+}
+
 void test_flash_commands_are_unsupported_for_now() {
-    for (const char* request : {"5 log dump\n", "5 log clear\n"}) {
+    for (const char* request : {"5 log clear\n"}) {
         Rig rig;
         rig.send(request);
         TEST_ASSERT_EQUAL_STRING("#! 5 unsupported needs flash storage (M4)\n",
@@ -838,6 +909,140 @@ void test_step_without_a_block_does_nothing() {
     TEST_ASSERT_EQUAL_INT(0, s.output.calls);
 }
 
+// ---------------------------------------------------------------- ReplyServer: log dump (#29)
+
+void test_dump_without_flash_is_unsupported() {
+    Server s;  // no archive attached: the flash did not mount
+    s.server.handle(message_of(ReplyKind::Dump, "4", ""));
+    TEST_ASSERT_FALSE(s.server.block_open());
+    TEST_ASSERT_EQUAL_STRING("#! 4 unsupported no flash storage\n", s.output.text.c_str());
+}
+
+void test_dump_with_no_files_is_only_the_terminator() {
+    DumpServer s;  // store never begun: no file at all
+    s.server.handle(message_of(ReplyKind::Dump, "4", ""));
+    s.run_block();
+    TEST_ASSERT_EQUAL_STRING("#. 4 ok\n", s.output.text.c_str());
+    TEST_ASSERT_EQUAL(1, s.archive.ends);
+}
+
+void test_dump_sends_one_block_per_file_oldest_first_and_one_terminator() {
+    DumpServer s(20);
+    s.store.begin();
+    s.log("one 456789 123456789\n");  // 21 bytes: fills log_000 alone
+    s.log("two\n");                     // log_001
+    s.log("three\n");                   // log_001
+    s.server.handle(message_of(ReplyKind::Dump, "4", ""));
+    s.run_block();
+    const std::string first = "one 456789 123456789\n";
+    const std::string second = "two\nthree\n";
+    const std::string expected = "#BEGIN 4 log_000.txt 21\n" + first + "#END 4 " + crc_of(first) +
+                                 "\n#BEGIN 4 log_001.txt 10\n" + second + "#END 4 " +
+                                 crc_of(second) + "\n#. 4 ok\n";
+    TEST_ASSERT_EQUAL_STRING(expected.c_str(), s.output.text.c_str());
+    TEST_ASSERT_FALSE(s.server.block_open());
+    TEST_ASSERT_EQUAL(1, s.archive.begins);
+    TEST_ASSERT_EQUAL(1, s.archive.ends);
+}
+
+void test_dump_sends_a_file_in_chunks_with_bytes_as_they_are() {
+    DumpServer s;
+    std::string content;
+    for (size_t i = 0; i < 1300; ++i) {
+        content += static_cast<char>(i % 256);  // NUL, 0xFF, no newline at the end: as they are
+    }
+    s.fs.put("log_000.txt", content);
+    s.store.begin();  // finds the file; its torn tail is repaired only at the next line
+    s.server.handle(message_of(ReplyKind::Dump, "4", ""));
+    s.run_block();
+    const std::string expected = "#BEGIN 4 log_000.txt 1300\n" + content + "#END 4 " +
+                                 crc_of(content) + "\n#. 4 ok\n";
+    TEST_ASSERT_TRUE(s.output.text == expected);
+    TEST_ASSERT_EQUAL(3, s.archive.reads);  // 512 + 512 + 276
+}
+
+void test_lines_logged_during_the_dump_are_not_in_it() {
+    DumpServer s;
+    s.store.begin();
+    s.log("before\n");
+    s.server.handle(message_of(ReplyKind::Dump, "4", ""));
+    s.steps(1);  // #BEGIN with the size taken at the start
+    s.log("during\n");
+    s.run_block();
+    const std::string expected =
+        "#BEGIN 4 log_000.txt 7\nbefore\n#END 4 " + crc_of("before\n") + "\n#. 4 ok\n";
+    TEST_ASSERT_EQUAL_STRING(expected.c_str(), s.output.text.c_str());
+    s.store.flush();
+    TEST_ASSERT_EQUAL_STRING("before\nduring\n", s.fs.content("log_000.txt").c_str());
+}
+
+void test_a_file_that_changes_under_the_dump_ends_it_with_failed() {
+    DumpServer s(20);
+    s.store.begin();
+    s.log("one 456789 123456789\n");
+    s.log("two\n");
+    s.server.handle(message_of(ReplyKind::Dump, "4", ""));
+    s.steps(4);  // the first block whole, then #BEGIN of the second
+    s.fs.fail_next_read = true;  // as if the rotation had removed it
+    s.run_block();
+    const std::string first = "one 456789 123456789\n";
+    const std::string expected = "#BEGIN 4 log_000.txt 21\n" + first + "#END 4 " + crc_of(first) +
+                                 "\n#BEGIN 4 log_001.txt 4\n#! 4 failed log rotated during dump\n";
+    TEST_ASSERT_EQUAL_STRING(expected.c_str(), s.output.text.c_str());
+    TEST_ASSERT_FALSE(s.server.block_open());
+    TEST_ASSERT_EQUAL(1, s.archive.ends);
+    TEST_ASSERT_EQUAL_UINT32(0, s.server.failures());  // the host was reading
+    TEST_ASSERT_TRUE(s.gate.write("x\n", 2));
+}
+
+void test_dump_that_the_host_stops_reading_ends_with_a_timeout() {
+    DumpServer s;
+    s.store.begin();
+    s.log("a\n");
+    s.output.accept = 1;  // only the #BEGIN
+    s.server.handle(message_of(ReplyKind::Dump, "4", ""));
+    s.run_block();
+    TEST_ASSERT_FALSE(s.server.block_open());
+    TEST_ASSERT_EQUAL_UINT32(1, s.server.failures());
+    TEST_ASSERT_EQUAL(1, s.archive.ends);
+    TEST_ASSERT_TRUE(s.gate.write("x\n", 2));
+}
+
+void test_a_sync_that_fails_before_the_dump_is_an_error() {
+    DumpServer s;
+    s.store.begin();
+    s.archive.fail_sync = true;
+    s.server.handle(message_of(ReplyKind::Dump, "4", ""));
+    TEST_ASSERT_FALSE(s.server.block_open());
+    TEST_ASSERT_EQUAL_STRING("#! 4 failed sync failed: the dump would miss lines\n",
+                             s.output.text.c_str());
+    TEST_ASSERT_EQUAL(1, s.archive.ends);
+    TEST_ASSERT_TRUE(s.gate.write("x\n", 2));
+}
+
+void test_usb_is_out_of_the_log_for_the_whole_dump() {
+    DumpServer s(20);
+    s.store.begin();
+    s.log("one 456789 123456789\n");
+    s.log("two\n");
+    s.server.handle(message_of(ReplyKind::Dump, "4", ""));
+    TEST_ASSERT_FALSE(s.gate.write("x\n", 2));
+    s.steps(3);  // the first block is closed, the second not yet open
+    TEST_ASSERT_FALSE(s.gate.write("x\n", 2));
+    s.run_block();
+    TEST_ASSERT_TRUE(s.gate.write("x\n", 2));
+}
+
+void test_the_tail_keeps_taking_lines_during_a_dump() {
+    DumpServer s;
+    s.store.begin();
+    s.log("a\n");
+    s.server.handle(message_of(ReplyKind::Dump, "4", ""));
+    s.add_tail_line("live\n");
+    TEST_ASSERT_EQUAL_size_t(1, s.tail.size());  // only the tail's own block freezes it
+    s.run_block();
+}
+
 int main() {
     UNITY_BEGIN();
     RUN_TEST(test_assembler_splits_at_either_line_ending);
@@ -861,7 +1066,18 @@ int main() {
     RUN_TEST(test_ok_that_finds_no_room_becomes_a_timeout_error);
     RUN_TEST(test_request_of_exactly_the_limit_runs_and_one_more_does_not);
     RUN_TEST(test_log_tail_is_one_message_for_the_writer_task);
+    RUN_TEST(test_log_dump_is_one_message_for_the_writer_task);
     RUN_TEST(test_flash_commands_are_unsupported_for_now);
+    RUN_TEST(test_dump_without_flash_is_unsupported);
+    RUN_TEST(test_dump_with_no_files_is_only_the_terminator);
+    RUN_TEST(test_dump_sends_one_block_per_file_oldest_first_and_one_terminator);
+    RUN_TEST(test_dump_sends_a_file_in_chunks_with_bytes_as_they_are);
+    RUN_TEST(test_lines_logged_during_the_dump_are_not_in_it);
+    RUN_TEST(test_a_file_that_changes_under_the_dump_ends_it_with_failed);
+    RUN_TEST(test_dump_that_the_host_stops_reading_ends_with_a_timeout);
+    RUN_TEST(test_a_sync_that_fails_before_the_dump_is_an_error);
+    RUN_TEST(test_usb_is_out_of_the_log_for_the_whole_dump);
+    RUN_TEST(test_the_tail_keeps_taking_lines_during_a_dump);
     RUN_TEST(test_log_sync_answers_ok_once_synced);
     RUN_TEST(test_log_sync_that_failed_is_an_error);
     RUN_TEST(test_log_sync_without_flash_is_unsupported);
