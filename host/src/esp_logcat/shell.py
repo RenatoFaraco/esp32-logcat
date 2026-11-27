@@ -257,14 +257,16 @@ def print_reply(reply: Reply, out: Console, err: Console, *, as_json: bool = Fal
         text.append("  ")
         text.append(value)
         out.print(text)
-    if reply.block is not None:
-        parsed = block_parsed(reply.block)
+    for block in reply.blocks:
+        parsed = block_parsed(block)
         for line in parsed:
             out.print(render(line))
-        lines = len(parsed)
-        status = "CRC ok" if reply.block.ok else reply.block.problem
+        status = "CRC ok" if block.ok else block.problem
+        # Several blocks (`log dump`, one per file): each summary says which file it closes.
+        name = f"{block.name}: " if len(reply.blocks) > 1 else ""
         out.print(
-            Text(f"{lines} lines, {reply.block.size} bytes, {status}", style="dim"), markup=False
+            Text(f"{name}{len(parsed)} lines, {block.size} bytes, {status}", style="dim"),
+            markup=False,
         )
     if reply.failure:
         err.print(Text(f"error: {reply.failure}", style="bold red"))
@@ -273,7 +275,7 @@ def print_reply(reply: Reply, out: Console, err: Console, *, as_json: bool = Fal
         err.print(Text(f"error: {reply.end.code}{detail}", style="bold red"))
     elif reply.restarted:
         out.print(Text("ok: the device restarted", style="green"))
-    elif not reply.fields and reply.block is None:
+    elif not reply.fields and not reply.blocks:
         out.print(Text("ok", style="green"))
     return 0 if reply.ok else 1
 

@@ -370,13 +370,37 @@ def test_print_reply_of_a_damaged_block():
     from esp_logcat.events import Block
 
     reply = Reply(
-        "7", "log tail", block=Block("7", "ram", 9, b"abc", None, "no #END after the content")
+        "7", "log tail", blocks=[Block("7", "ram", 9, b"abc", None, "no #END after the content")]
     )
     reply.failure = "dump block damaged: no #END after the content"
     out_console, err_console, out, err = consoles()
     assert print_reply(reply, out_console, err_console) == 1
     assert "no #END after the content" in out.getvalue()
     assert err.getvalue() == "error: dump block damaged: no #END after the content\n"
+
+
+def test_print_reply_of_several_blocks_names_each_file():
+    from esp_logcat.console import Reply
+    from esp_logcat.events import Block
+    from esp_logcat.parser import CommandEnd
+
+    line = b"0001:000001 0000000010 I APP: hello\n"
+    reply = Reply(
+        "7",
+        "log dump",
+        end=CommandEnd("7", "ok"),
+        blocks=[
+            Block("7", "log_000.txt", len(line), line, zlib.crc32(line)),
+            Block("7", "log_001.txt", 0, b"", 0),
+        ],
+    )
+    out_console, err_console, out, err = consoles()
+    assert print_reply(reply, out_console, err_console) == 0
+    text = out.getvalue()
+    assert text.count("hello") == 1
+    assert f"log_000.txt: 1 lines, {len(line)} bytes, CRC ok" in text
+    assert "log_001.txt: 0 lines, 0 bytes, CRC ok" in text
+    assert err.getvalue() == ""
 
 
 # ------------------------------------------------------------------ command line

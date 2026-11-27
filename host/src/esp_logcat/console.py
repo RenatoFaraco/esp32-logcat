@@ -65,7 +65,7 @@ class Reply:
     command: str  # the request without its id, e.g. "log level APP D"
     fields: list[tuple[str, str]] = field(default_factory=list)  # every data line, in order
     end: CommandEnd | None = None
-    block: Block | None = None
+    blocks: list[Block] = field(default_factory=list)  # `log dump` sends one per file
     restarted: bool = False  # the device restarted while this request was pending
     failure: str = ""  # why there is no complete reply; empty when there is one
     elapsed: float = 0.0  # seconds from the request to the end
@@ -231,7 +231,7 @@ class Exchange:
         pending = self._pending.get(block.id)
         if pending is None:
             return [], True
-        pending.reply.block = block
+        pending.reply.blocks.append(block)
         if block.ok:
             pending.deadline = max(pending.deadline, now + self._reply_timeout)
             return [], False
@@ -282,13 +282,16 @@ def reply_json(reply: Reply) -> dict[str, object]:
     }
     if fields:
         out["fields"] = fields
-    if reply.block is not None:
-        out["block"] = {
-            "name": reply.block.name,
-            "bytes": reply.block.size,
-            "crc_ok": reply.block.ok,
-            "lines": block_lines(reply.block),
-        }
+    if reply.blocks:
+        out["blocks"] = [
+            {
+                "name": block.name,
+                "bytes": block.size,
+                "crc_ok": block.ok,
+                "lines": block_lines(block),
+            }
+            for block in reply.blocks
+        ]
     if reply.end is not None and not reply.end.ok:
         out["code"] = reply.end.code
         if reply.end.text:

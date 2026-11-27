@@ -165,7 +165,19 @@ def test_block_then_terminator():
     done, _ = feed(ex, ReceivedBlock(good_block(), None))
     assert done == []
     [reply], _ = feed(ex, b"#. 7 ok\n")
-    assert reply.ok and reply.block == good_block()
+    assert reply.ok and reply.blocks == [good_block()]
+
+
+def test_every_block_of_a_reply_is_kept_in_order():
+    # `log dump` (#29): one block per file, then one terminator.
+    ex = exchange()
+    ex.start("log dump", now=0.0)
+    first = Block("7", "log_000.txt", len(LOG), LOG, 0)
+    second = Block("7", "log_001.txt", len(LOG) * 2, LOG + LOG, 0)
+    assert feed(ex, ReceivedBlock(first, None))[0] == []
+    assert feed(ex, ReceivedBlock(second, None))[0] == []
+    [reply], _ = feed(ex, b"#. 7 ok\n")
+    assert reply.ok and reply.blocks == [first, second]
 
 
 def test_damaged_block_ends_the_request_at_once():
@@ -321,14 +333,17 @@ def test_json_of_an_error_and_of_a_failure():
 
 
 def test_json_of_a_block_and_of_a_restart():
-    reply = Reply("7", "log tail", end=CommandEnd("7", "ok"), block=good_block())
+    reply = Reply("7", "log tail", end=CommandEnd("7", "ok"), blocks=[good_block()])
     out = reply_json(reply)
-    assert out["block"] == {
-        "name": "ram",
-        "bytes": len(LOG) * 2,
-        "crc_ok": True,
-        "lines": [LOG[:-1].decode()] * 2,
-    }
+    assert out["blocks"] == [
+        {
+            "name": "ram",
+            "bytes": len(LOG) * 2,
+            "crc_ok": True,
+            "lines": [LOG[:-1].decode()] * 2,
+        }
+    ]
+    assert "blocks" not in reply_json(Reply("7", "info", end=CommandEnd("7", "ok")))
     assert reply_json(Reply("7", "crash panic", restarted=True))["restarted"] is True
 
 
