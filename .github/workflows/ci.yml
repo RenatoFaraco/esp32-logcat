@@ -35,9 +35,9 @@ jobs:
 
   firmware-target:
     # The demo built the way users build the component: plain ESP-IDF (ADR-013), pinned to the
-    # version in examples/demo/dependencies.lock. The image tag v6.1 is the 6.1.0 release.
+    # version in examples/demo/dependencies.lock (6.1.1, the same as the EIM install).
     runs-on: ubuntu-latest
-    container: espressif/idf:v6.1
+    container: espressif/idf:v6.1.1
     defaults:
       run:
         shell: bash

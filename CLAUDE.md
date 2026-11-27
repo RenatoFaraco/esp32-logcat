@@ -20,8 +20,10 @@ commits em inglês.
 - Portas neste PC: COM10 = CH340K (UART0; era COM5 até meados de nov/2026), COM6 =
   USB-Serial-JTAG nativo (via hub). O número da
   COM muda de máquina para máquina: nunca fixar em arquivo do projeto.
-- Firmware em ESP-IDF puro, 6.1.0 (ADR-013): `idf.py` em `firmware/examples/demo`, com o
-  ambiente do IDF 6.1 ativo (instalado pelo EIM). Núcleo e host continuam testados no PC
+- Firmware em ESP-IDF puro, 6.1.1 (ADR-013): `idf.py` em `firmware/examples/demo`. IDF em
+  `C:\esp\v6.1.1\esp-idf`, ferramentas em `C:\Espressif\tools` (EIM); ativar no PowerShell com
+  `. 'C:\Espressif\tools\Microsoft.v6.1.1.PowerShell_profile.ps1'` (o atalho "IDF_v6.1.1_Powershell"
+  faz o mesmo). Núcleo e host continuam testados no PC
   (`pio test -e native` até a #92, pytest); a placa valida adaptadores.
 
 ## Estrutura
