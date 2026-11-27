@@ -48,10 +48,15 @@ struct CaseFile {
     long declared = -1;  // "# cases: N"
 };
 
-// `name` is a file of conformance/. `pio test` runs from the PlatformIO project directory
-// (firmware/), in CI too.
+// `name` is a file of conformance/. The CMake project passes its absolute path
+// (LOGCAT_CONFORMANCE_DIR), so ctest can run from anywhere; the relative paths are the fallback
+// for a build without it (run from firmware/ or from the repository root).
+#ifndef LOGCAT_CONFORMANCE_DIR
+#define LOGCAT_CONFORMANCE_DIR "../conformance"
+#endif
 inline CaseFile load_cases(const std::string& name) {
-    const std::string candidates[] = {"../conformance/" + name, "conformance/" + name};
+    const std::string candidates[] = {std::string(LOGCAT_CONFORMANCE_DIR) + "/" + name,
+                                      "../conformance/" + name, "conformance/" + name};
     FILE* file = nullptr;
     for (const std::string& path : candidates) {
         file = std::fopen(path.c_str(), "rb");
