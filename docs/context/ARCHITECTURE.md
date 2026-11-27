@@ -265,5 +265,10 @@ Iniciais:
 Propostas para depois da v1 (ROADMAP, "Depois da v1"):
 
 - ADR-009: v2 como componente ESP-IDF multichip, só na família Espressif
-- ADR-010: Host em Go na v2.x, validado por uma suíte de conformidade (substituirá o ADR-008)
+- ADR-010: Host em Go na v2.x (substituída pelo ADR-014)
 - ADR-011: Firmware em Rust na v3, como crate `no_std` paralelo
+
+Aceitas para o M5.5 (antes da v1.0):
+
+- ADR-013: Build do firmware em ESP-IDF puro (`idf.py`), sem PlatformIO
+- ADR-014: Host em Rust (substituirá o ADR-008 na parte do Textual)

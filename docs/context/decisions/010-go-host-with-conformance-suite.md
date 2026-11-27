@@ -1,7 +1,7 @@
 # ADR-010: Host em Go na v2.x, validado por uma suíte de conformidade
-- Status: proposta (quando aceita, substitui o ADR-008)
+- Status: substituída pelo ADR-014 (host em Rust, antecipado para o M5.5)
 - Data: 2026-11-07
-- Requisitos: [PRD v2.x](../prd/v2x-go-host.md) (rascunho)
+- Requisitos: PRD v2.x (rascunho, reescrito para Rust em [`rust-host.md`](../prd/rust-host.md))
 
 ## Contexto
 O host da v1 é Python 3.12 com `pyserial`, `rich` e Textual (ADR-008). Para um projeto aberto

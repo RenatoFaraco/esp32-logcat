@@ -100,7 +100,7 @@ Nunca logar segredos (senha de Wi-Fi, chaves, tokens).
   esperado de cada linha (wire-format §1) e gera `line_cases.tsv`, lido por `test_conformance` (C++,
   parser + ida e volta pelo formatter) e por `host/tests/test_conformance.py` (Python,
   `assume_log=True`). Nenhum parser é o oráculo. Mudou o formato: edite o gerador, gere o TSV
-  de novo e faça os dois lados passarem no mesmo commit. O host em Go (ADR-010) lerá o mesmo
+  de novo e faça os dois lados passarem no mesmo commit. O host em Rust (ADR-014) lerá o mesmo
   arquivo.
 - Sanitizers rodam no CI (Linux); o MinGW do Windows não tem o runtime. Teste que existe para
   pegar leitura fora do buffer, `bool` inválido ou corrida de dados só prova algo sob eles.

@@ -32,7 +32,7 @@ família Espressif, sem mudar o formato nem a ferramenta de PC.
 - Outros fabricantes (STM32, RP2040, nRF…): v4.
 - ESP32-S2 e modelos mais antigos que o ESP32.
 - Telemetria por MQTT: v3, como mais um `Sink` sobre este componente.
-- Host em Go: v2.x ([PRD v2.x](v2x-go-host.md)).
+- Host em Rust: M5.5, antes da v2 ([PRD](rust-host.md)).
 
 ## 5. Restrições
 
