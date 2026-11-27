@@ -50,11 +50,13 @@ esp32-logcat/
 │       ├── hardware.md       placa real: chip, flash, portas, armadilhas
 │       └── decisions/        ADRs curtos (uma decisão por arquivo)
 ├── firmware/                 ESP-IDF puro (ADR-013)
-│   ├── components/esp32_logcat/   o componente publicável
+│   ├── components/esp32_logcat/   o componente publicável (README.md: API e sdkconfig exigido)
+│   │   ├── include/          esp32_logcat.h: a API pública em C (o único header público)
 │   │   ├── core/             núcleo C++ SEM dependência do ESP-IDF (include/logcat/, src/)
-│   │   └── port/             adaptadores IDF/FreeRTOS/LittleFS
-│   ├── examples/demo/        projeto IDF da app de demo: main/, sdkconfig.defaults,
-│   │                         sdkconfig.timing, partitions.csv, components/logcat_demo
+│   │   └── port/             adaptadores IDF/FreeRTOS/LittleFS e a implementação da API
+│   ├── examples/demo/        projeto IDF da app de demo (C++, só pela API): main/,
+│   │                         sdkconfig.defaults, sdkconfig.timing, partitions.csv, components/logcat_demo
+│   ├── examples/c_minimal/   o menor projeto em C: o que um usuário copia
 │   └── test/
 │       ├── host/             testes do núcleo no PC: CMake + Unity + ctest (presets native/asan/tsan)
 │       └── target/           testes na placa: app de teste do IDF (LittleFS, NVS)

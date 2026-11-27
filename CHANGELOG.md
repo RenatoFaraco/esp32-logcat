@@ -49,7 +49,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   tests (`test_target_*`) run again as an IDF test app in #93. The firmware behaves the same
   on the board.
 
+- Flash auto suspend on (`CONFIG_SPI_FLASH_AUTO_SUSPEND`): writing to flash stalled the
+  1 kHz critical task for 20-25 ms; now 0.2-1 ms, with no missed period.
+- The timing sweep moved to its own build (`pio run -e esp32c3_timing`), once per boot: every
+  line now also goes to flash, and a sweep writes about 2 MB, which would push out the logs a
+  crash left in the previous boot.
+
 ### Added
+
+- **Public C API, `esp32_logcat.h`** (#94, ADR-013 §3). A project (C or C++) starts the
+  logcat with `esp32_logcat_init(NULL)`. It also gets `set_level`, `sync`, `set_uart_mirror`
+  and `get_info`. The startup order the demo's `app_main` used to spell out (NVS and boot
+  counter, outputs, flash, writer task, hook, boot lines, console) now lives in the component.
+  - Only that header is public; the core and the adapters are private.
+  - The demo uses the API only.
+  - New example in plain C: `firmware/examples/c_minimal`, built in CI.
+  - The component's README lists the sdkconfig options and the `logs` partition a project
+    needs.
+  - The tag filter has a second writer now (`set_level`, besides the console): changes take a
+    static mutex. Log calls still read it without a lock.
+  - `joltwallet/littlefs` is pinned to exactly 1.23.1, the version the on-board tests pass
+    with. `~1.23.1` gave other projects 1.23.3.
 
 - `log dump` and `log clear` on the device (#29, PRD F9). `log dump` syncs the flash and sends
   one block per log file, oldest first, with the size each had when the dump began
@@ -107,6 +127,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- The flash store's snapshot said "mounted" before it was mounted: the zeroed slot read as
+  `MountResult::Mounted`. It now starts as not mounted (#94).
+
 - `esp-logcat shell` keeps every block of a reply: a multi-file `log dump` showed only the
   newest file. Each file's block gets its own summary line with the file name. A block whose
   CRC is wrong no longer ends the request at once (which handed the rest of a dump to the
@@ -120,14 +143,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   once when a command follows during the boot.
 - The shell drops a line it cut by closing the port (never shown as `!! torn`), and prints
   its summary after the reader stopped, so nothing comes after it (#82).
-
-### Changed
-
-- Flash auto suspend on (`CONFIG_SPI_FLASH_AUTO_SUSPEND`): writing to flash stalled the
-  1 kHz critical task for 20-25 ms; now 0.2-1 ms, with no missed period.
-- The timing sweep moved to its own build (`pio run -e esp32c3_timing`), once per boot: every
-  line now also goes to flash, and a sweep writes about 2 MB, which would push out the logs a
-  crash left in the previous boot.
 
 ## [0.4.0] - 2026-11-14
 
