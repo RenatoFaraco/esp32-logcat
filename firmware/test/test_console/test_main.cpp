@@ -76,6 +76,12 @@ public:
     }
     SyncResult sync_result = SyncResult::Ok;
     int syncs = 0;
+    logcat::ClearResult clear_log() override {
+        ++clears;
+        return clear_result;
+    }
+    logcat::ClearResult clear_result = logcat::ClearResult::Ok;
+    int clears = 0;
 
     std::string lines() const {
         std::string all;
@@ -433,6 +439,7 @@ struct RefusesNth final : logcat::ConsolePlatform {
     void crash_panic() override {}
     void crash_wdt() override {}
     SyncResult sync_log() override { return SyncResult::Ok; }
+    logcat::ClearResult clear_log() override { return logcat::ClearResult::Ok; }
     int refused_at;
     int sends = 0;
     std::vector<ReplyMessage> messages;
@@ -505,13 +512,35 @@ void test_log_dump_is_one_message_for_the_writer_task() {
     TEST_ASSERT_EQUAL_STRING("4", rig.platform.messages[0].id);
 }
 
-void test_flash_commands_are_unsupported_for_now() {
-    for (const char* request : {"5 log clear\n"}) {
-        Rig rig;
-        rig.send(request);
-        TEST_ASSERT_EQUAL_STRING("#! 5 unsupported needs flash storage (M4)\n",
-                                 rig.platform.lines().c_str());
-    }
+// `log clear` (#29) answers after the files are gone: ok means the log starts over.
+void test_log_clear_answers_ok_once_cleared() {
+    Rig rig;
+    rig.send("5 log clear\n");
+    TEST_ASSERT_EQUAL(1, rig.platform.clears);
+    TEST_ASSERT_EQUAL_STRING("#. 5 ok\n", rig.platform.lines().c_str());
+}
+
+void test_log_clear_during_a_dump_is_busy() {
+    Rig rig;
+    rig.platform.clear_result = logcat::ClearResult::Busy;
+    rig.send("5 log clear\n");
+    TEST_ASSERT_EQUAL_STRING("#! 5 busy a log dump is being sent: try again after it\n",
+                             rig.platform.lines().c_str());
+}
+
+void test_log_clear_that_failed_is_an_error() {
+    Rig rig;
+    rig.platform.clear_result = logcat::ClearResult::Failed;
+    rig.send("5 log clear\n");
+    TEST_ASSERT_EQUAL_STRING("#! 5 failed clear failed or timed out: some files may be left\n",
+                             rig.platform.lines().c_str());
+}
+
+void test_log_clear_without_flash_is_unsupported() {
+    Rig rig;
+    rig.platform.clear_result = logcat::ClearResult::Unsupported;
+    rig.send("5 log clear\n");
+    TEST_ASSERT_EQUAL_STRING("#! 5 unsupported no flash storage\n", rig.platform.lines().c_str());
 }
 
 void test_reboot_replies_before_restarting() {
@@ -565,6 +594,7 @@ void test_queue_full_midway_stops_the_lines_and_tries_a_timeout_terminator() {
         void crash_panic() override {}
         void crash_wdt() override {}
         SyncResult sync_log() override { return SyncResult::Ok; }
+        logcat::ClearResult clear_log() override { return logcat::ClearResult::Ok; }
         std::vector<ReplyMessage> messages;
         int sends = 0;
     } platform;
@@ -1067,7 +1097,10 @@ int main() {
     RUN_TEST(test_request_of_exactly_the_limit_runs_and_one_more_does_not);
     RUN_TEST(test_log_tail_is_one_message_for_the_writer_task);
     RUN_TEST(test_log_dump_is_one_message_for_the_writer_task);
-    RUN_TEST(test_flash_commands_are_unsupported_for_now);
+    RUN_TEST(test_log_clear_answers_ok_once_cleared);
+    RUN_TEST(test_log_clear_during_a_dump_is_busy);
+    RUN_TEST(test_log_clear_that_failed_is_an_error);
+    RUN_TEST(test_log_clear_without_flash_is_unsupported);
     RUN_TEST(test_dump_without_flash_is_unsupported);
     RUN_TEST(test_dump_with_no_files_is_only_the_terminator);
     RUN_TEST(test_dump_sends_one_block_per_file_oldest_first_and_one_terminator);

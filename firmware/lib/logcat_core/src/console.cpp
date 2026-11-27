@@ -128,7 +128,21 @@ void Console::run(const Command& command) {
             }
             return;
         case CommandKind::LogClear:
-            reply_error(command.id, "unsupported", "needs flash storage (M4)");
+            switch (platform_.clear_log()) {
+                case ClearResult::Ok:
+                    reply_ok(command.id);
+                    return;
+                case ClearResult::Busy:
+                    reply_error(command.id, "busy", "a log dump is being sent: try again after it");
+                    return;
+                case ClearResult::Failed:
+                    reply_error(command.id, "failed",
+                                "clear failed or timed out: some files may be left");
+                    return;
+                case ClearResult::Unsupported:
+                    reply_error(command.id, "unsupported", "no flash storage");
+                    return;
+            }
             return;
         case CommandKind::Reboot:
             reply_ok(command.id);
