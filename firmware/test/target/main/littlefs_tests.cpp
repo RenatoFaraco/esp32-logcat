@@ -1,8 +1,7 @@
 // The LittleFsFileSystem adapter on the board (#24): the FileSystem port's contract, checked on
 // real LittleFS, and the RotatingStore's budget against the real partition.
 //
-// No runner until #93 makes the on-board tests an ESP-IDF test app (it ran with PlatformIO
-// until #91). The test is kept as it is, with the adapter's new path.
+// One suite of the on-board test app (#93, test_main.cpp runs it).
 //
 // WARNING: formats the `logs` partition. The logs kept on the board are erased.
 
@@ -12,13 +11,14 @@
 #include <cstring>
 #include <string>
 
-#include "../../components/esp32_logcat/port/littlefs_file_system.cpp"  // the adapter under test (run by the IDF test app of #93)
 #include "esp_littlefs.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "logcat/file_line_reader.hpp"
 #include "logcat/line_formatter.hpp"
 #include "logcat/rotating_store.hpp"
+#include "port/littlefs_file_system.hpp"  // the adapter under test
+#include "suites.hpp"
 
 using logcat::LittleFsFileSystem;
 using logcat::MountResult;
@@ -58,12 +58,11 @@ void wipe() {
 
 }  // namespace
 
-void setUp() {
+void littlefs_set_up() {
     if (fs.mount_result() != MountResult::Failed) {
         wipe();
     }
 }
-void tearDown() {}
 
 void test_mount() {
     TEST_ASSERT_TRUE(fs.begin() != MountResult::Failed);
@@ -298,9 +297,8 @@ void test_stack_after_a_full_partition() {
            static_cast<unsigned>(uxTaskGetStackHighWaterMark(nullptr)));
 }
 
-extern "C" void app_main(void) {
-    vTaskDelay(pdMS_TO_TICKS(2000));  // let the host open the port
-    UNITY_BEGIN();
+void run_littlefs_tests() {
+    Unity.TestFile = __FILE__;  // failures point at this file, not at test_main.cpp
     RUN_TEST(test_mount);
     RUN_TEST(test_append_sync_size_and_read);
     RUN_TEST(test_size_of_the_open_file_is_the_synced_size);
@@ -315,5 +313,9 @@ extern "C" void app_main(void) {
     RUN_TEST(test_names_the_port_cannot_carry);
     RUN_TEST(test_stack_after_a_full_partition);
     RUN_TEST(test_the_store_survives_a_remount_and_repairs_a_torn_tail);  // last: it remounts
-    UNITY_END();
+    // Leave `logs` empty: the test lines would show up in the demo's next dump as real logs.
+    // No TEST_ASSERT outside a test.
+    if (esp_littlefs_format("logs") != ESP_OK) {
+        printf("could not format `logs` after the tests: reflash and erase it\n");
+    }
 }

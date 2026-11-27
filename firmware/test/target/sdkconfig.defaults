@@ -1,0 +1,12 @@
+# On top of the demo's sdkconfig.defaults (see CMakeLists.txt): only what differs.
+
+# The product's partition table: the tests format and measure the same `logs` partition.
+CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="../../examples/demo/partitions.csv"
+
+# The tests run in the main task, with readers and stores on its stack: room to spare instead
+# of the 3.5 KB default (the run prints what is left).
+CONFIG_ESP_MAIN_TASK_STACK_SIZE=8192
+
+# A panic stops the board. Rebooting would run the tests again and again: the LittleFS suite
+# writes ~1.8 MB per run into a 512 KB partition, wearing the flash while nobody watches.
+CONFIG_ESP_SYSTEM_PANIC_PRINT_HALT=y

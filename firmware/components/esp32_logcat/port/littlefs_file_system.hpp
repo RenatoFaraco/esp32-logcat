@@ -17,7 +17,7 @@ const char* to_string(MountResult result);
 
 // The FileSystem port on esp_littlefs (joltwallet/littlefs), partition `logs` mounted at /logs
 // (#24). What the port's contract says "to confirm on the board", as found in esp_littlefs
-// 1.23 and by test/test_target_littlefs on the board:
+// 1.23 and by the LittleFS suite of firmware/test/target on the board:
 // - stat() (size) reads the committed entry: the open file's unsynced bytes are not seen;
 // - unlink/rename of an open file fail with EBUSY: refused here first, so LittleFS does not log
 //   an error from inside the writer task;

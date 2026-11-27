@@ -126,13 +126,14 @@ feito do jeito antigo, principalmente o do host. A linguagem do firmware não mu
 ADR-005): muda o build, e entra uma API C na fronteira do componente.
 
 **Firmware: ESP-IDF puro (ADR-013)**
-- [ ] Estrutura de componente: `components/esp32_logcat/` (`core/` + `port/`), `examples/demo/`,
+- [x] Estrutura de componente: `components/esp32_logcat/` (`core/` + `port/`), `examples/demo/`,
       `test/host/`, `test/target/`; build com `idf.py`, PlatformIO removido (#91: componente,
       `examples/demo` e build com `idf.py`; #92: `test/host/` e o fim do PlatformIO;
-      falta `test/target/`, na #93)
+      #93: `test/target/`)
 - [x] Testes do núcleo em CMake + Unity + ctest, presets `native`, `asan` e `tsan` com os
       flags do ADR-005
-- [ ] Testes na placa (`test_target_littlefs`, `test_target_nvs`) como app de teste IDF
+- [x] Testes na placa (`test_target_littlefs`, `test_target_nvs`) como app de teste IDF
+      (`firmware/test/target`, #93)
 - [x] Variante de timing (#13/#14) como opção do Kconfig com `sdkconfig.timing`
 - [ ] API pública em C (`esp32_logcat.h`)
 - [ ] CI na imagem `espressif/idf` fixada; `CLAUDE.md`, `CONVENTIONS`, ADR-005 e subagentes

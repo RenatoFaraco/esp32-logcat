@@ -272,6 +272,7 @@ Choose the tests relevant to the modified components.
 | Firmware ASan/UBSan (Linux) | same, with the `asan` preset |
 | Firmware TSan (Linux) | same, with the `tsan` preset |
 | ESP32-C3 build | `cd firmware/examples/demo && idf.py build` |
+| On-board tests (needs the board; formats the `logs` partition) | `cd firmware/test/target && idf.py -p COMx flash monitor` (UART bridge port) |
 | Host application | `cd host && pytest` |
 | Host lint | `cd host && ruff check .` |
 | Host formatting | `cd host && ruff format --check .` |

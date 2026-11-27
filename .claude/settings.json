@@ -6,6 +6,7 @@
     "allow": [
       "Bash(powershell.exe -NoProfile -ExecutionPolicy Bypass -Command \". 'C:\\Espressif\\tools\\Microsoft.v6.1.1.PowerShell_profile.ps1' *> \\$null; Set-Location firmware/test/host; *)",
       "Bash(powershell.exe -NoProfile -ExecutionPolicy Bypass -Command \"Remove-Item Env:MSYSTEM -ErrorAction SilentlyContinue; . 'C:\\Espressif\\tools\\Microsoft.v6.1.1.PowerShell_profile.ps1' *> \\$null; idf.py -C firmware/examples/demo build; *)",
+      "Bash(powershell.exe -NoProfile -ExecutionPolicy Bypass -Command \"Remove-Item Env:MSYSTEM -ErrorAction SilentlyContinue; . 'C:\\Espressif\\tools\\Microsoft.v6.1.1.PowerShell_profile.ps1' *> \\$null; idf.py -C firmware/test/target build; *)",
       "Bash(host/.venv/Scripts/python -m pytest -q host *)"
     ]
   }
