@@ -1,7 +1,7 @@
 {
     "recommendations": [
-        "platformio.platformio-ide",
         "ms-vscode.cpptools",
+        "ms-vscode.cmake-tools",
         "ms-python.python",
         "charliermarsh.ruff"
     ]

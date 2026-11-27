@@ -25,7 +25,7 @@ body:
   - type: textarea
     id: tests
     attributes:
-      label: Tests (Unity, env:native)
+      label: Tests (Unity, firmware/test/host)
       description: Behaviors to cover, including edge cases.
       placeholder: |
         - [ ] test_ring_buffer_overwrites_oldest_when_full

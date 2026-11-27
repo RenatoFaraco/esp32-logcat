@@ -33,7 +33,7 @@ STACKS = [
     "ESP-IDF 6.1",
     "FreeRTOS",
     "C++17",
-    "PlatformIO",
+    "CMake",
     "Unity",
     "Python 3.12",
     "pyserial",

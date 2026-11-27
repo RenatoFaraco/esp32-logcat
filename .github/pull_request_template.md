@@ -17,8 +17,8 @@ Closes #
 
 ## How it was tested
 
-- [ ] `pio test -e native`
-- [ ] `pio run -e esp32c3`
+- [ ] Core tests: `ctest --preset native` (in `firmware/test/host`)
+- [ ] Target build: `idf.py build` (in `firmware/examples/demo`)
 - [ ] `pytest` and `ruff check . && ruff format --check .` (host)
 - [ ] On hardware — board, commit and what was observed:
 

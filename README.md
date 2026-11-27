@@ -65,14 +65,14 @@ Log line format:
 
 ## Target
 
-- ESP32-C3 (RISC-V), ESP-IDF via PlatformIO, C++17.
-- Platform-independent core (`firmware/components/esp32_logcat/core`) unit-tested on the host (`env:native`).
+- ESP32-C3 (RISC-V), plain ESP-IDF 6.1.1 (`idf.py`), C++17.
+- Platform-independent core (`firmware/components/esp32_logcat/core`) unit-tested on the host (CMake + Unity + ctest).
 - Host tool: Python 3.12.
 
 ## Repository layout
 
 ```
-firmware/   PlatformIO project (core library, ESP-IDF adapters, demo app, tests)
+firmware/   ESP-IDF component (core + adapters), demo app (examples/demo), core tests (test/host)
 host/       esp-logcat Python CLI
 docs/       project/: manuals, conventions, roadmap; context/: PRD, architecture, hardware,
             ADRs (Portuguese, except the English manual). Index in docs/README.md
@@ -80,45 +80,39 @@ docs/       project/: manuals, conventions, roadmap; context/: PRD, architecture
 
 ## Building and testing
 
-Requirements: [PlatformIO Core](https://platformio.org/install/cli) 6.1+, Python 3.12, and a host
-C++ compiler for `env:native` (GCC with C++17 support).
+Requirements: [ESP-IDF 6.1.1](https://docs.espressif.com/projects/esp-idf/) (on Windows, through
+the EIM installer), Python 3.12, and for the core tests CMake 3.25+, Ninja and a host GCC with
+C++17 support.
 
 > **Windows:** install the host GCC in a path without spaces (e.g. MSYS2 UCRT64 at `C:\msys64`).
 > MinGW's linker splits paths on spaces and fails if GCC lives under `C:\Users\First Last\...`.
+> Run the commands below in the ESP-IDF PowerShell (EIM's desktop shortcut): it brings the
+> CMake and Ninja that the core tests use too.
 
-Firmware:
+Firmware (from `firmware/examples/demo`):
 
 ```sh
-cd firmware
-pio test -e native     # core unit tests on the PC
-pio run -e esp32c3     # build for the target
+idf.py build             # build for the target
+idf.py -p COMx flash     # flash it (the native USB port or the UART bridge)
 ```
 
-**VS Code IntelliSense** (errors like `cannot open source file "freertos/FreeRTOS.h"`): the
-repository root is opened as the workspace, not the PlatformIO project in `firmware/`, so the
-PlatformIO extension does not configure IntelliSense. `.vscode/settings.json` points it at a
-compile database instead; generate it once, and again after adding source files:
+Core tests on the PC (from `firmware/test/host`):
 
 ```sh
-pio run -d firmware -e esp32c3 -t compiledb   # writes firmware/compile_commands.json (ignored)
+cmake --preset native && cmake --build --preset native && ctest --preset native
 ```
 
-The database names the compiler without a path, so `.vscode/settings.json` also sets
-`C_Cpp.default.compilerPath` from the `PLATFORMIO_CORE_DIR` environment variable
-(`<core>/packages/toolchain-riscv32-esp/bin/riscv32-esp-elf-g++.exe`): without it, IntelliSense
-cannot query the RISC-V compiler and reports errors such as `identifier "_REENT" is undefined`.
-If PlatformIO lives in its default place (`%USERPROFILE%\.platformio`), set that variable or
-adjust the path in your user settings.
+**VS Code IntelliSense:** `.vscode/settings.json` reads the compile database that `idf.py build`
+writes (`firmware/examples/demo/build/compile_commands.json`); build once, and again after adding
+source files, then run *C/C++: Reset IntelliSense Database* if old errors stay.
 
-Then run *C/C++: Reset IntelliSense Database* from the command palette if the errors stay.
-
-The CI also runs the core tests under sanitizers: `native_asan` (AddressSanitizer +
-UndefinedBehaviorSanitizer) and `native_tsan` (ThreadSanitizer). They need a Linux toolchain —
-MinGW on Windows has no ASan/TSan runtime — so run them on Linux or WSL:
+The CI also runs the core tests under sanitizers: the `asan` (AddressSanitizer +
+UndefinedBehaviorSanitizer) and `tsan` (ThreadSanitizer) presets. They need a Linux toolchain
+(MinGW on Windows has no ASan/TSan runtime), so run them on Linux or WSL:
 
 ```sh
-pio test -e native_asan -v   # -v shows the sanitizer report if a test fails
-pio test -e native_tsan -v
+cmake --preset asan && cmake --build --preset asan && ctest --preset asan
+cmake --preset tsan && cmake --build --preset tsan && ctest --preset tsan
 ```
 
 Host tool:

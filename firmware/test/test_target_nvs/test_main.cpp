@@ -1,9 +1,8 @@
 // The NvsBootStore adapter on the board (#25), in its own NVS namespace (`logcat_test`): the
 // real boot counter (`logcat`) is not touched.
 //
-//   pio test -e esp32c3 -f test_target_nvs --upload-port <native> --test-port <CH340>
-//
-// Only for env:esp32c3 (env:native ignores test_target_*).
+// No runner until #93 makes the on-board tests an ESP-IDF test app (it ran with PlatformIO
+// until #91). The test is kept as it is, with the adapter's new path.
 
 #include <unity.h>
 

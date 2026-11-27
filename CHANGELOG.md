@@ -9,6 +9,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **The core tests run on CMake + Unity + ctest, and PlatformIO is gone from the project**
+  (#92). The tests moved to `firmware/test/host/`, where a CMake project builds the core with
+  only its own include path (an ESP-IDF include cannot build, ADR-003). Unity 2.6.1 is pinned
+  by hash. The presets are:
+  - `native`: Windows and Linux;
+  - `asan`: ASan + UBSan, Linux only;
+  - `tsan`: Linux only.
+
+  Run them with `cmake --preset native && cmake --build --preset native && ctest --preset
+  native`. On Windows, use the ESP-IDF PowerShell, which brings CMake and Ninja. The tests link
+  the C++ runtime statically there, so a DLL elsewhere on PATH cannot break them. The 18 suites
+  (364 cases) run in about 2 s, against about 55 s with PlatformIO.
+
+  `platformio.ini` and its scripts are removed. Every instruction now uses `idf.py` or the CMake
+  presets: README, CONTRIBUTING, MANUAL, the templates, `.vscode`, the agents and
+  `.claude/settings.json`.
+
 - **The firmware builds with plain ESP-IDF 6.1.1 (`idf.py`), no longer PlatformIO** (#91,
   ADR-013). It is now laid out as a publishable component:
   - `firmware/components/esp32_logcat/` holds the core (`core/`, still free of ESP-IDF) and

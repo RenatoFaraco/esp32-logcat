@@ -57,7 +57,7 @@ máquina, sem o ambiente criado ou sem firmware gravado: seção 1.
 ### 1.1 O que você precisa
 
 - Placa ESP32-C3 com as duas USB-C (a usada aqui: `hardware.md`).
-- Windows com PlatformIO (`C:\.platformio`) e Python 3.12. Os comandos funcionam no
+- Windows com o ESP-IDF 6.1.1 (instalado pelo EIM) e Python 3.12. Os comandos funcionam no
   **PowerShell** e no **Prompt de Comando (cmd)**, a partir da raiz do repositório
   (`C:\dev\esp32-logcat`); onde os dois diferem, o manual mostra as duas formas.
 - **Um cabo na USB-C da porta nativa (USB-Serial-JTAG)**, ligado **direto numa porta do PC**,
@@ -94,7 +94,8 @@ scripts locais para o seu usuário (uma vez) com
 Com a placa ligada pela porta nativa:
 
 ```powershell
-C:\.platformio\penv\Scripts\pio.exe run -d firmware -e esp32c3 -t upload --upload-port COM6
+cd firmware\examples\demo   # no PowerShell do ESP-IDF (atalho do EIM)
+idf.py -p COM6 flash
 ```
 
 Troque `COM6` pela porta nativa da sua máquina (próximo passo). O primeiro build leva alguns
@@ -247,7 +248,7 @@ atual, e o `seq` segue contínuo a partir dela.
 
 ### 3.4 Porta ocupada
 
-Se outro programa (um `pio device monitor`, o monitor do VS Code, outra instância do
+Se outro programa (um `idf.py monitor`, o monitor do VS Code, outra instância do
 esp-logcat) estiver com a porta aberta, a ferramenta espera, e conecta assim que a porta
 ficar livre:
 
@@ -475,7 +476,7 @@ Os filtros da ferramenta combinam com tudo isto: `esp-logcat stream "*:W" > avis
 | Linhas do logcat | sim, com `\n` | sim (espelho), com `\r\n` |
 | `printf` e texto que não é log | não | sim |
 | Avisos `W LOGCAT` | sim | sim |
-| Abrir a porta reseta a placa? | não | não, se aberta com DTR/RTS soltos (o esp-logcat e o `pio device monitor` deste projeto fazem isso) |
+| Abrir a porta reseta a placa? | não | não, se aberta com DTR/RTS soltos (o esp-logcat faz isso; o `idf.py monitor` só com `--no-reset`) |
 
 Use a **nativa** para o logcat. Use a **COM10** quando precisar do console completo
 (`esp-logcat stream --port COM10` também funciona) ou quando estiver gravando pela nativa.
@@ -487,7 +488,7 @@ Use a **nativa** para o logcat. Use a **COM10** quando precisar do console compl
 | Sintoma | Causa provável | O que fazer |
 |---------|----------------|-------------|
 | `cannot choose a port (found: ...); use --port` | nenhuma porta nativa, ou mais de uma | rode `esp-logcat ports` e passe `--port COMx` |
-| `waiting for COM6: port busy` | outro programa com a porta aberta | feche o monitor serial (VS Code, PlatformIO, outro terminal) |
+| `waiting for COM6: port busy` | outro programa com a porta aberta | feche o monitor serial (VS Code, `idf.py monitor`, outro terminal) |
 | `waiting for COM6: not available` sem fim | placa desligada, cabo só de energia, ou a porta mudou de número e a placa ainda não tinha sido vista nesta sessão | confira o cabo; rode `esp-logcat ports` |
 | `esp-logcat` não é reconhecido como comando | o ambiente não está ativado neste terminal | ative (seção 1.2) ou use `host\.venv\Scripts\esp-logcat.exe` |
 | A porta nativa sumiu depois de um reset pela CH340K; o Windows mostra "Dispositivo USB Desconhecido" | placa atrás de um hub (`hardware.md`, item 5) | desconecte e reconecte o cabo; ligue a nativa direto no PC |
