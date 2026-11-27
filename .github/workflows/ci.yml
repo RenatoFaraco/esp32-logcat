@@ -69,6 +69,13 @@ jobs:
           idf.py -B build-timing -D SDKCONFIG=build-timing/sdkconfig \
             -D "SDKCONFIG_DEFAULTS=sdkconfig.defaults;sdkconfig.timing" build
 
+      - name: Build the C-only example (firmware/examples/c_minimal)
+        # The public C API used from C, with only the sdkconfig the component's README asks for.
+        working-directory: firmware/examples/c_minimal
+        run: |
+          . "$IDF_PATH/export.sh"
+          idf.py build
+
       - name: Build the on-board test app (firmware/test/target; it runs on a board, not here)
         working-directory: firmware/test/target
         run: |
