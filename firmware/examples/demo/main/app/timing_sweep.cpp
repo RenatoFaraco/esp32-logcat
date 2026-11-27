@@ -5,15 +5,21 @@
 #include "app/critical_task.hpp"
 #include "app/pins.hpp"
 #include "driver/gpio.h"
+#include "esp32_logcat.h"
 #include "esp_log.h"
 #include "esp_rom_sys.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
-#include "port/idf_log_hook.hpp"
 
 namespace app {
 
 namespace {
+
+uint32_t dropped_so_far() {
+    esp32_logcat_info_t info{};
+    esp32_logcat_get_info(&info);
+    return info.dropped;
+}
 
 constexpr const char* TAG = "TIMING";
 constexpr uint32_t kPhaseSeconds = 10;
@@ -54,7 +60,6 @@ static_assert(sizeof(StackType_t) == 1, "ESP-IDF FreeRTOS: stack depth is in byt
 
 StackType_t stack[kStackBytes];
 StaticTask_t control;
-SwitchableSink* mirror = nullptr;
 
 void mark_phase(uint32_t index) {
     for (uint32_t pulse = 0; pulse <= index; ++pulse) {
@@ -84,7 +89,7 @@ void report(uint32_t index, const Phase& phase, const CriticalReport& r, uint32_
 }
 
 void run_phase(uint32_t index, const Phase& phase) {
-    mirror->set_enabled(phase.uart_mirror);
+    esp32_logcat_set_uart_mirror(phase.uart_mirror);
     set_critical_task_logging(phase.critical_logs);
     mark_phase(index);
     CriticalReport discarded{};
@@ -92,7 +97,7 @@ void run_phase(uint32_t index, const Phase& phase) {
         ESP_LOGW(TAG, "phase %lu: no reset from the critical task, the counts include the gap",
                  static_cast<unsigned long>(index));
     }
-    const uint32_t dropped_before = logcat::idf_log_hook_stats().dropped_total;
+    const uint32_t dropped_before = dropped_so_far();
 
     const uint32_t per_tick = phase.load_lines_per_s / kTicksPerSecond;
     TickType_t wake = xTaskGetTickCount();
@@ -107,8 +112,9 @@ void run_phase(uint32_t index, const Phase& phase) {
     set_critical_task_logging(false);
     CriticalReport result{};
     const bool got = take_critical_report(result, pdMS_TO_TICKS(100));
-    const uint32_t dropped = logcat::idf_log_hook_stats().dropped_total - dropped_before;
-    mirror->set_enabled(false);  // the report is not part of the load: give the writer time
+    const uint32_t dropped = dropped_so_far() - dropped_before;
+    esp32_logcat_set_uart_mirror(
+        false);  // the report is not part of the load: give the writer time
     vTaskDelay(pdMS_TO_TICKS(200));
     if (got) {
         report(index, phase, result, dropped);
@@ -127,14 +133,13 @@ void run(void*) {
     // 4 times the partition. Run forever, it would wear the flash out in weeks. Reset the board
     // (esp-logcat shell reboot) for another sweep.
     ESP_LOGI(TAG, "sweep done; it runs once per boot (it writes ~2 MB to flash)");
-    mirror->set_enabled(true);
+    esp32_logcat_set_uart_mirror(true);
     vTaskDelete(nullptr);
 }
 
 }  // namespace
 
-bool start_timing_sweep(SwitchableSink& uart_mirror) {
-    mirror = &uart_mirror;
+bool start_timing_sweep() {
     const gpio_config_t pin = {
         .pin_bit_mask = 1ULL << kPinPhase,
         .mode = GPIO_MODE_OUTPUT,

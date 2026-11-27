@@ -10,6 +10,7 @@
 #include "esp_system.h"
 #include "esp_timer.h"
 #include "logcat/boot_counter.hpp"
+#include "port/filter_lock.hpp"
 #include "port/idf_log_hook.hpp"
 #include "port/reset_reason.hpp"
 #include "port/writer_task.hpp"
@@ -156,6 +157,14 @@ SyncResult EspConsolePlatform::sync_log() {
     // Under the host's 2 s reply timeout, with room for queueing and sending the reply: the
     // writer serves the request once its queue is empty, at least once a second under load.
     return flash_.request_sync(pdMS_TO_TICKS(1200)) ? SyncResult::Ok : SyncResult::Failed;
+}
+
+void EspConsolePlatform::lock_filter() {
+    lock_tag_filter();
+}
+
+void EspConsolePlatform::unlock_filter() {
+    unlock_tag_filter();
 }
 
 ClearResult EspConsolePlatform::clear_log() {

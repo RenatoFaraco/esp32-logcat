@@ -27,6 +27,10 @@ enum Slot : size_t {
 
 }  // namespace
 
+FlashStore::FlashStore() {
+    published_[kMount].store(static_cast<uint32_t>(MountResult::Failed), std::memory_order_relaxed);
+}
+
 MountResult FlashStore::begin() {
     const MountResult mount = fs_.begin();
     if (mount != MountResult::Failed) {
