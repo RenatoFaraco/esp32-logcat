@@ -19,7 +19,7 @@ em C/C++. Uma segunda implementação que fala **o mesmo formato** prova que o c
    paralela: o componente C++ continua.
 2. Escopo inicial mínimo: formatter, ring buffer, sink USB/UART e integração com a fachada
    `log` do Rust. Persistência, registro de boot e último suspiro vêm depois, nessa ordem.
-3. O formatter Rust passa na mesma suíte de conformidade do host (ADR-010).
+3. O formatter Rust passa na mesma suíte de conformidade do host (ADR-014, que substituiu o ADR-010).
 
 ## Consequências
 - Duas implementações de firmware: uma mudança de formato atualiza o formatter C++, o

@@ -1,5 +1,5 @@
 # ADR-001: ESP-IDF via PlatformIO em vez do framework Arduino
-- Status: aceita
+- Status: substituída pelo ADR-013 (o ESP-IDF continua; o PlatformIO sai)
 - Data: 2026-10-20
 
 ## Contexto

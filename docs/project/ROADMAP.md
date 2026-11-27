@@ -47,7 +47,11 @@ quando o firmware passa a precisar dele):
 6. ~~M2 · parte 2 — `stream` completo com filtros, app de demo e medição interna de jitter
    (#15, #13)~~; a medição com o analisador (#14) foi para o M6
 7. ~~M5 no firmware: `CommandParser` (#27) e console (#28)~~ e release `v0.3.0` — 11/nov
-8. `esp-logcat shell` (#30), M4a (#22, #23), M4b, `esp-logcat dump` (#29), M6, M7 (stretch)
+8. ~~`esp-logcat shell` (#30), M4a (#22, #23), M4b~~; `log dump`/`log clear` no firmware (#29)
+9. **M5.5 · Toolchain** (combinado em 26/nov): build em ESP-IDF puro (ADR-013) e host em
+   Rust (ADR-014). O `esp-logcat dump` sai do M5 e nasce em Rust aqui. A partir de 26/nov o
+   host Python só recebe correções
+10. M6, M7 (stretch)
 
 Os blocos 🖥️ (M3, M4a, M5a) podem ser adiantados sempre que o trabalho com a placa travar.
 
@@ -110,7 +114,39 @@ Os blocos 🖥️ (M3, M4a, M5a) podem ser adiantados sempre que o trabalho com 
       (os dois na #29)
 - [x] `esp-logcat shell`: um comando (com `--json`), prompt interativo com logs filtrados, ou
       pipe (#30) → **release `v0.4.0`**
-- [ ] `esp-logcat dump` (bloco `#BEGIN/#END` com CRC; o `Framer` da #30 já lê o bloco)
+- [ ] ~~`esp-logcat dump` no host Python~~ → vai para o M5.5, já em Rust (o `Framer` da #30
+      é o modelo do framer do `logcat-wire`)
+
+### M5.5 · Toolchain 🖥️ — `v0.5.0`
+Combinado em 26/nov/2026. Antes do M6 porque o custo das duas mudanças cresce com cada marco
+feito do jeito antigo, principalmente o do host. A linguagem do firmware não muda (C++17,
+ADR-005): muda o build, e entra uma API C na fronteira do componente.
+
+**Firmware: ESP-IDF puro (ADR-013)**
+- [ ] Estrutura de componente: `components/esp32_logcat/` (`core/` + `port/`), `examples/demo/`,
+      `test/host/`, `test/target/`; build com `idf.py`, PlatformIO removido
+- [ ] Testes do núcleo em CMake + Unity + ctest, presets `native`, `asan` e `tsan` com os
+      flags do ADR-005
+- [ ] Testes na placa (`test_target_littlefs`, `test_target_nvs`) como app de teste IDF
+- [ ] Variante de timing (#13/#14) como opção do Kconfig com `sdkconfig.timing`
+- [ ] API pública em C (`esp32_logcat.h`)
+- [ ] CI na imagem `espressif/idf` fixada; `CLAUDE.md`, `CONVENTIONS`, ADR-005 e subagentes
+      sem `pio`
+- **Pronto quando:** CI verde sem PlatformIO e a demo gravada e logando na placa com `idf.py`.
+
+**Host: Rust (ADR-014, [PRD](../context/prd/rust-host.md))**
+- [ ] Workspace `host-rs/` (`logcat-wire`, `logcat-serial`, `esp-logcat`) e job Rust no CI
+      (Linux e Windows)
+- [ ] `logcat-wire` passando em toda a `conformance/`
+- [ ] `ports` e `stream` com reconexão, DTR/RTS soltos na CH340K e linhas grudadas
+- [ ] Detecção de reinício: linha `rst:` da ROM (UART) e queda da porta + regressão do
+      timestamp (USB-Serial-JTAG)
+- [ ] Filtros `TAG:L`, cores, `--save` e `replay`
+- [ ] `tui` com `ratatui`
+- [ ] `shell` e `dump` (CRC do bloco)
+- [ ] Host Rust oficial: Python aposentado, `host-rs/` → `host/`, binários nos releases
+- **Pronto quando:** critérios do [PRD do host em Rust](../context/prd/rust-host.md) §6 →
+  **release `v0.5.0`**.
 
 ### M6 · Robustez 🔌
 - [ ] `RtcLastWords` com mágico + CRC
@@ -129,8 +165,9 @@ Os blocos 🖥️ (M3, M4a, M5a) podem ser adiantados sempre que o trabalho com 
 ## Depois da v1
 
 Combinado em 07/nov/2026. O projeto é open source e pensado para o público em geral: quem
-adota adapta ao seu produto. A ordem segue as dependências: multichip primeiro, porque a
-telemetria vira só mais um `Sink` sobre ele. Os ADRs 009–011 estão como **proposta** e viram
+adota adapta ao seu produto. O host em Go saiu desta tabela em 26/nov: o host em Rust foi
+antecipado para o M5.5 (ADR-014). A ordem segue as dependências: multichip primeiro, porque a
+telemetria vira só mais um `Sink` sobre ele. Os ADRs 009 e 011 estão como **proposta** e viram
 "aceita" quando a versão começar.
 
 | Versão | Ideia | Por quê | Decisão |
@@ -138,7 +175,8 @@ telemetria vira só mais um `Sink` sobre ele. Os ADRs 009–011 estão como **pr
 | v1.x | Log e console pela rede: Wi-Fi (TCP/WebSocket, mDNS) e BLE (GATT), o mesmo protocolo do cabo. Zigbee/Thread precisam do rádio 802.15.4 (C6/H2), então ficam na v2 | O rádio é o diferencial do ESP: ver a placa sem cabo | #85 (precisa de um PRD v1.x antes) |
 | v1.1 | Core dump, comando `log grep` no dispositivo | — | — |
 | v2 | Componente ESP-IDF multichip (família Espressif) publicado no IDF Component Registry | O chip muda de produto para produto | ADR-009 · [PRD v2](../context/prd/v2-multichip.md) |
-| v2.x | Host em Go (CLI + TUI), binário único por SO, validado por suíte de conformidade | Instalar sem Python nem `.venv` | ADR-010 · [PRD v2.x](../context/prd/v2x-go-host.md) |
+| ~~v2.x~~ | ~~Host em Go~~ → host em Rust, antecipado para o M5.5 | Instalar sem Python nem `.venv`; o custo de portar cresce a cada marco | ADR-014 (substitui o ADR-010) · [PRD](../context/prd/rust-host.md) |
+| v1.x | Vários dispositivos ao mesmo tempo no host (identidade pelo MAC, não pela COM) | Bancada com várias placas; base para a rede | Depois do M5.5 |
 | v3 | Crate Rust `no_std` (`esp-hal`) com o mesmo formato de linha | Logcat para firmware em Rust; prova que o formato independe da linguagem | ADR-011 · [PRD v3](../context/prd/v3-rust-telemetry.md) |
 | v3 | Envio via MQTT (Wi-Fi), telemetria e métricas (heap, uptime, resets) + formato binário/tokenizado | **MLOps**: monitorar drift de sensores em campo; o binário economiza banda | [PRD v3](../context/prd/v3-rust-telemetry.md) (rascunho, sem ADR) |
 | v4 | Outros fabricantes (STM32, RP2040, nRF…) e versão mínima para CH32V003 (só ring buffer + UART) | Multichip além da Espressif; pode exigir renomear o projeto | — |

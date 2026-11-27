@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Milestone **M5.5 · Toolchain** planned (ROADMAP, `scripts/github_bootstrap.py`): the
+  firmware build moves to plain ESP-IDF (ADR-013, replaces the PlatformIO part of ADR-001;
+  the firmware stays C++17 and gains a C API) and the host moves to Rust (ADR-014, replaces
+  ADR-010's Go host and brings it forward from v2.x). `esp-logcat dump` moves from M5 to
+  M5.5 and is born in Rust. From now on the Python host only gets fixes. PRD for the Rust
+  host in `docs/context/prd/rust-host.md` (was `v2x-go-host.md`).
 - Flush policy (#26, PRD F6): the log in flash is synced every 5 s with pending bytes (checked
   after every line too, so heavy logging cannot hold it off), after an ERROR line as soon as
   the queue empties (at most one sync a second), and on request. New console command

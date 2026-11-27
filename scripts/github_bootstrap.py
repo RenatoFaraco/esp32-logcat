@@ -21,7 +21,8 @@ APPLY = "--apply" in sys.argv
 LABELS = [
     ("core", "Platform-independent C++ core (firmware/lib/logcat_core)", "1d76db"),
     ("fw", "ESP-IDF adapters, demo app, target build", "0e8a16"),
-    ("host", "esp-logcat Python tool", "fbca04"),
+    ("host", "esp-logcat host tool (Python, then Rust)", "fbca04"),
+    ("rust", "Rust code (host-rs workspace)", "dea584"),
     ("ci", "GitHub Actions, build and tooling", "5319e7"),
     ("needs-hardware", "Requires the ESP32-C3 board (expected ~2026-11-11)", "b60205"),
     ("test", "Test or measurement task, including acceptance criteria", "c2e0c6"),
@@ -52,6 +53,11 @@ MILESTONES = [
         "open",
     ),
     ("M7 · Core dump (stretch)", "Core dump to flash and analysis instructions.", "open"),
+    (
+        "M5.5 · Toolchain",
+        "Firmware on plain ESP-IDF (ADR-013) and the host in Rust (ADR-014), v0.5.0.",
+        "open",
+    ),
 ]
 
 
@@ -62,7 +68,7 @@ def body(summary, scope, done, refs):
     return "\n".join(lines)
 
 
-M1, M2, M3, M4, M5, M6, M7 = (m[0] for m in MILESTONES[1:])
+M1, M2, M3, M4, M5, M6, M7, M55 = (m[0] for m in MILESTONES[1:])
 
 ISSUES = [
     # ---------------- M1 ----------------
@@ -433,7 +439,7 @@ ISSUES = [
     (
         M5,
         ["host", "fw", "needs-hardware"],
-        "host: esp-logcat dump",
+        "host+fw: esp-logcat dump and log clear",
         body(
             "Download persisted logs from flash to a file.",
             [
@@ -453,6 +459,188 @@ ISSUES = [
             [],
             ["All F9 commands usable from the shell"],
             "PRD H4",
+        ),
+    ),
+    # ---------------- M5.5 · Toolchain ----------------
+    (
+        M55,
+        ["fw", "ci"],
+        "build: firmware on plain ESP-IDF (idf.py), component layout",
+        body(
+            "Move the build from PlatformIO to idf.py and give the firmware the layout of a publishable component. The code does not change language (C++17, ADR-005).",
+            [
+                "`firmware/components/esp32_logcat/` with `core/` (today `lib/logcat_core`, still IDF-free, ADR-003) and `port/` (today `src/adapters`)",
+                "`firmware/examples/demo/`: demo app, `sdkconfig.defaults`, `partitions.csv`",
+                "IDF pinned to the version the current build uses (6.1, `dependencies.lock`)",
+                "Timing sweep (#13/#14) as a Kconfig option enabled by `sdkconfig.timing`, not a `-D` flag",
+                "`platformio.ini` and PlatformIO scripts removed",
+            ],
+            [
+                "`idf.py build` of the demo passes; flashed on the C3 it logs like v0.4.0 (stream, shell, flash store)",
+                "No `pio` left in the repository",
+            ],
+            "ADR-013 §1, §2, §6",
+        ),
+    ),
+    (
+        M55,
+        ["core", "ci", "test"],
+        "test: core tests on CMake + Unity + ctest, with sanitizer presets",
+        body(
+            "Replace `env:native`, `env:native_asan` and `env:native_tsan` with a plain CMake project.",
+            [
+                "`firmware/test/host/` with Unity pinned by version",
+                "`CMakePresets.json`: `native`, `asan` (ASan + UBSan), `tsan`",
+                "ADR-005 flags kept: `-std=c++17 -fno-exceptions -fno-rtti -Wall -Wextra -Werror`",
+                "`conformance/*.tsv` still read by `test_conformance`",
+            ],
+            [
+                "Every current native test runs under ctest on Linux and Windows",
+                "asan and tsan presets green in CI",
+            ],
+            "ADR-013 §4 · ADR-005",
+        ),
+    ),
+    (
+        M55,
+        ["fw", "test", "needs-hardware"],
+        "test: on-board tests as an ESP-IDF test app",
+        body(
+            "Port `test_target_littlefs` and `test_target_nvs` to an IDF test app with Unity.",
+            ["`firmware/test/target/`, run with `idf.py -p COMx flash monitor`"],
+            ["Both suites pass on the C3"],
+            "ADR-013 §5",
+        ),
+    ),
+    (
+        M55,
+        ["fw"],
+        "fw: public C API (esp32_logcat.h)",
+        body(
+            "A C header at the component boundary, so C projects use the component without touching C++.",
+            [
+                "`esp32_logcat_init(const esp32_logcat_config_t *)` and the calls the demo uses (sync, level, info)",
+                "`extern \"C\"` wrappers over the C++ adapters; no C++ type crosses the header",
+            ],
+            ["The demo's `app_main` uses only `esp32_logcat.h`", "A C-only example compiles"],
+            "ADR-013 §3",
+        ),
+    ),
+    (
+        M55,
+        ["ci", "documentation"],
+        "ci: ESP-IDF container build; docs and agents without PlatformIO",
+        body(
+            "CI and project instructions follow the new build.",
+            [
+                "Firmware job on the pinned `espressif/idf` image; core jobs on CMake without IDF",
+                "`CLAUDE.md`, `CONVENTIONS.md`, `CONTRIBUTING.md`, `README.md`, ADR-005, `hardware.md`, MANUAL (pt/en, build/flash section)",
+                "`.claude/settings.json` and agents `test-runner`, `firmware-reviewer`, `milestone-checker`",
+                "Issue templates, PR template, `.vscode/` recommendations, README cover (`scripts/readme_cover.py`)",
+            ],
+            [
+                "CI green",
+                "No build or test instruction uses `pio`: `git grep -nE 'pio (run|test)|env:native'` is empty outside ADRs and the CHANGELOG",
+            ],
+            "ADR-013, Consequences",
+        ),
+    ),
+    (
+        M55,
+        ["host", "rust", "ci"],
+        "host(rs): Cargo workspace and logcat-wire passing conformance/",
+        body(
+            "Start the Rust host from the part with no I/O: the wire format.",
+            [
+                "`host-rs/` workspace: `logcat-wire`, `logcat-serial`, `esp-logcat`",
+                "`logcat-wire`: line parser and classification, `seq` gaps, reply/dump framer, session file (wire-format §1–§4)",
+                "CI job: `cargo fmt --check`, `cargo clippy -D warnings`, `cargo test` on Linux and Windows",
+            ],
+            ["`logcat-wire` passes every case in `conformance/*.tsv`"],
+            "ADR-014 §1, §2 · PRD rust-host RH-2, RH-3",
+        ),
+    ),
+    (
+        M55,
+        ["host", "rust", "needs-hardware"],
+        "host(rs): ports and stream (reconnect, DTR/RTS, glued lines)",
+        body(
+            "The serial side, with everything the Python host learned on the board.",
+            [
+                "`logcat-serial`: ports by VID:PID, CH340K opened with DTR/RTS released, reconnect when the COM disappears or changes",
+                "Glued lines from the FIFO split as `pipeline.split_glued` does",
+                "`esp-logcat ports` and `esp-logcat stream` with `TAG:L` filters, plain text on stdout",
+                "When more than one port is found and `--port` is missing: list ports with description and VID:PID",
+            ],
+            ["`stream` on the C3 over both ports matches the Python host's output for the same session"],
+            "PRD rust-host RH-1, RH-5 · hardware.md",
+        ),
+    ),
+    (
+        M55,
+        ["host", "rust", "needs-hardware"],
+        "host(rs): restart detection over UART and USB-Serial-JTAG",
+        body(
+            "Count and mark device restarts with any ESP-IDF firmware, not only ours.",
+            [
+                "UART: the ROM `rst:0x.. (REASON)` line starts a new boot, with the reason",
+                "USB-Serial-JTAG (the ROM and bootloader never write there; the port drops on reset): port drop + reconnect, confirmed by the timestamp going backwards; `last_ts` survives the reconnect",
+                "Fallback: timestamp regression with no `rst:` line",
+                "Visible separator `restart #N · REASON` and the `restarts` counter",
+            ],
+            [
+                "A reset button press is counted on the CH340K port and on the native port of the C3",
+                "Replay fixtures for both cases in `conformance/`",
+            ],
+            "PRD rust-host RH-7 · observed on an ESP32-C6 DevKit, 2026-11-26",
+        ),
+    ),
+    (
+        M55,
+        ["host", "rust"],
+        "host(rs): colors, --save and replay",
+        body(
+            "Sessions recorded by one host replay the same on the other.",
+            ["Colors by level (text from the board is data, never markup)", "`--save` with PC time (wire-format §4)", "`esp-logcat replay`"],
+            ["A session saved by the Python host replays in Rust with the same screen and summary, and the reverse"],
+            "PRD rust-host §6 criterion 3 · ADR-008",
+        ),
+    ),
+    (
+        M55,
+        ["host", "rust"],
+        "host(rs): tui with ratatui",
+        body(
+            "The TUI of #56, on ratatui + crossterm.",
+            ["Follow/pause, filter, time, clear, palette; status line with lines, lost, missed, restarts, invalid, hidden, rate"],
+            ["Same keys and status line as the Textual TUI"],
+            "PRD rust-host RH-1 · ADR-008",
+        ),
+    ),
+    (
+        M55,
+        ["host", "rust", "needs-hardware"],
+        "host(rs): shell and dump",
+        body(
+            "The console on the host, and `esp-logcat dump`, which moves here from M5 and is born in Rust.",
+            ["`shell`: one command (`--json`), interactive prompt with filtered logs, pipe (#30)", "`dump`: `#BEGIN/#END` block with CRC check (wire-format §3), needs #29 on the device"],
+            ["`shell` matches #30", "`dump` of the C3's flash log passes the CRC check"],
+            "PRD rust-host RH-1, RH-6 · #29 · #30",
+        ),
+    ),
+    (
+        M55,
+        ["host", "rust", "release", "documentation"],
+        "release: Rust host official, Python host retired (v0.5.0)",
+        body(
+            "Close M5.5.",
+            [
+                "`host-rs/` becomes `host/`; Python host removed",
+                "Binaries per OS on the GitHub release; MANUAL install section without `.venv`",
+                "`host-reviewer` for Rust",
+            ],
+            ["Every criterion in PRD rust-host §6 checked with evidence", "Tag `v0.5.0`"],
+            "ADR-014 §6",
         ),
     ),
     # ---------------- M6 ----------------
