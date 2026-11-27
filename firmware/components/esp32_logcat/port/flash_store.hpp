@@ -46,6 +46,10 @@ struct FlashSnapshot {
 // tasks (the console).
 class FlashStore final : public Sink, public LogArchive {
 public:
+    // Publishes "not mounted" until begin(): a snapshot taken before it, or in a run with the
+    // flash off, must not read as mounted (the zeroed slot would be MountResult::Mounted).
+    FlashStore();
+
     // Mounts (formatting when it cannot mount) and opens the newest log file.
     MountResult begin();
 

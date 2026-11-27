@@ -72,6 +72,11 @@ public:
     virtual void fill_stats(ReplyFields& fields) = 0;
     // The platform's own gate, when it has one (ESP-IDF drops a line before the hook sees it).
     virtual void set_log_level(const char* tag, LogLevel level) = 0;
+    // Adding a tag to the TagLevelFilter needs its writers in series. The console is one; the
+    // application can be another (the C API's esp32_logcat_set_level), so the platform may
+    // hold a lock around each change. Readers (every log call) never take it.
+    virtual void lock_filter() {}
+    virtual void unlock_filter() {}
     // Called after the reply was queued. These do not return on the board.
     virtual void reboot() = 0;
     virtual void crash_panic() = 0;
@@ -87,8 +92,16 @@ protected:
     ~ConsolePlatform() = default;
 };
 
+// `log level <tag> <L>`, shared by the console and the C API (esp32_logcat_set_level): sets
+// the tag's level in `filter` and in the platform's own gate, and after "*" (the platform's "*"
+// may wipe its per-tag levels; ESP-IDF's does) every tag's level again. All of it under the
+// platform's filter lock: adding a tag needs one writer at a time. false: the table is full
+// (16 tags) or the level is invalid; nothing changed.
+bool apply_log_level(TagLevelFilter& filter, ConsolePlatform& platform, const char* tag,
+                     LogLevel level);
+
 // The console's logic: bytes in, commands executed, replies out (wire-format §2). Owned by one
-// task, and that task is the only writer of `filter`, as TagLevelFilter requires. No heap.
+// task. It writes `filter` through apply_log_level(), under the platform's lock. No heap.
 class Console {
 public:
     Console(ConsolePlatform& platform, TagLevelFilter& filter)

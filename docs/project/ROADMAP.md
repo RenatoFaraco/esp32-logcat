@@ -135,7 +135,7 @@ ADR-005): muda o build, e entra uma API C na fronteira do componente.
 - [x] Testes na placa (`test_target_littlefs`, `test_target_nvs`) como app de teste IDF
       (`firmware/test/target`, #93)
 - [x] Variante de timing (#13/#14) como opção do Kconfig com `sdkconfig.timing`
-- [ ] API pública em C (`esp32_logcat.h`)
+- [x] API pública em C (`esp32_logcat.h`) e o exemplo `examples/c_minimal` (#94)
 - [ ] CI na imagem `espressif/idf` fixada; `CLAUDE.md`, `CONVENTIONS`, ADR-005 e subagentes
       sem `pio`
 - **Pronto quando:** CI verde sem PlatformIO e a demo gravada e logando na placa com `idf.py`.

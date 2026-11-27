@@ -37,10 +37,20 @@ Princípio central: **quem loga paga o mínimo e nunca espera.** Todo I/O lento
 
 ```
 firmware/
-  components/esp32_logcat/core/   NÚCLEO — C++17 puro, zero dependência de plataforma
-  components/esp32_logcat/port/   ADAPTADORES — implementam as interfaces com IDF/FreeRTOS/LittleFS
-  examples/demo/main/             APP DE DEMO — gera logs, crash de teste, tarefa crítica de 1 kHz
+  components/esp32_logcat/include/  API PÚBLICA — esp32_logcat.h, em C (o único header público)
+  components/esp32_logcat/core/     NÚCLEO — C++17 puro, zero dependência de plataforma
+  components/esp32_logcat/port/     ADAPTADORES — implementam as interfaces com IDF/FreeRTOS/LittleFS,
+                                    e a API (port/esp32_logcat.cpp monta tudo, estático)
+  examples/demo/main/               APP DE DEMO — gera logs, crash de teste, tarefa crítica de 1 kHz
+  examples/c_minimal/               EXEMPLO EM C — o menor uso da API
 ```
+
+**A fronteira em C (#94).** Quem usa o componente vê só `esp32_logcat.h`: `init`, `set_level`,
+`sync`, `set_uart_mirror`, `get_info`. Nenhum tipo C++ atravessa a fronteira. O `init` faz a
+ordem de partida que antes ficava no `app_main` da demo: NVS e contador de boot, saídas, flash,
+tarefa escritora, hook, linhas de boot, console. O filtro de tags passa a ter dois escritores (o
+console e o `set_level`), que entram em série por um mutex estático; as leituras, em toda
+chamada de log, continuam sem lock (ADR-004).
 
 O núcleo compila e é testado no PC (`firmware/test/host`, presets do CMake). Os adaptadores só existem no alvo.
 Regra: **dependência aponta para dentro** — adaptador conhece o núcleo, núcleo não

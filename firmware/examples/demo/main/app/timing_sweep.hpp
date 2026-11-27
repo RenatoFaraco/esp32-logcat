@@ -1,7 +1,5 @@
 #pragma once
 
-#include "app/switchable_sink.hpp"
-
 namespace app {
 
 // The measurement of #13/#14, run once per boot by its own task: each phase sets a log load,
@@ -20,6 +18,7 @@ namespace app {
 //
 // Not silent in "no log": the heartbeat (1 line/s) and the TIMING lines between phases still
 // go through the queue. That is the baseline a product with some logging would have.
-bool start_timing_sweep(SwitchableSink& uart_mirror);
+// Uses the public C API only (esp32_logcat.h): the UART mirror switch and the dropped count.
+bool start_timing_sweep();
 
 }  // namespace app

@@ -89,6 +89,10 @@ C++17 support.
 > Run the commands below in the ESP-IDF PowerShell (EIM's desktop shortcut): it brings the
 > CMake and Ninja that the core tests use too.
 
+Using the component in your own project: its [README](firmware/components/esp32_logcat/README.md)
+(the C API, the sdkconfig and the `logs` partition it needs) and the smallest example,
+[`firmware/examples/c_minimal`](firmware/examples/c_minimal).
+
 Firmware (from `firmware/examples/demo`):
 
 ```sh

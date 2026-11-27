@@ -54,6 +54,23 @@ bool ReplyFields::add_uint(const char* key, uint32_t value) {
     return data_.add_uint(key, value);
 }
 
+bool apply_log_level(TagLevelFilter& filter, ConsolePlatform& platform, const char* tag,
+                     LogLevel level) {
+    platform.lock_filter();
+    const bool set = filter.set(tag, level);
+    if (set) {
+        platform.set_log_level(tag, level);
+        if (std::strcmp(tag, "*") == 0) {
+            // The platform's "*" may wipe its per-tag levels (ESP-IDF does); ours remain.
+            for (size_t i = 0; i < filter.size(); ++i) {
+                platform.set_log_level(filter.tag_at(i), filter.level_at(i));
+            }
+        }
+    }
+    platform.unlock_filter();
+    return set;
+}
+
 void Console::feed(const char* bytes, size_t length) {
     for (size_t i = 0; i < length; ++i) {
         if (assembler_.feed(bytes[i])) {
@@ -94,16 +111,10 @@ void Console::run(const Command& command) {
             reply_fields(command.id, &ConsolePlatform::fill_stats);
             return;
         case CommandKind::LogLevel:
-            if (!filter_.set(command.tag, command.level)) {
+            // The lock is released inside, before the reply: it may wait for room in the queue.
+            if (!apply_log_level(filter_, platform_, command.tag, command.level)) {
                 reply_error(command.id, "full", "tag table full (16 tags)");
                 return;
-            }
-            platform_.set_log_level(command.tag, command.level);
-            if (std::strcmp(command.tag, "*") == 0) {
-                // The platform's "*" may wipe its per-tag levels (ESP-IDF does); ours remain.
-                for (size_t i = 0; i < filter_.size(); ++i) {
-                    platform_.set_log_level(filter_.tag_at(i), filter_.level_at(i));
-                }
             }
             reply_ok(command.id);
             return;
