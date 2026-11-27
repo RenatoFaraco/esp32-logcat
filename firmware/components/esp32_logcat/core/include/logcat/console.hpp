@@ -72,6 +72,11 @@ public:
     virtual void fill_stats(ReplyFields& fields) = 0;
     // The platform's own gate, when it has one (ESP-IDF drops a line before the hook sees it).
     virtual void set_log_level(const char* tag, LogLevel level) = 0;
+    // Adding a tag to the TagLevelFilter needs its writers in series. The console is one; the
+    // application can be another (the C API's esp32_logcat_set_level), so the platform may
+    // hold a lock around each change. Readers (every log call) never take it.
+    virtual void lock_filter() {}
+    virtual void unlock_filter() {}
     // Called after the reply was queued. These do not return on the board.
     virtual void reboot() = 0;
     virtual void crash_panic() = 0;

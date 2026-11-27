@@ -38,6 +38,7 @@ namespace {
 class FakePlatform final : public logcat::ConsolePlatform {
 public:
     bool send(const ReplyMessage& message) override {
+        sent_while_locked += held ? 1 : 0;
         if (room == 0) {
             ++refused;
             return false;
@@ -63,7 +64,21 @@ public:
         level_tag = tag;
         platform_level = level;
         levels.emplace_back(tag, level);
+        levels_set_unlocked += held ? 0 : 1;
     }
+    void lock_filter() override {
+        ++locks;
+        held = true;
+    }
+    void unlock_filter() override {
+        ++unlocks;
+        held = false;
+    }
+    int locks = 0;
+    int unlocks = 0;
+    bool held = false;
+    int levels_set_unlocked = 0;  // platform levels changed without the filter lock
+    int sent_while_locked = 0;    // replies queued while holding it (they may wait for room)
     void reboot() override {
         reboot_saw = messages.size();
         ++reboots;
@@ -362,6 +377,33 @@ void test_overlong_request_is_one_error_and_its_tail_is_not_a_request() {
     rig.send(std::string(200, ' ') + "7 info\n");  // would parse if the tail were kept
     TEST_ASSERT_EQUAL_size_t(1, rig.platform.messages.size());
     TEST_ASSERT_EQUAL_MEMORY("#! - bad_args", rig.platform.messages[0].line, 13);
+}
+
+// A second writer of the filter exists (the C API's esp32_logcat_set_level, #94): each change
+// happens under the platform's lock, released before the reply, which may wait for room.
+void test_log_level_changes_the_filter_under_the_platform_lock() {
+    Rig rig;
+    rig.send("1 log level APP D\n");
+    rig.send("2 log level * W\n");  // "*" re-applies every tag's level: still inside the lock
+    TEST_ASSERT_EQUAL(2, rig.platform.locks);
+    TEST_ASSERT_EQUAL(2, rig.platform.unlocks);
+    TEST_ASSERT_FALSE(rig.platform.held);
+    TEST_ASSERT_EQUAL(0, rig.platform.levels_set_unlocked);
+    TEST_ASSERT_EQUAL(0, rig.platform.sent_while_locked);
+}
+
+void test_a_full_tag_table_still_releases_the_lock() {
+    Rig rig;
+    for (int i = 0; i < 17; ++i) {
+        char request[64];  // room for any int: CI's GCC checks -Wformat-truncation
+        std::snprintf(request, sizeof(request), "%d log level T%02d D\n", i + 1, i);
+        rig.send(request);
+    }
+    TEST_ASSERT_EQUAL(17, rig.platform.locks);
+    TEST_ASSERT_EQUAL(17, rig.platform.unlocks);
+    TEST_ASSERT_FALSE(rig.platform.held);
+    TEST_ASSERT_EQUAL(0, rig.platform.sent_while_locked);
+    TEST_ASSERT_TRUE(rig.platform.lines().find("#! 17 full") != std::string::npos);
 }
 
 void test_log_level_sets_the_filter_and_the_platform() {
@@ -1086,6 +1128,8 @@ int main() {
     RUN_TEST(test_rejected_requests);
     RUN_TEST(test_overlong_request_is_one_error_and_its_tail_is_not_a_request);
     RUN_TEST(test_log_level_sets_the_filter_and_the_platform);
+    RUN_TEST(test_log_level_changes_the_filter_under_the_platform_lock);
+    RUN_TEST(test_a_full_tag_table_still_releases_the_lock);
     RUN_TEST(test_log_level_star_sets_the_default);
     RUN_TEST(test_log_level_none_silences);
     RUN_TEST(test_log_level_with_a_full_table_is_an_error_and_leaves_the_platform_alone);

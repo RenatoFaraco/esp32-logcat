@@ -93,20 +93,26 @@ void Console::run(const Command& command) {
         case CommandKind::Stats:
             reply_fields(command.id, &ConsolePlatform::fill_stats);
             return;
-        case CommandKind::LogLevel:
-            if (!filter_.set(command.tag, command.level)) {
+        case CommandKind::LogLevel: {
+            platform_.lock_filter();
+            const bool set = filter_.set(command.tag, command.level);
+            if (set) {
+                platform_.set_log_level(command.tag, command.level);
+                if (std::strcmp(command.tag, "*") == 0) {
+                    // The platform's "*" may wipe its per-tag levels (ESP-IDF does); ours remain.
+                    for (size_t i = 0; i < filter_.size(); ++i) {
+                        platform_.set_log_level(filter_.tag_at(i), filter_.level_at(i));
+                    }
+                }
+            }
+            platform_.unlock_filter();  // before the reply: it may wait for room in the queue
+            if (!set) {
                 reply_error(command.id, "full", "tag table full (16 tags)");
                 return;
             }
-            platform_.set_log_level(command.tag, command.level);
-            if (std::strcmp(command.tag, "*") == 0) {
-                // The platform's "*" may wipe its per-tag levels (ESP-IDF does); ours remain.
-                for (size_t i = 0; i < filter_.size(); ++i) {
-                    platform_.set_log_level(filter_.tag_at(i), filter_.level_at(i));
-                }
-            }
             reply_ok(command.id);
             return;
+        }
         case CommandKind::LogTail:
             send_block(ReplyKind::Tail, command.id);
             return;
