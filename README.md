@@ -66,7 +66,7 @@ Log line format:
 ## Target
 
 - ESP32-C3 (RISC-V), ESP-IDF via PlatformIO, C++17.
-- Platform-independent core (`firmware/lib/logcat_core`) unit-tested on the host (`env:native`).
+- Platform-independent core (`firmware/components/esp32_logcat/core`) unit-tested on the host (`env:native`).
 - Host tool: Python 3.12.
 
 ## Repository layout

@@ -19,8 +19,10 @@ commits em inglês.
   fatos, portas e armadilhas em `docs/context/hardware.md` (leia antes de mexer em gravação/serial).
 - Portas neste PC: COM10 = CH340K (UART0; era COM5 até meados de nov/2026), COM6 =
   USB-Serial-JTAG nativo (via hub). O número da
-  COM muda de máquina para máquina: nunca fixar no `platformio.ini`.
-- Núcleo e host continuam testados no PC (`env:native`, pytest); a placa valida adaptadores.
+  COM muda de máquina para máquina: nunca fixar em arquivo do projeto.
+- Firmware em ESP-IDF puro, 6.1.0 (ADR-013): `idf.py` em `firmware/examples/demo`, com o
+  ambiente do IDF 6.1 ativo (instalado pelo EIM). Núcleo e host continuam testados no PC
+  (`pio test -e native` até a #92, pytest); a placa valida adaptadores.
 
 ## Estrutura
 ```
@@ -45,14 +47,14 @@ esp32-logcat/
 │       ├── ARCHITECTURE.md
 │       ├── hardware.md       placa real: chip, flash, portas, armadilhas
 │       └── decisions/        ADRs curtos (uma decisão por arquivo)
-├── firmware/                 projeto PlatformIO
-│   ├── platformio.ini        envs: esp32c3 (alvo) e native (testes no PC)
-│   ├── partitions.csv
-│   ├── lib/logcat_core/      núcleo C++ SEM dependência do ESP-IDF
-│   │   ├── include/logcat/
-│   │   └── src/
-│   ├── src/                  adaptadores IDF/FreeRTOS/LittleFS + app de demo
-│   └── test/                 testes Unity (env:native)
+├── firmware/                 ESP-IDF puro (ADR-013)
+│   ├── components/esp32_logcat/   o componente publicável
+│   │   ├── core/             núcleo C++ SEM dependência do ESP-IDF (include/logcat/, src/)
+│   │   └── port/             adaptadores IDF/FreeRTOS/LittleFS
+│   ├── examples/demo/        projeto IDF da app de demo: main/, sdkconfig.defaults,
+│   │                         sdkconfig.timing, partitions.csv, components/logcat_demo
+│   ├── platformio.ini        só os testes nativos do núcleo, até a #92
+│   └── test/                 testes Unity (native; test_target_* voltam na #93)
 └── host/                     ferramenta Python `esp-logcat`
     ├── pyproject.toml
     ├── src/esp_logcat/       backend (transport, parser, filtros) + render; tui/ (Textual)
@@ -61,7 +63,7 @@ esp32-logcat/
 ```
 
 ## Regras de arquitetura
-- Núcleo (`lib/logcat_core`) não inclui nada de `esp_*`, `freertos/*` ou LittleFS.
+- Núcleo (`components/esp32_logcat/core`) não inclui nada de `esp_*`, `freertos/*` ou LittleFS.
   Dependências de plataforma entram por interfaces (ports & adapters).
 - Quem loga nunca bloqueia: só enfileira. Formatação e I/O ficam na tarefa escritora.
 - Nada de alocação dinâmica no caminho de log depois da inicialização.

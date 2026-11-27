@@ -19,7 +19,7 @@ REPO = "RenatoFaraco/esp32-logcat"
 APPLY = "--apply" in sys.argv
 
 LABELS = [
-    ("core", "Platform-independent C++ core (firmware/lib/logcat_core)", "1d76db"),
+    ("core", "Platform-independent C++ core (firmware/components/esp32_logcat/core)", "1d76db"),
     ("fw", "ESP-IDF adapters, demo app, target build", "0e8a16"),
     ("host", "esp-logcat host tool (Python, then Rust)", "fbca04"),
     ("rust", "Rust code (host-rs workspace)", "dea584"),

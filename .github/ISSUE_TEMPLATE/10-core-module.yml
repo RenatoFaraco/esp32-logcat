@@ -1,5 +1,5 @@
 name: "Task: core module (C++)"
-description: Planned work on the platform-independent core (firmware/lib/logcat_core).
+description: Planned work on the platform-independent core (firmware/components/esp32_logcat/core).
 title: "core: "
 labels: ["core"]
 body:

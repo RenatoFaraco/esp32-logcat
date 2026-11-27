@@ -58,9 +58,9 @@ Um commit = uma mudança coerente que compila e passa nos testes.
 | Arquivos | `snake_case` | `ring_buffer.hpp`, `ring_buffer.cpp` |
 
 ### Organização
-- Núcleo: `lib/logcat_core/include/logcat/<modulo>.hpp` + `src/<modulo>.cpp`.
+- Núcleo: `components/esp32_logcat/core/include/logcat/<modulo>.hpp` + `core/src/<modulo>.cpp`.
 - Nenhum `#include` de `esp_*`, `freertos/*`, `driver/*` ou LittleFS no núcleo.
-- Adaptadores em `src/adapters/`, um par `.hpp/.cpp` por adaptador; um adaptador de uma linha
+- Adaptadores em `components/esp32_logcat/port/`, um par `.hpp/.cpp` por adaptador; um adaptador de uma linha
   só, sem estado nem inicialização (ex.: `EspClock`), pode ficar só no `.hpp`.
 
 ### Tags de log

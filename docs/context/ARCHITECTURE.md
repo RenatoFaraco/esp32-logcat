@@ -37,16 +37,16 @@ Princípio central: **quem loga paga o mínimo e nunca espera.** Todo I/O lento
 
 ```
 firmware/
-  lib/logcat_core/   NÚCLEO — C++17 puro, zero dependência de plataforma
-  src/adapters/      ADAPTADORES — implementam as interfaces com IDF/FreeRTOS/LittleFS
-  src/app/           APP DE DEMO — gera logs, crash de teste, tarefa crítica de 1 kHz
+  components/esp32_logcat/core/   NÚCLEO — C++17 puro, zero dependência de plataforma
+  components/esp32_logcat/port/   ADAPTADORES — implementam as interfaces com IDF/FreeRTOS/LittleFS
+  examples/demo/main/             APP DE DEMO — gera logs, crash de teste, tarefa crítica de 1 kHz
 ```
 
 O núcleo compila e é testado no PC (`env:native`). Os adaptadores só existem no alvo.
 Regra: **dependência aponta para dentro** — adaptador conhece o núcleo, núcleo não
 conhece adaptador.
 
-### 2.1 Núcleo (`lib/logcat_core`)
+### 2.1 Núcleo (`components/esp32_logcat/core`)
 
 | Módulo | Responsabilidade |
 |--------|------------------|
@@ -85,7 +85,7 @@ struct BootInfo   { virtual uint32_t boot_count() = 0;
                     virtual ResetReason reset_reason() = 0; };
 ```
 
-### 2.3 Adaptadores (`src/adapters`)
+### 2.3 Adaptadores (`components/esp32_logcat/port`)
 
 | Adaptador | Implementa | Base |
 |-----------|-----------|------|

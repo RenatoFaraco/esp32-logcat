@@ -1,5 +1,5 @@
 name: "Task: firmware adapter / integration"
-description: Planned work on ESP-IDF / FreeRTOS / LittleFS adapters or the demo app (firmware/src).
+description: Planned work on ESP-IDF / FreeRTOS / LittleFS adapters or the demo app (firmware/components/esp32_logcat/port, firmware/examples/demo).
 title: "fw: "
 labels: ["fw"]
 body:
