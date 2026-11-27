@@ -439,7 +439,7 @@ ISSUES = [
     (
         M5,
         ["host", "fw", "needs-hardware"],
-        "host: esp-logcat dump",
+        "host+fw: esp-logcat dump and log clear",
         body(
             "Download persisted logs from flash to a file.",
             [
