@@ -740,8 +740,8 @@ ok
 ```
 
 Respostas de erro: `busy` (um `log dump` está saindo; nada foi apagado), `failed` (um arquivo
-não saiu, ou a placa logou sem parar e o pedido não foi atendido em 1,2 s: nesse caso nada foi
-apagado) ou `unsupported` (sem flash nesta execução).
+não saiu, ou a placa logou sem parar e o pedido não foi atendido a tempo; pode ter sobrado
+arquivo, e um novo `log clear` termina o serviço) ou `unsupported` (sem flash nesta execução).
 
 **`reboot`**: responde e reinicia; o shell espera ver o reinício. O `info` seguinte mostra
 `reset SW`.

@@ -64,13 +64,23 @@ public:
     // `timeout`. true only if that sync happened and succeeded.
     bool request_sync(TickType_t timeout);
 
+    // What a clear removed, counted by the writer task when it did it.
+    struct Cleared {
+        uint32_t files;
+        uint32_t bytes;
+    };
+
     // From another task (one at a time: the console): asks the writer task to remove every log
     // file, and waits. The writer does it once the queue is empty, so the lines logged before
     // the request go with the old files. A request not taken within `timeout` is withdrawn
-    // (Failed): a late clear never happens after the answer. One taken is waited for (bounded).
-    ClearResult request_clear(TickType_t timeout);
+    // (Failed, nothing removed): a late clear never happens after the answer. One taken is
+    // waited for up to `taken_wait` more; past that the answer is Failed, and files may have
+    // gone (a stuck writer task: the console must not hang).
+    ClearResult request_clear(TickType_t timeout, TickType_t taken_wait, Cleared& cleared);
 
-    // LogArchive, for the ReplyServer (writer task). The dump's sync counts as a request.
+    // LogArchive, for the ReplyServer (writer task). The dump's sync counts as a request. Each
+    // read opens the file: esp_littlefs allocates per open (in the writer task, not on the
+    // path of whoever logs), and a read that fails reads short, as a removed file does.
     bool begin_dump(ArchiveFile (&files)[kMaxStoreFiles], size_t& count) override;
     size_t read(const char* name, uint32_t offset, char* out, size_t length) override;
     void end_dump() override { dumping_ = false; }
@@ -108,6 +118,8 @@ private:
     enum ClearState : uint8_t { kClearIdle, kClearRequested, kClearTaken, kClearDone };
     std::atomic<uint8_t> clear_state_{kClearIdle};
     std::atomic<uint8_t> clear_result_{static_cast<uint8_t>(ClearResult::Failed)};
+    std::atomic<uint32_t> cleared_files_{0};  // published with clear_result_
+    std::atomic<uint32_t> cleared_bytes_{0};
     // The dump in progress (writer task only).
     bool dumping_ = false;
     uint32_t renumbered_at_dump_ = 0;

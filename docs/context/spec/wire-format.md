@@ -132,11 +132,15 @@ Zero ou mais linhas de dados e **exatamente um** terminador:
   em fila.
 - `log clear` (#29) apaga todos os arquivos de log e recomeça num `log_000.txt` vazio; responde
   `#. <id> ok` só depois disso. As linhas logadas antes do pedido vão junto com os arquivos
-  apagados. A primeira linha do log novo é um `W` da tag `LOGCAT` dizendo quantos arquivos e
-  bytes saíram, e o boot e o uptime dela dizem quando. Erros: `#! <id> busy` durante um
-  `log dump` (nada apagado); `#! <id> failed` se um arquivo não saiu ou se o pedido não foi
-  atendido a tempo (1,2 s, como o `log sync`: nesse caso, nada foi apagado); `#! <id>
-  unsupported` sem flash. Não tem volta.
+  apagados. Um `log dump` pedido antes começa antes: o clear espera ele sair da fila e, se
+  o encontra em andamento, responde `busy`. Uma linha `W` da tag `LOGCAT` diz quantos
+  arquivos e bytes saíram (o boot e o uptime dela dizem quando) e é gravada na flash antes do
+  `ok`. Normalmente é a primeira do log novo; outra tarefa pode logar antes dela, e um
+  `log level` que silencia `LOGCAT` a tira. Erros: `#! <id> busy` durante um `log dump` (nada
+  apagado); `#! <id> failed` se um arquivo não saiu, ou se o pedido não foi atendido a tempo
+  (a resposta sai em até 1,8 s; sobrar arquivos é possível, e a próxima tentativa os apaga);
+  `#! <id> unsupported` sem flash. Um corte de energia no meio deixa os arquivos mais novos,
+  e o boot seguinte os usa como sempre. Não tem volta.
 - `reboot` responde `#. <id> ok` antes de reiniciar; `crash` não responde. O reinício da placa
   é o sucesso desses pedidos.
 - O `info` traz `proto=1`. Chave, código ou comando novo não mudam o `proto`; mudança na forma

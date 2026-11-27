@@ -745,8 +745,8 @@ ok
 ```
 
 Error replies: `busy` (a `log dump` is going out; nothing was removed), `failed` (a file could
-not be removed, or the board kept logging and the request was not served within 1.2 s: then
-nothing was removed) or `unsupported` (no flash in this run).
+not be removed, or the board kept logging and the request was not served in time; files may be
+left, and another `log clear` finishes the job) or `unsupported` (no flash in this run).
 
 **`reboot`**: replies and restarts; the shell waits to see the restart. The next `info`
 shows `reset SW`.

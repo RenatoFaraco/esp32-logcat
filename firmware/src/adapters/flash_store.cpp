@@ -122,6 +122,9 @@ void FlashStore::serve_clear(bool queue_empty) {
     }
     ClearResult result = ClearResult::Busy;
     if (!dumping_) {
+        const StoreStats before = store_.stats();  // now, not as last published
+        cleared_files_.store(before.files, std::memory_order_relaxed);
+        cleared_bytes_.store(before.bytes, std::memory_order_relaxed);
         result = store_.clear() ? ClearResult::Ok : ClearResult::Failed;
         publish();
     }
@@ -129,10 +132,8 @@ void FlashStore::serve_clear(bool queue_empty) {
     clear_state_.store(kClearDone, std::memory_order_release);
 }
 
-ClearResult FlashStore::request_clear(TickType_t timeout) {
-    // Once taken, a clear is a few removes and an open: this bounds a stuck writer task, so the
-    // console (and `reboot`) never hang on it.
-    constexpr TickType_t kTakenWait = pdMS_TO_TICKS(3000);
+ClearResult FlashStore::request_clear(TickType_t timeout, TickType_t taken_wait, Cleared& cleared) {
+    cleared = Cleared{0, 0};
     const uint8_t state = clear_state_.load(std::memory_order_acquire);
     if (state == kClearRequested || state == kClearTaken) {
         return ClearResult::Failed;  // an earlier one never finished
@@ -142,6 +143,8 @@ ClearResult FlashStore::request_clear(TickType_t timeout) {
     for (;;) {
         const uint8_t now = clear_state_.load(std::memory_order_acquire);
         if (now == kClearDone) {
+            cleared.files = cleared_files_.load(std::memory_order_relaxed);
+            cleared.bytes = cleared_bytes_.load(std::memory_order_relaxed);
             return static_cast<ClearResult>(clear_result_.load(std::memory_order_relaxed));
         }
         const TickType_t waited = xTaskGetTickCount() - start;
@@ -153,7 +156,7 @@ ClearResult FlashStore::request_clear(TickType_t timeout) {
             }
             continue;  // taken in the meantime: wait for its answer
         }
-        if (waited >= timeout + kTakenWait) {
+        if (waited >= timeout + taken_wait) {
             return ClearResult::Failed;
         }
         vTaskDelay(pdMS_TO_TICKS(10));
@@ -171,10 +174,17 @@ bool FlashStore::begin_dump(ArchiveFile (&files)[kMaxStoreFiles], size_t& count)
     if (!synced) {
         return false;
     }
-    count = store_.file_count();
-    for (size_t i = 0; i < count; ++i) {
-        store_.file_name(i, files[i].name);
-        files[i].size = store_.file_size(i);
+    // Sizes from the file system, not the store's accounting: after a failed sync or a size the
+    // boot scan could not read, the store's number is not what a reader finds. A file that is
+    // not there (size -1) is left out.
+    for (size_t i = 0; i < store_.file_count(); ++i) {
+        ArchiveFile& file = files[count];
+        store_.file_name(i, file.name);
+        const int32_t size = fs_.size(file.name);
+        if (size >= 0) {
+            file.size = static_cast<uint32_t>(size);
+            ++count;
+        }
     }
     return true;
 }

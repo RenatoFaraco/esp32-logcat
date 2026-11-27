@@ -152,17 +152,34 @@ SyncResult EspConsolePlatform::sync_log() {
 }
 
 ClearResult EspConsolePlatform::clear_log() {
-    const FlashSnapshot before = flash_.snapshot();
-    if (before.mount == MountResult::Failed) {
+    if (flash_.snapshot().mount == MountResult::Failed) {
         return ClearResult::Unsupported;
     }
-    // Same budget as `log sync`: under the host's 2 s reply timeout.
-    const ClearResult result = flash_.request_clear(pdMS_TO_TICKS(1200));
+    // Under the host's 2 s reply timeout, all steps together (at most 1.8 s).
+    constexpr TickType_t kRepliesWait = pdMS_TO_TICKS(300);
+    constexpr TickType_t kRequestWait = pdMS_TO_TICKS(900);
+    constexpr TickType_t kTakenWait = pdMS_TO_TICKS(400);
+    constexpr TickType_t kMarkerWait = pdMS_TO_TICKS(200);
+    // Requests answer in order. A `log dump` queued just before this one must start first (and
+    // make this one busy), not find the log already cleared: wait until the writer task has
+    // taken every queued reply. It starts a dump in the same pass that takes its message.
+    const TickType_t start = xTaskGetTickCount();
+    while (!replies_.empty()) {
+        if (xTaskGetTickCount() - start >= kRepliesWait) {
+            return ClearResult::Busy;
+        }
+        vTaskDelay(pdMS_TO_TICKS(10));
+    }
+    FlashStore::Cleared cleared{};
+    const ClearResult result = flash_.request_clear(kRequestWait, kTakenWait, cleared);
     if (result == ClearResult::Ok) {
-        // The first line of the new log_000.txt: its boot and uptime say when it was cleared.
+        // Usually the first line of the new log_000.txt (another task may log in between); its
+        // boot and uptime say when. Synced before the answer, so a power cut right after the
+        // `ok` does not leave a cleared log with nothing saying so.
         ESP_LOGW("LOGCAT", "log cleared by console: %lu files, %lu bytes removed",
-                 static_cast<unsigned long>(before.store.files),
-                 static_cast<unsigned long>(before.store.bytes));
+                 static_cast<unsigned long>(cleared.files),
+                 static_cast<unsigned long>(cleared.bytes));
+        flash_.request_sync(kMarkerWait);
     }
     return result;
 }

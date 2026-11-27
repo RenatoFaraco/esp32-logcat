@@ -813,6 +813,20 @@ void test_clear_that_cannot_remove_a_file_says_so_and_keeps_logging() {
     TEST_ASSERT_EQUAL_UINT32(4, seqs.back());
 }
 
+void test_clear_with_an_orphan_that_will_not_go_is_not_ok() {
+    MemoryFileSystem fs;
+    // 17 files: the scan keeps the newest 16 and removes log_000, which refuses.
+    for (uint32_t index = 0; index <= 16; ++index) {
+        fs.put(name_of(index), make_line(index + 1));
+    }
+    RotatingStore store(fs);
+    fs.fail_next_remove = true;
+    TEST_ASSERT_FALSE(store.clear());
+    TEST_ASSERT_TRUE(fs.exists("log_000.txt"));  // adopted again as the current file
+    TEST_ASSERT_FALSE(fs.exists("log_016.txt"));
+    TEST_ASSERT_TRUE(put_line(store, make_line(99)));
+}
+
 void test_clear_before_begin_starts_an_empty_store() {
     MemoryFileSystem fs;
     fs.put("log_007.txt", make_line(1));
@@ -937,6 +951,7 @@ int main() {
     RUN_TEST(test_clear_drops_unsynced_bytes_without_counting_them_lost);
     RUN_TEST(test_clear_of_a_torn_file_leaves_nothing_to_repair);
     RUN_TEST(test_clear_that_cannot_remove_a_file_says_so_and_keeps_logging);
+    RUN_TEST(test_clear_with_an_orphan_that_will_not_go_is_not_ok);
     RUN_TEST(test_clear_before_begin_starts_an_empty_store);
     RUN_TEST(test_write_before_begin_is_refused);
     RUN_TEST(test_rotation_past_999_with_16_files_renumbers_and_removes);
