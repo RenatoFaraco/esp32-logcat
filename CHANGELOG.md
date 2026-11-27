@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **The on-board tests run again, as one ESP-IDF test app** in `firmware/test/target` (#93).
+  - The LittleFS suite (14 tests) and the NVS suite (5) run one after the other; Unity's
+    `setUp` calls the set-up of the suite that is running.
+  - The tests link the component instead of including its `.cpp` files.
+  - They use the demo's `sdkconfig.defaults` and its partition table, so they format and
+    measure the product's own `logs` partition.
+  - Run with `idf.py -p COMx flash monitor` over the UART bridge. 19 tests pass on the C3.
+  - CI builds the app; it needs a board to run.
+
 - **The core tests run on CMake + Unity + ctest, and PlatformIO is gone from the project**
   (#92). The tests moved to `firmware/test/host/`, where a CMake project builds the core with
   only its own include path (an ESP-IDF include cannot build, ADR-003). Unity 2.6.1 is pinned

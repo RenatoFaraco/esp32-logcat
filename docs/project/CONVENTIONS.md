@@ -94,6 +94,7 @@ Nunca logar segredos (senha de Wi-Fi, chaves, tokens).
 | Núcleo C++ | Unity + ctest (presets do CMake) | `cd firmware/test/host && cmake --preset native && cmake --build --preset native && ctest --preset native` |
 | Núcleo C++ sob ASan+UBSan | Unity + sanitizers | o mesmo com o preset `asan` (só Linux/CI) |
 | Núcleo C++ sob TSan | Unity + sanitizer | o mesmo com o preset `tsan` (só Linux/CI) |
+| Adaptadores na placa (LittleFS, NVS) | app de teste do IDF + Unity | `cd firmware/test/target && idf.py -p COMx flash monitor` (pela CH340K; formata a partição `logs`) |
 | Host | pytest | `cd host && pytest` |
 
 - **Casos compartilhados do formato (`conformance/`):** `make_line_cases.py` escreve à mão o

@@ -57,7 +57,7 @@ esp32-logcat/
 │   │                         sdkconfig.timing, partitions.csv, components/logcat_demo
 │   └── test/
 │       ├── host/             testes do núcleo no PC: CMake + Unity + ctest (presets native/asan/tsan)
-│       └── test_target_*/    testes na placa (voltam a rodar na #93)
+│       └── target/           testes na placa: app de teste do IDF (LittleFS, NVS)
 └── host/                     ferramenta Python `esp-logcat`
     ├── pyproject.toml
     ├── src/esp_logcat/       backend (transport, parser, filtros) + render; tui/ (Textual)
@@ -85,6 +85,9 @@ esp32-logcat/
    - `cmake --preset native && cmake --build --preset native && ctest --preset native`
      (em `firmware/test/host`, no PowerShell do ESP-IDF)
    - `pytest` (em `host/`, com `.venv` ativo)
+   - Na placa, quando o pedido mexe nos adaptadores de flash ou NVS: `idf.py -p COMx flash
+     monitor` em `firmware/test/target`, pela CH340K (a saída do Unity sai na UART0). Formata
+     a partição `logs`: regrave a demo depois.
 4. Commit pequeno por passo que funciona, mensagem convencional (`feat:`, `fix:`, `test:`…).
 5. Nunca commitar segredos (Wi-Fi, chaves) — usar arquivo local ignorado pelo Git.
 

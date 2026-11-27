@@ -181,7 +181,7 @@ Medido em 14/nov (#24), LittleFS `joltwallet/littlefs` 1.23.1 na partição `log
   num `assert` na partida e reinicia em loop. Funciona nesta placa (XMC embutida); outra placa ou
   módulo precisa conferir antes (na v2, a opção será por placa). Os números finos ficam para a
   #14 (analisador).
-- **O LittleFS, conferido no código e na placa** (`test/test_target_littlefs`):
+- **O LittleFS, conferido no código e na placa** (`firmware/test/target`, suíte do LittleFS):
   - `stat()` lê a entrada já gravada: o tamanho do arquivo aberto não inclui o que não passou
     por `fsync`;
   - apagar ou renomear um arquivo aberto falha com `EBUSY` (e o componente loga um erro);

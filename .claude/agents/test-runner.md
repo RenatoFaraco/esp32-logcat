@@ -18,13 +18,16 @@ arquivos, **não** roda git e **não** tenta corrigir nada.
    `host/.venv/Scripts/python -m pytest -q host`
 3. Build do alvo (ESP-IDF 6.1.1, ADR-013) — **só** se o pedido mandar, ou se o pedido disser
    que mudaram `firmware/components/`, `firmware/examples/demo/` (código, `CMakeLists.txt`,
-   `sdkconfig.defaults`, `sdkconfig.timing`, `idf_component.yml`) ou `dependencies.lock`:
+   `sdkconfig.defaults`, `sdkconfig.timing`, `idf_component.yml`), `firmware/test/target/` ou
+   `dependencies.lock`:
    `powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "Remove-Item Env:MSYSTEM -ErrorAction SilentlyContinue; . 'C:\Espressif\tools\Microsoft.v6.1.1.PowerShell_profile.ps1' *> \$null; idf.py -C firmware/examples/demo build; exit \$LASTEXITCODE"`
    O `Remove-Item Env:MSYSTEM` é obrigatório: herdado do Git Bash, ele faz o `idf.py` avisar
    "MSys/Mingw is no longer supported" e não compilar. Avisos de git do IDF (`bad object
    HEAD` no submódulo micro-ecc, "Git version unavailable") são da instalação e não são falha.
    Sucesso: a linha `esp32-logcat-demo.bin binary size 0x... bytes` e `Project build complete`.
    Use timeout de 600000 ms: incremental leva 1–3 min; do zero, ~10 min.
+   Se `firmware/test/target/` mudou, compile também o app de teste na placa: o mesmo comando
+   com `idf.py -C firmware/test/target build`. Só compile: gravar e rodar na placa não é com você.
 
 Rode 1 e 2 sempre (os dois, mesmo que um falhe). Não use `cd`, `-v`/`-vvv` nem pipes que
 escondam o código de saída. Só repita com `-v` se a saída não mostrar a causa da falha.
