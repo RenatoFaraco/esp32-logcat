@@ -75,6 +75,7 @@ bool FlashStore::write(const char* line, size_t length) {
 }
 
 void FlashStore::on_idle(bool queue_empty) {
+    serve_clear(queue_empty);
     const uint32_t wanted = requested_.load(std::memory_order_acquire);
     // A request waits for an empty queue: lines logged before it may still be queued, and its
     // `ok` promises they are in flash. Under endless logging it times out (`failed`), never lies.
@@ -104,6 +105,87 @@ bool FlashStore::request_sync(TickType_t timeout) {
         vTaskDelay(pdMS_TO_TICKS(10));
     }
     return last_ok_.load(std::memory_order_relaxed) && losses() == losses_before;
+}
+
+void FlashStore::serve_clear(bool queue_empty) {
+    if (clear_state_.load(std::memory_order_acquire) != kClearRequested) {
+        return;
+    }
+    // A dump answers at once (busy). Otherwise wait for an empty queue: lines logged before the
+    // request may still be queued, and they belong to the history being removed.
+    if (!dumping_ && !queue_empty) {
+        return;
+    }
+    uint8_t expected = kClearRequested;
+    if (!clear_state_.compare_exchange_strong(expected, kClearTaken, std::memory_order_acq_rel)) {
+        return;  // the console gave up on it just now
+    }
+    ClearResult result = ClearResult::Busy;
+    if (!dumping_) {
+        result = store_.clear() ? ClearResult::Ok : ClearResult::Failed;
+        publish();
+    }
+    clear_result_.store(static_cast<uint8_t>(result), std::memory_order_relaxed);
+    clear_state_.store(kClearDone, std::memory_order_release);
+}
+
+ClearResult FlashStore::request_clear(TickType_t timeout) {
+    // Once taken, a clear is a few removes and an open: this bounds a stuck writer task, so the
+    // console (and `reboot`) never hang on it.
+    constexpr TickType_t kTakenWait = pdMS_TO_TICKS(3000);
+    const uint8_t state = clear_state_.load(std::memory_order_acquire);
+    if (state == kClearRequested || state == kClearTaken) {
+        return ClearResult::Failed;  // an earlier one never finished
+    }
+    clear_state_.store(kClearRequested, std::memory_order_release);
+    const TickType_t start = xTaskGetTickCount();
+    for (;;) {
+        const uint8_t now = clear_state_.load(std::memory_order_acquire);
+        if (now == kClearDone) {
+            return static_cast<ClearResult>(clear_result_.load(std::memory_order_relaxed));
+        }
+        const TickType_t waited = xTaskGetTickCount() - start;
+        if (now == kClearRequested && waited >= timeout) {
+            uint8_t expected = kClearRequested;
+            if (clear_state_.compare_exchange_strong(expected, kClearIdle,
+                                                     std::memory_order_acq_rel)) {
+                return ClearResult::Failed;  // withdrawn: nothing was removed
+            }
+            continue;  // taken in the meantime: wait for its answer
+        }
+        if (waited >= timeout + kTakenWait) {
+            return ClearResult::Failed;
+        }
+        vTaskDelay(pdMS_TO_TICKS(10));
+    }
+}
+
+bool FlashStore::begin_dump(ArchiveFile (&files)[kMaxStoreFiles], size_t& count) {
+    dumping_ = true;
+    renumbered_at_dump_ = store_.stats().renumbered;
+    count = 0;
+    // The sizes a reader sees are the synced ones (FileSystem's contract): sync first, so the
+    // dump has every line written until now.
+    const bool synced = sync(FlushPolicy::Reason::Request);
+    publish();
+    if (!synced) {
+        return false;
+    }
+    count = store_.file_count();
+    for (size_t i = 0; i < count; ++i) {
+        store_.file_name(i, files[i].name);
+        files[i].size = store_.file_size(i);
+    }
+    return true;
+}
+
+size_t FlashStore::read(const char* name, uint32_t offset, char* out, size_t length) {
+    // After log_999 the files are renamed back to log_000...: a name of the dump's list would
+    // now be another file. A removed one reads short by itself.
+    if (store_.stats().renumbered != renumbered_at_dump_) {
+        return 0;
+    }
+    return fs_.read(name, offset, out, length);
 }
 
 uint32_t FlashStore::losses() const {

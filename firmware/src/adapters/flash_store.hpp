@@ -6,7 +6,9 @@
 
 #include "adapters/littlefs_file_system.hpp"
 #include "freertos/FreeRTOS.h"
+#include "logcat/console.hpp"
 #include "logcat/flush_policy.hpp"
+#include "logcat/log_archive.hpp"
 #include "logcat/rotating_store.hpp"
 #include "logcat/sink.hpp"
 
@@ -35,9 +37,14 @@ struct FlashSnapshot {
 // A sync blocks the writer task for a few ms (LittleFS copies its partial block: about one
 // 4 KB erase, stretched by flash auto suspend). The queue holds the lines meanwhile.
 //
-// Threads: begin() runs at boot, before the writer task. on_idle() and write() run in the
-// writer task. snapshot() and request_sync() are for other tasks (the console).
-class FlashStore final : public Sink {
+// `log dump` and `log clear` (#29): the dump is served by the ReplyServer in the writer task,
+// through the LogArchive side of this class; a clear is asked for by the console and done in
+// the writer task, refused (`busy`) while a dump is being sent.
+//
+// Threads: begin() runs at boot, before the writer task. on_idle(), write() and the LogArchive
+// calls run in the writer task. snapshot(), request_sync() and request_clear() are for other
+// tasks (the console).
+class FlashStore final : public Sink, public LogArchive {
 public:
     // Mounts (formatting when it cannot mount) and opens the newest log file.
     MountResult begin();
@@ -57,6 +64,17 @@ public:
     // `timeout`. true only if that sync happened and succeeded.
     bool request_sync(TickType_t timeout);
 
+    // From another task (one at a time: the console): asks the writer task to remove every log
+    // file, and waits. The writer does it once the queue is empty, so the lines logged before
+    // the request go with the old files. A request not taken within `timeout` is withdrawn
+    // (Failed): a late clear never happens after the answer. One taken is waited for (bounded).
+    ClearResult request_clear(TickType_t timeout);
+
+    // LogArchive, for the ReplyServer (writer task). The dump's sync counts as a request.
+    bool begin_dump(ArchiveFile (&files)[kMaxStoreFiles], size_t& count) override;
+    size_t read(const char* name, uint32_t offset, char* out, size_t length) override;
+    void end_dump() override { dumping_ = false; }
+
     FlashSnapshot snapshot() const;
 
     // LittleFS's own view of the partition, blocks and metadata included. It walks the file
@@ -69,6 +87,7 @@ public:
 
 private:
     void publish();
+    void serve_clear(bool queue_empty);
     bool sync(FlushPolicy::Reason reason);
     static uint32_t now_ms();
     uint32_t losses() const;  // from the published numbers: any task
@@ -83,6 +102,15 @@ private:
     std::atomic<uint32_t> requested_{0};
     std::atomic<uint32_t> done_{0};
     std::atomic<bool> last_ok_{true};
+    // The clear request: Idle -> Requested (console) -> Taken -> Done (writer), or Requested ->
+    // Idle when the console gives up. Whoever moves it out of Requested owns the outcome, so a
+    // request is either withdrawn or done and answered, never both.
+    enum ClearState : uint8_t { kClearIdle, kClearRequested, kClearTaken, kClearDone };
+    std::atomic<uint8_t> clear_state_{kClearIdle};
+    std::atomic<uint8_t> clear_result_{static_cast<uint8_t>(ClearResult::Failed)};
+    // The dump in progress (writer task only).
+    bool dumping_ = false;
+    uint32_t renumbered_at_dump_ = 0;
     // Published copy of the numbers (relaxed: they are statistics, each one consistent alone).
     std::atomic<uint32_t> published_[14] = {};
 };

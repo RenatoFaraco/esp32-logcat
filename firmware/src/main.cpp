@@ -142,6 +142,7 @@ extern "C" void app_main(void) {
     const logcat::MountResult mount = flash_store.begin();
     if (mount != logcat::MountResult::Failed) {
         writer.add_sink(flash_store.sink());
+        reply_server.attach_archive(flash_store);  // `log dump` (#29); without it: unsupported
     }
     log_queue.begin();
     reply_queue.begin();

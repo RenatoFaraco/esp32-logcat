@@ -32,7 +32,7 @@ public:
     void crash_panic() override;
     void crash_wdt() override;
     SyncResult sync_log() override;
-    ClearResult clear_log() override { return ClearResult::Unsupported; }  // until the store has it
+    ClearResult clear_log() override;
 
 private:
     FreeRtosReplyQueue& replies_;

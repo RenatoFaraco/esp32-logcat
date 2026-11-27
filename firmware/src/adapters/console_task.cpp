@@ -151,6 +151,22 @@ SyncResult EspConsolePlatform::sync_log() {
     return flash_.request_sync(pdMS_TO_TICKS(1200)) ? SyncResult::Ok : SyncResult::Failed;
 }
 
+ClearResult EspConsolePlatform::clear_log() {
+    const FlashSnapshot before = flash_.snapshot();
+    if (before.mount == MountResult::Failed) {
+        return ClearResult::Unsupported;
+    }
+    // Same budget as `log sync`: under the host's 2 s reply timeout.
+    const ClearResult result = flash_.request_clear(pdMS_TO_TICKS(1200));
+    if (result == ClearResult::Ok) {
+        // The first line of the new log_000.txt: its boot and uptime say when it was cleared.
+        ESP_LOGW("LOGCAT", "log cleared by console: %lu files, %lu bytes removed",
+                 static_cast<unsigned long>(before.store.files),
+                 static_cast<unsigned long>(before.store.bytes));
+    }
+    return result;
+}
+
 void EspConsolePlatform::crash_panic() {
     ESP_LOGE(TAG, "crash panic requested");
     vTaskDelay(kDrainWait);  // the line above reaches the host and the sinks
