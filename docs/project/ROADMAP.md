@@ -51,7 +51,10 @@ quando o firmware passa a precisar dele):
 9. **M5.5 · Toolchain** (combinado em 26/nov): build em ESP-IDF puro (ADR-013) e host em
    Rust (ADR-014). O `esp-logcat dump` sai do M5 e nasce em Rust aqui. A partir de 26/nov o
    host Python só recebe correções
-10. M6, M7 (stretch)
+10. **Multi-board host** (#103–#107): o host em Rust lendo qualquer placa ESP com qualquer
+    firmware ESP-IDF, várias ao mesmo tempo. A #103 (sessões de referência de cada família)
+    pode ser gravada já, com o host Python
+11. M6, M7 (stretch)
 
 Os blocos 🖥️ (M3, M4a, M5a) podem ser adiantados sempre que o trabalho com a placa travar.
 
@@ -174,9 +177,9 @@ telemetria vira só mais um `Sink` sobre ele. Os ADRs 009 e 011 estão como **pr
 |--------|-------|---------|---------|
 | v1.x | Log e console pela rede: Wi-Fi (TCP/WebSocket, mDNS) e BLE (GATT), o mesmo protocolo do cabo. Zigbee/Thread precisam do rádio 802.15.4 (C6/H2), então ficam na v2 | O rádio é o diferencial do ESP: ver a placa sem cabo | #85 (precisa de um PRD v1.x antes) |
 | v1.1 | Core dump, comando `log grep` no dispositivo | — | — |
-| v2 | Componente ESP-IDF multichip (família Espressif) publicado no IDF Component Registry | O chip muda de produto para produto | ADR-009 · [PRD v2](../context/prd/v2-multichip.md) |
+| v2 | Componente ESP-IDF multichip (família Espressif) publicado no IDF Component Registry | O chip muda de produto para produto | ADR-009 · [PRD v2](../context/prd/v2-multichip.md) · marco `v2 · Multichip component` (#108–#116) |
 | ~~v2.x~~ | ~~Host em Go~~ → host em Rust, antecipado para o M5.5 | Instalar sem Python nem `.venv`; o custo de portar cresce a cada marco | ADR-014 (substitui o ADR-010) · [PRD](../context/prd/rust-host.md) |
-| v1.x | Vários dispositivos ao mesmo tempo no host (identidade pelo MAC, não pela COM) | Bancada com várias placas; base para a rede | Depois do M5.5 |
+| v1.x | Host para várias placas: qualquer família ESP e qualquer firmware ESP-IDF, vários dispositivos ao mesmo tempo (identidade pelo MAC, não pela COM) | Bancada com várias placas; o host já lê o `blink` de fábrica da C6; base para a rede | Marco `Multi-board host` (#103–#107), depois do M5.5 |
 | v3 | Crate Rust `no_std` (`esp-hal`) com o mesmo formato de linha | Logcat para firmware em Rust; prova que o formato independe da linguagem | ADR-011 · [PRD v3](../context/prd/v3-rust-telemetry.md) |
 | v3 | Envio via MQTT (Wi-Fi), telemetria e métricas (heap, uptime, resets) + formato binário/tokenizado | **MLOps**: monitorar drift de sensores em campo; o binário economiza banda | [PRD v3](../context/prd/v3-rust-telemetry.md) (rascunho, sem ADR) |
 | v4 | Outros fabricantes (STM32, RP2040, nRF…) e versão mínima para CH32V003 (só ring buffer + UART) | Multichip além da Espressif; pode exigir renomear o projeto | — |
