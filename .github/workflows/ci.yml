@@ -30,10 +30,31 @@ jobs:
         run: git ls-files -- '*.cpp' '*.hpp' '*.h' | xargs -r clang-format --dry-run --Werror
 
       - name: Core unit tests (native)
+        # PlatformIO only for these until #92 moves them to CMake + ctest.
         run: pio test -e native
 
-      - name: Build target (esp32c3)
-        run: pio run -e esp32c3
+  firmware-target:
+    # The demo built the way users build the component: plain ESP-IDF (ADR-013), pinned to the
+    # version in examples/demo/dependencies.lock. The image tag v6.1 is the 6.1.0 release.
+    runs-on: ubuntu-latest
+    container: espressif/idf:v6.1
+    defaults:
+      run:
+        shell: bash
+        working-directory: firmware/examples/demo
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Build (esp32c3)
+        run: |
+          . "$IDF_PATH/export.sh"
+          idf.py build
+
+      - name: Build the timing variant (sdkconfig.timing)
+        run: |
+          . "$IDF_PATH/export.sh"
+          idf.py -B build-timing -D SDKCONFIG=build-timing/sdkconfig \
+            -D "SDKCONFIG_DEFAULTS=sdkconfig.defaults;sdkconfig.timing" build
 
   firmware-sanitizers:
     # Out-of-bounds accesses, undefined behavior and data races only show up under sanitizers.
