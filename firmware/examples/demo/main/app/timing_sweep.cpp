@@ -2,7 +2,7 @@
 
 #include <cstdint>
 
-#include "adapters/idf_log_hook.hpp"
+#include "port/idf_log_hook.hpp"
 #include "app/critical_task.hpp"
 #include "app/pins.hpp"
 #include "driver/gpio.h"

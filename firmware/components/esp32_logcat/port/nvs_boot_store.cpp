@@ -1,4 +1,4 @@
-#include "adapters/nvs_boot_store.hpp"
+#include "port/nvs_boot_store.hpp"
 
 #include "esp_err.h"
 #include "nvs_flash.h"

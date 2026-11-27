@@ -7,7 +7,7 @@
 
 #include <unity.h>
 
-#include "../../src/adapters/nvs_boot_store.cpp"  // the adapter under test (src/ is not built)
+#include "../../components/esp32_logcat/port/nvs_boot_store.cpp"  // the adapter under test (run by the IDF test app of #93)
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "logcat/boot_counter.hpp"

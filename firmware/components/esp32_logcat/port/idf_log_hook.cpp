@@ -1,10 +1,10 @@
-#include "adapters/idf_log_hook.hpp"
+#include "port/idf_log_hook.hpp"
 
 #include <atomic>
 #include <cstdarg>
 #include <cstdio>
 
-#include "adapters/writer_task.hpp"
+#include "port/writer_task.hpp"
 #include "esp_cpu.h"
 #include "esp_log.h"
 #include "esp_rom_sys.h"

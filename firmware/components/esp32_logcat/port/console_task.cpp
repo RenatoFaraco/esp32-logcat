@@ -1,11 +1,11 @@
-#include "adapters/console_task.hpp"
+#include "port/console_task.hpp"
 
 #include <cstdio>
 #include <cstdlib>
 
-#include "adapters/idf_log_hook.hpp"
-#include "adapters/reset_reason.hpp"
-#include "adapters/writer_task.hpp"
+#include "port/idf_log_hook.hpp"
+#include "port/reset_reason.hpp"
+#include "port/writer_task.hpp"
 #include "driver/usb_serial_jtag.h"
 #include "esp_app_desc.h"
 #include "esp_log.h"

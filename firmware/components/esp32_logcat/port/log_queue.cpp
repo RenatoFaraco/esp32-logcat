@@ -1,4 +1,4 @@
-#include "adapters/log_queue.hpp"
+#include "port/log_queue.hpp"
 
 namespace logcat {
 

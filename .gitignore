@@ -7,11 +7,12 @@
 .vscode/launch.json
 .vscode/ipch
 
-# ESP-IDF generates sdkconfig.<env> from sdkconfig.defaults; only the defaults are versioned
-firmware/sdkconfig.*
-!firmware/sdkconfig.defaults
-firmware/managed_components/
-firmware/dependencies.lock
+# ESP-IDF projects (ADR-013): sdkconfig is generated from sdkconfig.defaults (+ sdkconfig.timing);
+# only those are versioned, with dependencies.lock (it pins the components' versions).
+firmware/**/sdkconfig
+firmware/**/sdkconfig.old
+firmware/**/managed_components/
+firmware/**/build*/
 
 # --- Python / host ---
 .venv/
